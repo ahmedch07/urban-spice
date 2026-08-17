@@ -40,15 +40,19 @@ export async function POST(request: Request) {
       role: user.role as 'ADMIN' | 'CASHIER' | 'MANAGER',
     });
 
-    // Create Audit Log
-    await prisma.auditLog.create({
-      data: {
-        userId: user.id,
-        userName: user.name,
-        action: 'USER_LOGIN',
-        details: `User ${user.name} (${user.role}) logged in successfully.`,
-      },
-    });
+    // Create Audit Log safely
+    try {
+      await prisma.auditLog.create({
+        data: {
+          userId: user.id,
+          userName: user.name,
+          action: 'USER_LOGIN',
+          details: `User ${user.name} (${user.role}) logged in successfully.`,
+        },
+      });
+    } catch (auditError) {
+      console.warn('Audit log creation failed/skipped:', auditError);
+    }
 
     const response = NextResponse.json({
       success: true,
@@ -69,10 +73,10 @@ export async function POST(request: Request) {
     });
 
     return response;
-  } catch (error) {
-    console.error('Login error:', error);
+  } catch (error: any) {
+    console.error('Login error details:', error);
     return NextResponse.json(
-      { error: 'Internal server error during authentication' },
+      { error: error?.message || 'Internal server error during authentication' },
       { status: 500 }
     );
   }
