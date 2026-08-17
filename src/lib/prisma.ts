@@ -2,14 +2,22 @@ import { PrismaClient } from '@prisma/client';
 import fs from 'fs';
 import path from 'path';
 
-function getDatabaseUrl(): string | undefined {
-  if (process.env.VERCEL || process.env.NODE_ENV === 'production') {
+function getDatabaseUrl(): string {
+  const envUrl = process.env.DATABASE_URL;
+
+  if (process.env.VERCEL) {
     try {
       const tmpDbPath = '/tmp/dev.db';
       if (!fs.existsSync(tmpDbPath)) {
-        const sourceDbPath = path.join(process.cwd(), 'prisma', 'dev.db');
-        if (fs.existsSync(sourceDbPath)) {
-          fs.copyFileSync(sourceDbPath, tmpDbPath);
+        const candidates = [
+          path.join(process.cwd(), 'prisma', 'dev.db'),
+          path.join(process.cwd(), 'dev.db'),
+        ];
+        for (const candidate of candidates) {
+          if (fs.existsSync(candidate)) {
+            fs.copyFileSync(candidate, tmpDbPath);
+            break;
+          }
         }
       }
       if (fs.existsSync(tmpDbPath)) {
@@ -19,7 +27,17 @@ function getDatabaseUrl(): string | undefined {
       console.error('Failed to copy SQLite database to /tmp:', e);
     }
   }
-  return process.env.DATABASE_URL;
+
+  if (envUrl) {
+    return envUrl;
+  }
+
+  const defaultDbPath = path.join(process.cwd(), 'prisma', 'dev.db');
+  if (fs.existsSync(defaultDbPath)) {
+    return `file:${defaultDbPath}`;
+  }
+
+  return 'file:./prisma/dev.db';
 }
 
 const globalForPrisma = globalThis as unknown as {
