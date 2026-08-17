@@ -117,3 +117,47 @@ export async function PUT(request: Request) {
     return NextResponse.json({ error: 'Failed to update employee' }, { status: 500 });
   }
 }
+
+export async function DELETE(request: Request) {
+  try {
+    const session = await getCurrentUser();
+    if (!session || session.role !== 'ADMIN') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+
+    if (!id) {
+      return NextResponse.json({ error: 'Employee ID required' }, { status: 400 });
+    }
+
+    if (id === session.userId) {
+      return NextResponse.json({ error: 'You cannot delete your own active account' }, { status: 400 });
+    }
+
+    const userToDelete = await prisma.user.findUnique({ where: { id } });
+    if (!userToDelete) {
+      return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
+    }
+
+    await prisma.user.delete({ where: { id } });
+
+    try {
+      await prisma.auditLog.create({
+        data: {
+          userId: session.userId,
+          userName: session.name,
+          action: 'DELETE_EMPLOYEE',
+          details: `Deleted employee account ${userToDelete.name} (${userToDelete.email})`,
+        },
+      });
+    } catch (auditError) {
+      console.warn('Audit log creation skipped:', auditError);
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    return NextResponse.json({ error: error?.message || 'Failed to delete employee' }, { status: 500 });
+  }
+}
