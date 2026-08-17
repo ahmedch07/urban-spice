@@ -26,17 +26,17 @@ interface SidebarProps {
   userEmail?: string;
 }
 
-export default function Sidebar({ userRole = 'ADMIN', userName = 'User', userEmail = '' }: SidebarProps) {
+export default function Sidebar({ userRole = '', userName = 'User', userEmail = '' }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
 
   const handleLogout = async () => {
     try {
       await fetch('/api/auth/logout', { method: 'POST' });
-      router.push('/login');
-      router.refresh();
     } catch (error) {
       console.error('Logout error:', error);
+    } finally {
+      window.location.href = '/login';
     }
   };
 
@@ -55,7 +55,8 @@ export default function Sidebar({ userRole = 'ADMIN', userName = 'User', userEma
     { name: 'Audit Logs', href: '/audit-logs', icon: ShieldAlert, roles: ['ADMIN'] },
   ];
 
-  const filteredNav = navItems.filter((item) => item.roles.includes(userRole));
+  const effectiveRole = userRole || 'CASHIER';
+  const filteredNav = navItems.filter((item) => item.roles.includes(effectiveRole));
 
   return (
     <aside className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col h-screen sticky top-0 select-none z-40">

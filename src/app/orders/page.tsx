@@ -8,7 +8,7 @@ import { Search, Filter, Printer, RefreshCw, XCircle, CheckCircle, Eye } from 'l
 import { formatCurrency, formatDate } from '@/lib/utils';
 
 export default function OrdersPage() {
-  const [currentUser, setCurrentUser] = useState<any>({ name: 'User', role: 'ADMIN' });
+  const [currentUser, setCurrentUser] = useState<any>({ name: 'Loading...', role: '' });
   const [orders, setOrders] = useState<any[]>([]);
   const [dateRange, setDateRange] = useState<string>('today');
   const [searchQuery, setSearchQuery] = useState<string>('');

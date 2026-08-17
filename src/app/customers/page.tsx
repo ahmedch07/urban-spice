@@ -7,7 +7,7 @@ import { Users, Search, Phone, Mail, MapPin, ShoppingBag, DollarSign, Clock, Eye
 import { formatCurrency, formatDate } from '@/lib/utils';
 
 export default function CustomersPage() {
-  const [currentUser, setCurrentUser] = useState<any>({ name: 'User', role: 'ADMIN' });
+  const [currentUser, setCurrentUser] = useState<any>({ name: 'User', role: '' });
   const [customers, setCustomers] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
