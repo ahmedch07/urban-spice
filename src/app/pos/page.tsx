@@ -32,7 +32,7 @@ export default function POSPage() {
   const [discount, setDiscount] = useState<number>(0);
   const [discountType, setDiscountType] = useState<'FIXED' | 'PERCENTAGE'>('FIXED');
   const [deliveryFee, setDeliveryFee] = useState<number>(150);
-  const taxRate = 5; // 5% GST tax
+  const [taxRate, setTaxRate] = useState<number>(5);
 
   // Modals visibility
   const [isPizzaModalOpen, setIsPizzaModalOpen] = useState<boolean>(false);
@@ -218,6 +218,7 @@ export default function POSPage() {
             deliveryFee={deliveryFee}
             onDeliveryFeeChange={setDeliveryFee}
             taxRate={taxRate}
+            onTaxRateChange={setTaxRate}
             onCheckout={() => setIsPaymentModalOpen(true)}
           />
         </div>

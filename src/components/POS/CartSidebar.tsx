@@ -38,6 +38,7 @@ interface CartSidebarProps {
   deliveryFee: number;
   onDeliveryFeeChange: (f: number) => void;
   taxRate: number;
+  onTaxRateChange?: (r: number) => void;
   onCheckout: () => void;
 }
 
@@ -60,9 +61,11 @@ export default function CartSidebar({
   deliveryFee,
   onDeliveryFeeChange,
   taxRate,
+  onTaxRateChange,
   onCheckout,
 }: CartSidebarProps) {
   const [showDiscountInput, setShowDiscountInput] = useState(false);
+  const [showTaxInput, setShowTaxInput] = useState(false);
 
   // Subtotal Calculation
   const subtotal = cart.reduce((sum, item) => sum + item.totalPrice, 0);
@@ -302,11 +305,63 @@ export default function CartSidebar({
             </div>
           )}
 
-          {/* Tax */}
-          <div className="flex justify-between">
-            <span className="text-slate-400">GST Tax ({taxRate}%)</span>
+          {/* Tax controls */}
+          <div className="flex justify-between items-center">
+            <button
+              onClick={() => setShowTaxInput(!showTaxInput)}
+              className="text-amber-400 hover:underline flex items-center space-x-1"
+            >
+              <span>GST Tax ({taxRate}%)</span>
+            </button>
             <span className="font-mono font-semibold">{formatCurrency(taxAmount)}</span>
           </div>
+
+          {showTaxInput && (
+            <div className="flex items-center space-x-1.5 pt-1 pb-1 flex-wrap gap-y-1">
+              <button
+                type="button"
+                onClick={() => onTaxRateChange && onTaxRateChange(0)}
+                className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                  taxRate === 0 ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                }`}
+              >
+                0% (OFF)
+              </button>
+              <button
+                type="button"
+                onClick={() => onTaxRateChange && onTaxRateChange(5)}
+                className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                  taxRate === 5 ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                }`}
+              >
+                5%
+              </button>
+              <button
+                type="button"
+                onClick={() => onTaxRateChange && onTaxRateChange(13)}
+                className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                  taxRate === 13 ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                }`}
+              >
+                13%
+              </button>
+              <button
+                type="button"
+                onClick={() => onTaxRateChange && onTaxRateChange(16)}
+                className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                  taxRate === 16 ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                }`}
+              >
+                16%
+              </button>
+              <input
+                type="number"
+                value={taxRate}
+                onChange={(e) => onTaxRateChange && onTaxRateChange(Math.max(0, parseFloat(e.target.value) || 0))}
+                className="w-14 bg-slate-950 border border-slate-800 rounded px-1.5 py-0.5 text-center font-mono text-xs text-slate-100 focus:outline-none focus:border-amber-500"
+              />
+            </div>
+          )}
 
           {/* Delivery Charges if Delivery order */}
           {orderType === 'DELIVERY' && (

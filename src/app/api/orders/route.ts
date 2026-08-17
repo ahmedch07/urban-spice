@@ -89,14 +89,11 @@ export async function POST(request: Request) {
       paymentMethod,
       amountPaid,
       notes,
+      isPendingPayment,
     } = body;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json({ error: 'Cart cannot be empty' }, { status: 400 });
-    }
-
-    if (amountPaid < 0) {
-      return NextResponse.json({ error: 'Invalid payment amount' }, { status: 400 });
     }
 
     // Get Invoice prefix and settings
@@ -143,9 +140,12 @@ export async function POST(request: Request) {
     const grandTotal = Math.round(afterDiscount + taxAmount + (deliveryFee || 0));
     const change = Math.max(0, (amountPaid || 0) - grandTotal);
 
-    if (amountPaid < grandTotal) {
+    const orderStatus = isPendingPayment ? 'PENDING' : 'COMPLETED';
+    const finalAmountPaid = isPendingPayment ? (amountPaid || 0) : amountPaid;
+
+    if (!isPendingPayment && finalAmountPaid < grandTotal) {
       return NextResponse.json(
-        { error: `Payment amount (${amountPaid}) is less than total amount (${grandTotal})` },
+        { error: `Payment amount (${finalAmountPaid}) is less than total amount (${grandTotal})` },
         { status: 400 }
       );
     }
@@ -159,7 +159,7 @@ export async function POST(request: Request) {
           userId: session.userId,
           orderType: orderType || 'DINE_IN',
           tableNo: tableNo || null,
-          status: 'PENDING',
+          status: orderStatus,
           subtotal: calculatedSubtotal,
           discount: discountAmount,
           discountType: discountType || 'FIXED',
@@ -167,8 +167,8 @@ export async function POST(request: Request) {
           deliveryFee: deliveryFee || 0,
           grandTotal,
           paymentMethod: paymentMethod || 'CASH',
-          amountPaid,
-          change,
+          amountPaid: finalAmountPaid,
+          change: isPendingPayment ? 0 : change,
           notes: notes || null,
           items: {
             create: items.map((item: any) => {

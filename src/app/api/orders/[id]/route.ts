@@ -62,9 +62,15 @@ export async function PUT(
       );
     }
 
+    const updateData: any = { status };
+    if (status === 'COMPLETED' && existing.amountPaid < existing.grandTotal) {
+      updateData.amountPaid = existing.grandTotal;
+      updateData.change = 0;
+    }
+
     const updated = await prisma.order.update({
       where: { id },
-      data: { status },
+      data: updateData,
       include: {
         customer: true,
         user: { select: { name: true } },

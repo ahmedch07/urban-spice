@@ -93,3 +93,53 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Failed to create customer' }, { status: 500 });
   }
 }
+
+export async function PUT(request: Request) {
+  try {
+    const body = await request.json();
+    const { id, name, phone, whatsapp, email, address, city, notes } = body;
+
+    if (!id || !name || !phone) {
+      return NextResponse.json(
+        { error: 'Customer ID, name, and phone number are required' },
+        { status: 400 }
+      );
+    }
+
+    const updatedCustomer = await prisma.customer.update({
+      where: { id },
+      data: {
+        name: name.trim(),
+        phone: phone.trim(),
+        whatsapp: whatsapp ? whatsapp.trim() : null,
+        email: email ? email.trim() : null,
+        address: address ? address.trim() : null,
+        city: city ? city.trim() : 'Lahore',
+        notes: notes ? notes.trim() : null,
+      },
+    });
+
+    return NextResponse.json({ success: true, customer: updatedCustomer });
+  } catch (error: any) {
+    console.error('Customer update error:', error);
+    return NextResponse.json({ error: error?.message || 'Failed to update customer' }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+
+    if (!id) {
+      return NextResponse.json({ error: 'Customer ID required' }, { status: 400 });
+    }
+
+    await prisma.customer.delete({ where: { id } });
+
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.error('Customer delete error:', error);
+    return NextResponse.json({ error: error?.message || 'Failed to delete customer' }, { status: 500 });
+  }
+}

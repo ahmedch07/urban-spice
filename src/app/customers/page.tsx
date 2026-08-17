@@ -18,6 +18,24 @@ export default function CustomersPage() {
   const [favoriteProducts, setFavoriteProducts] = useState<any[]>([]);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
+  // Edit Customer Modal State
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingCustomer, setEditingCustomer] = useState<any>(null);
+  const [editName, setEditName] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editWhatsapp, setEditWhatsapp] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editAddress, setEditAddress] = useState('');
+  const [editCity, setEditCity] = useState('');
+  const [editNotes, setEditNotes] = useState('');
+  const [editErrorMsg, setEditErrorMsg] = useState('');
+
+  // Delete Customer Modal State
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deletingCustomer, setDeletingCustomer] = useState<any>(null);
+  const [deleteErrorMsg, setDeleteErrorMsg] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
+
   useEffect(() => {
     fetch('/api/auth/me')
       .then((res) => res.json())
@@ -52,22 +70,93 @@ export default function CustomersPage() {
       if (data.orders) {
         setCustomerOrders(data.orders);
 
-        // Calculate favorite products
-        const productCounts: Record<string, { name: string; count: number }> = {};
-        for (const order of data.orders) {
-          for (const item of order.items || []) {
+        const favMap: { [key: string]: { name: string; count: number } } = {};
+        data.orders.forEach((o: any) => {
+          o.items?.forEach((item: any) => {
             const name = item.productName;
-            if (!productCounts[name]) productCounts[name] = { name, count: 0 };
-            productCounts[name].count += item.quantity;
-          }
-        }
-        const topFavs = Object.values(productCounts)
-          .sort((a, b) => b.count - a.count)
-          .slice(0, 5);
-        setFavoriteProducts(topFavs);
+            if (!favMap[name]) favMap[name] = { name, count: 0 };
+            favMap[name].count += item.quantity;
+          });
+        });
+
+        const favList = Object.values(favMap).sort((a, b) => b.count - a.count).slice(0, 5);
+        setFavoriteProducts(favList);
       }
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  const openEditModal = (c: any) => {
+    setEditingCustomer(c);
+    setEditName(c.name || '');
+    setEditPhone(c.phone || '');
+    setEditWhatsapp(c.whatsapp || '');
+    setEditEmail(c.email || '');
+    setEditAddress(c.address || '');
+    setEditCity(c.city || 'Lahore');
+    setEditNotes(c.notes || '');
+    setEditErrorMsg('');
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdateCustomer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingCustomer) return;
+    setEditErrorMsg('');
+    try {
+      const res = await fetch('/api/pos/customers', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: editingCustomer.id,
+          name: editName,
+          phone: editPhone,
+          whatsapp: editWhatsapp,
+          email: editEmail,
+          address: editAddress,
+          city: editCity,
+          notes: editNotes,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setEditErrorMsg(data.error || 'Failed to update customer');
+        return;
+      }
+      setIsEditModalOpen(false);
+      fetchCustomers();
+    } catch (e) {
+      setEditErrorMsg('Network error updating customer');
+    }
+  };
+
+  const openDeleteModal = (c: any) => {
+    setDeletingCustomer(c);
+    setDeleteErrorMsg('');
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleDeleteCustomer = async () => {
+    if (!deletingCustomer) return;
+    setIsDeleting(true);
+    setDeleteErrorMsg('');
+    try {
+      const res = await fetch(`/api/pos/customers?id=${deletingCustomer.id}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setDeleteErrorMsg(data.error || 'Failed to delete customer profile');
+        setIsDeleting(false);
+        return;
+      }
+      setIsDeleteModalOpen(false);
+      setIsDeleting(false);
+      fetchCustomers();
+    } catch (e) {
+      setDeleteErrorMsg('Network error deleting customer');
+      setIsDeleting(false);
     }
   };
 
@@ -76,17 +165,22 @@ export default function CustomersPage() {
       <Sidebar userRole={currentUser.role} userName={currentUser.name} userEmail={currentUser.email} />
 
       <div className="flex-1 flex flex-col h-full overflow-hidden">
-        <Navbar title="Customer Database & Lifetime Spending Profiles" />
+        <Navbar title="Customer Relationship Management (CRM)" />
 
         <main className="flex-1 overflow-y-auto p-6 space-y-6">
-          <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-lg flex items-center justify-between">
-            <div className="relative flex-1 max-w-md">
-              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+          <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-lg">
+            <div className="flex items-center space-x-2">
+              <Users className="w-5 h-5 text-amber-400" />
+              <h3 className="font-bold text-slate-100 text-base">Registered Store Customers</h3>
+            </div>
+
+            <div className="relative w-full sm:w-80">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
               <input
                 type="text"
+                placeholder="Search by name, phone or email..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search customers by name, phone or email..."
                 className="w-full pl-10 pr-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-500"
               />
             </div>
@@ -129,13 +223,30 @@ export default function CustomersPage() {
                         <td className="p-4 font-mono font-bold text-emerald-400">{formatCurrency(c.totalSpent || 0)}</td>
                         <td className="p-4 font-mono text-slate-400">{c.lastOrder ? formatDate(c.lastOrder) : 'No orders'}</td>
                         <td className="p-4 text-right">
-                          <button
-                            onClick={() => handleOpenProfile(c)}
-                            className="px-3 py-1.5 bg-amber-500/10 text-amber-400 font-bold rounded-lg hover:bg-amber-500 hover:text-slate-950 transition-colors flex items-center space-x-1 ml-auto"
-                          >
-                            <Eye className="w-3.5 h-3.5" />
-                            <span>View Profile</span>
-                          </button>
+                          <div className="flex items-center justify-end space-x-1.5">
+                            <button
+                              onClick={() => handleOpenProfile(c)}
+                              className="p-1.5 bg-amber-500/10 text-amber-400 font-bold rounded-lg hover:bg-amber-500 hover:text-slate-950 transition-colors flex items-center space-x-1"
+                              title="View Profile"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                              <span className="text-[11px]">View</span>
+                            </button>
+                            <button
+                              onClick={() => openEditModal(c)}
+                              className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-lg border border-slate-700 transition flex items-center space-x-1"
+                              title="Edit Customer"
+                            >
+                              <span className="text-[11px]">Edit</span>
+                            </button>
+                            <button
+                              onClick={() => openDeleteModal(c)}
+                              className="p-1.5 bg-slate-800 hover:bg-red-500/20 text-red-400 hover:border-red-500/30 font-bold rounded-lg border border-slate-700 transition flex items-center space-x-1"
+                              title="Delete Customer"
+                            >
+                              <span className="text-[11px]">Delete</span>
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -149,12 +260,12 @@ export default function CustomersPage() {
 
       {/* Customer Profile Drawer / Modal */}
       {isProfileOpen && selectedCustomer && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
-            {/* Header */}
-            <div className="p-5 border-b border-slate-800 flex items-center justify-between bg-slate-900/90">
+        <div className="fixed inset-0 z-50 flex items-center justify-end bg-slate-950/80 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-slate-900 border-l border-slate-800 w-full max-w-xl h-full flex flex-col shadow-2xl overflow-hidden">
+            {/* Profile Header */}
+            <div className="p-5 border-b border-slate-800 flex items-center justify-between bg-slate-950">
               <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold text-base">
+                <div className="w-10 h-10 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center font-bold text-base">
                   {selectedCustomer.name.substring(0, 2).toUpperCase()}
                 </div>
                 <div>

@@ -37,6 +37,7 @@ export default function PaymentModal({
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CASH');
   const [amountPaid, setAmountPaid] = useState<number>(0);
   const [notes, setNotes] = useState<string>('');
+  const [isPendingPayment, setIsPendingPayment] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string>('');
 
@@ -53,6 +54,7 @@ export default function PaymentModal({
   useEffect(() => {
     if (isOpen) {
       setAmountPaid(grandTotal);
+      setIsPendingPayment(false);
       setErrorMsg('');
     }
   }, [isOpen, grandTotal]);
@@ -72,7 +74,7 @@ export default function PaymentModal({
 
   const handleCompletePayment = async () => {
     setErrorMsg('');
-    if (amountPaid < grandTotal) {
+    if (!isPendingPayment && amountPaid < grandTotal) {
       setErrorMsg(`Tendered cash (${amountPaid}) is less than total (${grandTotal})`);
       return;
     }
@@ -93,8 +95,9 @@ export default function PaymentModal({
           tax: taxRate,
           deliveryFee: activeDeliveryFee,
           paymentMethod,
-          amountPaid,
+          amountPaid: isPendingPayment ? 0 : amountPaid,
           notes,
+          isPendingPayment,
         }),
       });
 
@@ -149,6 +152,44 @@ export default function PaymentModal({
             <div className="text-xs text-slate-400 mt-2 flex items-center justify-center space-x-3">
               <span>Type: <strong className="text-slate-200">{orderType}</strong></span>
               {selectedCustomer && <span>Customer: <strong className="text-slate-200">{selectedCustomer.name}</strong></span>}
+            </div>
+          </div>
+
+          {/* Payment Status Option: Paid vs Unpaid / Credit */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 bg-slate-950 border border-slate-800 rounded-xl gap-2">
+            <div>
+              <h4 className="text-xs font-bold text-slate-200">Order Payment Status</h4>
+              <p className="text-[11px] text-slate-400">Save as Paid or Unpaid / Credit (Pending Payment)</p>
+            </div>
+            <div className="flex items-center space-x-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsPendingPayment(false);
+                  setAmountPaid(grandTotal);
+                }}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition border ${
+                  !isPendingPayment
+                    ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40 shadow-sm'
+                    : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-200'
+                }`}
+              >
+                Paid (Complete)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsPendingPayment(true);
+                  setAmountPaid(0);
+                }}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition border ${
+                  isPendingPayment
+                    ? 'bg-amber-500/20 text-amber-400 border-amber-500/40 shadow-sm'
+                    : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-200'
+                }`}
+              >
+                Unpaid / Credit (Pending)
+              </button>
             </div>
           </div>
 
