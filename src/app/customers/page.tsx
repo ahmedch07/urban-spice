@@ -361,6 +361,129 @@ export default function CustomersPage() {
           </div>
         </div>
       )}
+
+      {/* Edit Customer Modal */}
+      {isEditModalOpen && editingCustomer && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-bold text-slate-100">Edit Customer Profile</h3>
+              <button onClick={() => setIsEditModalOpen(false)} className="p-1 text-slate-400 hover:text-slate-200">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {editErrorMsg && (
+              <div className="p-3 bg-red-500/10 border border-red-500/30 text-red-400 text-xs rounded-xl font-medium">
+                {editErrorMsg}
+              </div>
+            )}
+
+            <form onSubmit={handleUpdateCustomer} className="space-y-3">
+              <div>
+                <label className="block text-xs text-slate-300 font-semibold mb-1">Customer Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-100"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs text-slate-300 font-semibold mb-1">Phone Number *</label>
+                <input
+                  type="text"
+                  required
+                  value={editPhone}
+                  onChange={(e) => setEditPhone(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-100 font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs text-slate-300 font-semibold mb-1">WhatsApp Number</label>
+                <input
+                  type="text"
+                  value={editWhatsapp}
+                  onChange={(e) => setEditWhatsapp(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-100 font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs text-slate-300 font-semibold mb-1">Email Address</label>
+                <input
+                  type="email"
+                  value={editEmail}
+                  onChange={(e) => setEditEmail(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-100"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs text-slate-300 font-semibold mb-1">Delivery Address</label>
+                <textarea
+                  rows={2}
+                  value={editAddress}
+                  onChange={(e) => setEditAddress(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-100"
+                />
+              </div>
+
+              <div className="flex justify-end space-x-2 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setIsEditModalOpen(false)}
+                  className="px-4 py-2 text-xs text-slate-400"
+                >
+                  Cancel
+                </button>
+                <button type="submit" className="px-5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl transition">
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Customer Confirmation Modal */}
+      {isDeleteModalOpen && deletingCustomer && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-sm p-6 space-y-4 shadow-2xl text-center">
+            <h3 className="text-base font-bold text-slate-100">Delete Customer Profile?</h3>
+            <p className="text-xs text-slate-400">
+              Are you sure you want to delete customer <strong className="text-slate-200">{deletingCustomer.name}</strong> ({deletingCustomer.phone})?
+            </p>
+
+            {deleteErrorMsg && (
+              <div className="p-3 bg-red-500/10 border border-red-500/30 text-red-400 text-xs rounded-xl">
+                {deleteErrorMsg}
+              </div>
+            )}
+
+            <div className="flex items-center justify-center space-x-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setIsDeleteModalOpen(false)}
+                className="px-4 py-2 text-xs text-slate-400 hover:text-slate-200"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={handleDeleteCustomer}
+                className="px-5 py-2 bg-red-500 hover:bg-red-400 text-white font-bold text-xs rounded-xl transition disabled:opacity-50"
+              >
+                {isDeleting ? 'Deleting...' : 'Delete Customer'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
