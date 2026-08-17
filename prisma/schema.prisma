@@ -1,0 +1,264 @@
+// Prisma Schema for Pizza Store POS & Admin System
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  phone     String?
+  password  String
+  role      String   @default("CASHIER") // ADMIN, CASHIER, MANAGER
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orders    Order[]
+  auditLogs AuditLog[]
+}
+
+model Customer {
+  id        String   @id @default(uuid())
+  name      String
+  phone     String   @unique
+  whatsapp  String?
+  email     String?
+  address   String?
+  city      String?  @default("Lahore")
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orders Order[]
+}
+
+model Category {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  slug        String    @unique
+  description String?
+  image       String?
+  active      Boolean   @default(true)
+  sortOrder   Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  products    Product[]
+}
+
+model Product {
+  id          String   @id @default(uuid())
+  name        String
+  SKU         String   @unique
+  description String?
+  image       String?
+  categoryId  String
+  category    Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  basePrice   Float
+  costPrice   Float    @default(0.0)
+  stock       Int      @default(100)
+  minStock    Int      @default(10)
+  isPizza     Boolean  @default(false)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  orderItems OrderItem[]
+  recipes    Recipe[]
+}
+
+model PizzaFlavor {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  image       String?
+  active      Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  flavorPrices PizzaFlavorPrice[]
+  orderItems   OrderItem[]
+}
+
+model PizzaSize {
+  id        String   @id @default(uuid())
+  name      String   @unique // Small, Medium, Large, Family
+  code      String   // S, M, L, XL
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  flavorPrices PizzaFlavorPrice[]
+  orderItems   OrderItem[]
+  recipes      Recipe[]
+}
+
+model PizzaFlavorPrice {
+  id       String      @id @default(uuid())
+  flavorId String
+  flavor   PizzaFlavor @relation(fields: [flavorId], references: [id], onDelete: Cascade)
+  sizeId   String
+  size     PizzaSize   @relation(fields: [sizeId], references: [id], onDelete: Cascade)
+  price    Float
+
+  @@unique([flavorId, sizeId])
+}
+
+model Crust {
+  id              String   @id @default(uuid())
+  name            String   @unique
+  additionalPrice Float    @default(0.0)
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  orderItems OrderItem[]
+}
+
+model Topping {
+  id              String   @id @default(uuid())
+  name            String   @unique
+  additionalPrice Float    @default(0.0)
+  stock           Int      @default(500)
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  orderItemToppings OrderItemTopping[]
+}
+
+model Order {
+  id            String   @id @default(uuid())
+  invoiceNo     String   @unique
+  customerId    String?
+  customer      Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  orderType     String   @default("DINE_IN") // DINE_IN, TAKEAWAY, DELIVERY
+  tableNo       String?
+  status        String   @default("PENDING") // PENDING, PREPARING, READY, COMPLETED, CANCELLED, REFUNDED
+  subtotal      Float
+  discount      Float    @default(0.0)
+  discountType  String   @default("FIXED") // FIXED, PERCENTAGE
+  tax           Float    @default(0.0)
+  deliveryFee   Float    @default(0.0)
+  otherFee      Float    @default(0.0)
+  grandTotal    Float
+  paymentMethod String   @default("CASH") // CASH, CARD, BANK, ONLINE
+  amountPaid    Float
+  change        Float    @default(0.0)
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  items OrderItem[]
+}
+
+model OrderItem {
+  id                  String       @id @default(uuid())
+  orderId             String
+  order               Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId           String?
+  product             Product?     @relation(fields: [productId], references: [id], onDelete: SetNull)
+  flavorId            String?
+  flavor              PizzaFlavor? @relation(fields: [flavorId], references: [id], onDelete: SetNull)
+  sizeId              String?
+  size                PizzaSize?   @relation(fields: [sizeId], references: [id], onDelete: SetNull)
+  crustId             String?
+  crust               Crust?       @relation(fields: [crustId], references: [id], onDelete: SetNull)
+  productName         String
+  flavorName          String?
+  sizeName            String?
+  crustName           String?
+  quantity            Int
+  unitPrice           Float
+  discount            Float        @default(0.0)
+  total               Float
+  specialInstructions String?
+
+  toppings OrderItemTopping[]
+}
+
+model OrderItemTopping {
+  id          String    @id @default(uuid())
+  orderItemId String
+  orderItem   OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  toppingId   String?
+  topping     Topping?  @relation(fields: [toppingId], references: [id], onDelete: SetNull)
+  toppingName String
+  price       Float
+}
+
+model InventoryItem {
+  id           String   @id @default(uuid())
+  name         String   @unique
+  SKU          String   @unique
+  unit         String   // g, kg, ml, l, pcs
+  currentStock Float    @default(0.0)
+  minStock     Float    @default(10.0)
+  costPerUnit  Float    @default(0.0)
+  supplier     String?
+  lastUpdated  DateTime @updatedAt
+  createdAt    DateTime @default(now())
+
+  transactions      InventoryTransaction[]
+  recipeIngredients RecipeIngredient[]
+}
+
+model InventoryTransaction {
+  id              String        @id @default(uuid())
+  inventoryItemId String
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  type            String        // ADD, REMOVE, ADJUSTMENT, PURCHASE, WASTE, SALE_DEDUCTION
+  quantity        Float
+  notes           String?
+  createdBy       String?
+  createdAt       DateTime      @default(now())
+}
+
+model Recipe {
+  id        String     @id @default(uuid())
+  productId String
+  product   Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  sizeId    String?
+  size      PizzaSize? @relation(fields: [sizeId], references: [id], onDelete: SetNull)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  ingredients RecipeIngredient[]
+}
+
+model RecipeIngredient {
+  id              String        @id @default(uuid())
+  recipeId        String
+  recipe          Recipe        @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  inventoryItemId String
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  quantityNeeded  Float
+}
+
+model StoreSetting {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userName  String
+  action    String
+  details   String
+  ipAddress String?
+  createdAt DateTime @default(now())
+}
