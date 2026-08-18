@@ -123,20 +123,20 @@ export default function LoginPage() {
           <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
-              onClick={() => handleFillDemo('admin@pizzastore.com', 'admin123')}
+              onClick={() => handleFillDemo('admin@urbanspice.com', 'admin123')}
               className="p-2.5 bg-slate-950 border border-slate-800 hover:border-amber-500/50 rounded-xl text-left transition-colors group"
             >
               <div className="text-xs font-bold text-slate-200 group-hover:text-amber-400">Admin Role</div>
-              <div className="text-[10px] text-slate-500 font-mono">admin@pizzastore.com</div>
+              <div className="text-[10px] text-slate-500 font-mono">admin@urbanspice.com</div>
             </button>
 
             <button
               type="button"
-              onClick={() => handleFillDemo('cashier@pizzastore.com', 'cashier123')}
+              onClick={() => handleFillDemo('cashier@urbanspice.com', 'cashier123')}
               className="p-2.5 bg-slate-950 border border-slate-800 hover:border-amber-500/50 rounded-xl text-left transition-colors group"
             >
               <div className="text-xs font-bold text-slate-200 group-hover:text-amber-400">Cashier Role</div>
-              <div className="text-[10px] text-slate-500 font-mono">cashier@pizzastore.com</div>
+              <div className="text-[10px] text-slate-500 font-mono">cashier@urbanspice.com</div>
             </button>
           </div>
         </div>
