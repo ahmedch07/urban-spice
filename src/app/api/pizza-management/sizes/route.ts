@@ -14,7 +14,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const session = await getCurrentUser();
-    if (!session || session.role !== 'ADMIN') {
+    if (!session || (session.role !== 'ADMIN' && session.role !== 'MANAGER')) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -42,12 +42,16 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
   try {
     const session = await getCurrentUser();
-    if (!session || session.role !== 'ADMIN') {
+    if (!session || (session.role !== 'ADMIN' && session.role !== 'MANAGER')) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const body = await request.json();
     const { id, name, code, sortOrder } = body;
+
+    if (!id) {
+      return NextResponse.json({ error: 'Size ID is required' }, { status: 400 });
+    }
 
     const updated = await prisma.pizzaSize.update({
       where: { id },
@@ -61,5 +65,29 @@ export async function PUT(request: Request) {
     return NextResponse.json({ success: true, size: updated });
   } catch (error) {
     return NextResponse.json({ error: 'Failed to update size' }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const session = await getCurrentUser();
+    if (!session || session.role !== 'ADMIN') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+
+    if (!id) {
+      return NextResponse.json({ error: 'Size ID is required' }, { status: 400 });
+    }
+
+    await prisma.pizzaSize.delete({
+      where: { id },
+    });
+
+    return NextResponse.json({ success: true, message: 'Size deleted successfully' });
+  } catch (error) {
+    return NextResponse.json({ error: 'Failed to delete size' }, { status: 500 });
   }
 }
