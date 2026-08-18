@@ -3,36 +3,36 @@ import fs from 'fs';
 import path from 'path';
 
 function getDatabaseUrl(): string {
-  const envUrl = process.env.DATABASE_URL;
-
   if (process.env.VERCEL) {
     try {
       const tmpDbPath = '/tmp/dev.db';
-      const candidate1 = path.join(process.cwd(), 'prisma', 'dev.db');
-      const candidate2 = path.join(process.cwd(), 'dev.db');
-
-      if (fs.existsSync(candidate1)) {
-        fs.copyFileSync(candidate1, tmpDbPath);
-        return 'file:/tmp/dev.db';
-      } else if (fs.existsSync(candidate2)) {
-        fs.copyFileSync(candidate2, tmpDbPath);
-        return 'file:/tmp/dev.db';
+      if (!fs.existsSync(/*turbopackIgnore: true*/ tmpDbPath)) {
+        const candidates = [
+          path.join(process.cwd(), 'prisma', 'dev.db'),
+          path.join(process.cwd(), 'dev.db'),
+        ];
+        for (const candidate of candidates) {
+          if (fs.existsSync(/*turbopackIgnore: true*/ candidate)) {
+            fs.copyFileSync(candidate, tmpDbPath);
+            break;
+          }
+        }
       }
-
-      if (fs.existsSync(tmpDbPath)) {
+      if (fs.existsSync(/*turbopackIgnore: true*/ tmpDbPath)) {
         return 'file:/tmp/dev.db';
       }
     } catch (e) {
-      console.error('Failed to copy SQLite database to /tmp:', e);
+      console.error('Failed to copy SQLite database to /tmp on Vercel:', e);
     }
   }
 
+  const envUrl = process.env.DATABASE_URL;
   if (envUrl) {
     return envUrl;
   }
 
   const defaultDbPath = path.join(process.cwd(), 'prisma', 'dev.db');
-  if (fs.existsSync(defaultDbPath)) {
+  if (fs.existsSync(/*turbopackIgnore: true*/ defaultDbPath)) {
     return `file:${defaultDbPath}`;
   }
 
