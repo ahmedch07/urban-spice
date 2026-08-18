@@ -55,28 +55,26 @@ export default function SettingsPage() {
       })
       .catch(console.error);
 
-    // 1. Try loading from LocalStorage first for instant persistent display
-    try {
-      const cached = localStorage.getItem('urban_spice_store_settings');
-      if (cached) {
-        applySettings(JSON.parse(cached));
-      }
-    } catch (e) {
-      console.warn('Failed to parse cached settings:', e);
-    }
-
-    // 2. Fetch latest settings from Server API
+    // Fetch latest settings from Server API and merge with LocalStorage
     fetch('/api/settings')
       .then((res) => res.json())
       .then((data) => {
-        if (data.settings && Object.keys(data.settings).length > 0) {
-          applySettings(data.settings);
-          try {
-            localStorage.setItem('urban_spice_store_settings', JSON.stringify(data.settings));
-          } catch (e) {}
-        }
+        let merged = data.settings || {};
+        try {
+          const cached = localStorage.getItem('urban_spice_store_settings');
+          if (cached) {
+            merged = { ...merged, ...JSON.parse(cached) };
+          }
+        } catch (e) {}
+
+        applySettings(merged);
       })
-      .catch(console.error);
+      .catch(() => {
+        try {
+          const cached = localStorage.getItem('urban_spice_store_settings');
+          if (cached) applySettings(JSON.parse(cached));
+        } catch (e) {}
+      });
   }, []);
 
   const handleSaveSettings = async (e: React.FormEvent) => {
