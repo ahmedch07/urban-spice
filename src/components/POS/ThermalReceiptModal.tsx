@@ -31,10 +31,19 @@ export default function ThermalReceiptModal({
 
   useEffect(() => {
     if (isOpen) {
+      try {
+        const cached = localStorage.getItem('urban_spice_store_settings');
+        if (cached) {
+          setStoreSettings((prev: any) => ({ ...prev, ...JSON.parse(cached) }));
+        }
+      } catch (e) {}
+
       fetch('/api/settings')
         .then((res) => res.json())
         .then((data) => {
-          if (data.settings) setStoreSettings(data.settings);
+          if (data.settings && Object.keys(data.settings).length > 0) {
+            setStoreSettings((prev: any) => ({ ...prev, ...data.settings }));
+          }
         })
         .catch(console.error);
     }
