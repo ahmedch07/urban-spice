@@ -38,6 +38,9 @@ export default function POSPage() {
 
   // Modals visibility
   const [isPizzaModalOpen, setIsPizzaModalOpen] = useState<boolean>(false);
+  const [modalCategoryName, setModalCategoryName] = useState<string>('Urban Special Pizza');
+  const [modalFlavorName, setModalFlavorName] = useState<string | undefined>(undefined);
+
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState<boolean>(false);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState<boolean>(false);
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState<boolean>(false);
@@ -105,6 +108,13 @@ export default function POSPage() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [cart]);
+
+  // Open Pizza Modal with category preselected
+  const handleOpenPizzaModalWithCategory = (categoryName: string, flavorName?: string) => {
+    setModalCategoryName(categoryName);
+    setModalFlavorName(flavorName);
+    setIsPizzaModalOpen(true);
+  };
 
   // Cart operations
   const handleAddToCart = (item: CartItem) => {
@@ -197,7 +207,7 @@ export default function POSPage() {
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
             onSelectProduct={handleAddStandardProductToCart}
-            onOpenPizzaModal={() => setIsPizzaModalOpen(true)}
+            onOpenPizzaModalWithCategory={handleOpenPizzaModalWithCategory}
           />
 
           {/* Right: Cart & Calculation Sidebar */}
@@ -232,6 +242,8 @@ export default function POSPage() {
         onClose={() => setIsPizzaModalOpen(false)}
         onAddToCart={handleAddToCart}
         pizzaConfig={pizzaConfig}
+        initialCategoryName={modalCategoryName}
+        initialFlavorName={modalFlavorName}
       />
 
       <CustomerModal
