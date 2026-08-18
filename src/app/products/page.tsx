@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from '@/components/Sidebar';
 import Navbar from '@/components/Navbar';
-import { Package, Plus, Search, Edit2, Trash2, CheckCircle, XCircle } from 'lucide-react';
+import ImageUploadInput from '@/components/ImageUploadInput';
+import { Package, Plus, Search, Edit2, Trash2, CheckCircle, XCircle, FolderPlus, Layers } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 
 export default function ProductsPage() {
@@ -13,7 +14,7 @@ export default function ProductsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
-  // Add/Edit Modal
+  // Add/Edit Product Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editProduct, setEditProduct] = useState<any>(null);
   const [name, setName] = useState('');
@@ -28,6 +29,14 @@ export default function ProductsPage() {
   const [isPizza, setIsPizza] = useState(false);
   const [formError, setFormError] = useState('');
 
+  // Add/Edit Category Modal
+  const [isCatModalOpen, setIsCatModalOpen] = useState(false);
+  const [editCategory, setEditCategory] = useState<any>(null);
+  const [catName, setCatName] = useState('');
+  const [catDescription, setCatDescription] = useState('');
+  const [catImage, setCatImage] = useState('');
+  const [catError, setCatError] = useState('');
+
   useEffect(() => {
     fetch('/api/auth/me')
       .then((res) => res.json())
@@ -41,11 +50,15 @@ export default function ProductsPage() {
   }, []);
 
   const fetchCategories = async () => {
-    const res = await fetch('/api/pos/categories');
-    const data = await res.json();
-    if (data.categories) {
-      setCategories(data.categories);
-      if (data.categories.length > 0) setCategoryId(data.categories[0].id);
+    try {
+      const res = await fetch('/api/categories');
+      const data = await res.json();
+      if (data.categories) {
+        setCategories(data.categories);
+        if (data.categories.length > 0 && !categoryId) setCategoryId(data.categories[0].id);
+      }
+    } catch (e) {
+      console.error('Failed to fetch categories:', e);
     }
   };
 
@@ -80,6 +93,7 @@ export default function ProductsPage() {
       setEditProduct(null);
       setName('');
       setSKU(`PRD-${Math.floor(100 + Math.random() * 900)}`);
+      if (categories.length > 0) setCategoryId(categories[0].id);
       setBasePrice('');
       setCostPrice('');
       setStock('100');
@@ -139,6 +153,54 @@ export default function ProductsPage() {
     }
   };
 
+  // Category Modal Handlers
+  const handleOpenCatModal = (cat: any = null) => {
+    setCatError('');
+    if (cat) {
+      setEditCategory(cat);
+      setCatName(cat.name);
+      setCatDescription(cat.description || '');
+      setCatImage(cat.image || '');
+    } else {
+      setEditCategory(null);
+      setCatName('');
+      setCatDescription('');
+      setCatImage('');
+    }
+    setIsCatModalOpen(true);
+  };
+
+  const handleSaveCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCatError('');
+
+    const url = '/api/categories';
+    const method = editCategory ? 'PUT' : 'POST';
+    const payload = {
+      id: editCategory?.id,
+      name: catName,
+      description: catDescription,
+      image: catImage,
+    };
+
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setCatError(data.error || 'Failed to save category');
+        return;
+      }
+      setIsCatModalOpen(false);
+      fetchCategories();
+    } catch (err) {
+      setCatError('Network error while saving category');
+    }
+  };
+
   const filteredProducts = products.filter(
     (p) =>
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -150,12 +212,12 @@ export default function ProductsPage() {
       <Sidebar userRole={currentUser.role} userName={currentUser.name} userEmail={currentUser.email} />
 
       <div className="flex-1 flex flex-col h-full overflow-hidden">
-        <Navbar title="Product Catalog Management" />
+        <Navbar title="Product & Category Management" />
 
         <main className="flex-1 overflow-y-auto p-6 space-y-6">
           {/* Header Action Bar */}
-          <div className="flex items-center justify-between gap-4 bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-lg">
-            <div className="relative flex-1 max-w-md">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-lg">
+            <div className="relative flex-1 w-full max-w-md">
               <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
@@ -166,14 +228,66 @@ export default function ProductsPage() {
               />
             </div>
 
-            <button
-              onClick={() => handleOpenModal()}
-              className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl flex items-center space-x-1.5 transition-colors shadow"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Add New Product</span>
-            </button>
+            <div className="flex items-center space-x-2 w-full sm:w-auto justify-end">
+              <button
+                onClick={() => handleOpenCatModal()}
+                className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-xs rounded-xl flex items-center space-x-1.5 transition-colors shadow"
+              >
+                <FolderPlus className="w-4 h-4 text-amber-400" />
+                <span>Categories</span>
+              </button>
+
+              <button
+                onClick={() => handleOpenModal()}
+                className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl flex items-center space-x-1.5 transition-colors shadow"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Add Product</span>
+              </button>
+            </div>
           </div>
+
+          {/* Categories Overview bar */}
+          {categories.length > 0 && (
+            <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-lg">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center space-x-1.5">
+                  <Layers className="w-4 h-4" />
+                  <span>Product Categories ({categories.length})</span>
+                </h4>
+                <button
+                  onClick={() => handleOpenCatModal()}
+                  className="text-[11px] text-amber-400 hover:underline font-semibold"
+                >
+                  + Add New Category
+                </button>
+              </div>
+
+              <div className="flex items-center space-x-3 overflow-x-auto pb-1">
+                {categories.map((cat) => (
+                  <div
+                    key={cat.id}
+                    onClick={() => handleOpenCatModal(cat)}
+                    className="group cursor-pointer bg-slate-950 border border-slate-800 hover:border-amber-500/50 p-2.5 rounded-xl flex items-center space-x-2.5 shrink-0 transition-all"
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-slate-900 border border-slate-800 overflow-hidden shrink-0 flex items-center justify-center">
+                      {cat.image ? (
+                        <img src={cat.image} alt={cat.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <Layers className="w-4 h-4 text-slate-500" />
+                      )}
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-slate-200 group-hover:text-amber-400 transition-colors">
+                        {cat.name}
+                      </div>
+                      <div className="text-[10px] text-slate-500">Click to Edit Category Image</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Products Table */}
           <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
@@ -218,46 +332,46 @@ export default function ProductsPage() {
                           <div>
                             <div className="font-bold text-slate-200">{p.name}</div>
                             {p.isPizza && (
-                              <span className="text-[10px] text-amber-400 font-extrabold uppercase">
-                                Custom Pizza
+                              <span className="text-[10px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded font-mono">
+                                Pizza Item
                               </span>
                             )}
                           </div>
                         </td>
-                        <td className="p-4 font-mono text-slate-400">{p.SKU}</td>
+                        <td className="p-4 text-slate-400 font-mono">{p.SKU}</td>
                         <td className="p-4 text-slate-300 font-medium">{p.category?.name}</td>
-                        <td className="p-4 font-mono font-bold text-amber-400">
+                        <td className="p-4 font-mono font-bold text-emerald-400">
                           {formatCurrency(p.basePrice)}
                         </td>
-                        <td className="p-4 font-mono text-slate-400">
-                          {formatCurrency(p.costPrice)}
-                        </td>
+                        <td className="p-4 font-mono text-slate-400">{formatCurrency(p.costPrice)}</td>
                         <td className="p-4 font-mono">
                           <span
-                            className={`font-bold ${
-                              p.stock <= p.minStock ? 'text-red-400' : 'text-slate-200'
+                            className={`px-2 py-1 rounded-full text-[10px] font-bold ${
+                              p.stock <= p.minStock
+                                ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                                : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
                             }`}
                           >
-                            {p.stock}
+                            {p.stock} units
                           </span>
                         </td>
                         <td className="p-4">
                           {p.active ? (
                             <CheckCircle className="w-4 h-4 text-emerald-400" />
                           ) : (
-                            <XCircle className="w-4 h-4 text-slate-600" />
+                            <XCircle className="w-4 h-4 text-rose-500" />
                           )}
                         </td>
-                        <td className="p-4 text-right space-x-1.5">
+                        <td className="p-4 text-right space-x-2">
                           <button
                             onClick={() => handleOpenModal(p)}
-                            className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition-colors"
+                            className="p-1.5 text-slate-400 hover:text-amber-400 hover:bg-slate-800 rounded-lg transition-colors"
                           >
                             <Edit2 className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => handleDeleteProduct(p.id)}
-                            className="p-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors"
+                            className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-lg transition-colors"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -272,22 +386,22 @@ export default function ProductsPage() {
         </main>
       </div>
 
-      {/* Add / Edit Product Modal */}
+      {/* Add/Edit Product Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg p-6 space-y-4 shadow-2xl">
-            <h3 className="text-base font-bold text-slate-100">
-              {editProduct ? 'Edit Product' : 'Add New Product'}
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl p-6 shadow-2xl space-y-4 my-8">
+            <h3 className="text-base font-bold text-slate-100 pb-2 border-b border-slate-800">
+              {editProduct ? 'Edit Product Catalog Item' : 'Add New Product Item'}
             </h3>
 
             {formError && (
-              <div className="p-3 bg-red-500/10 border border-red-500/30 text-red-400 text-xs rounded-xl">
+              <div className="bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs p-3 rounded-xl">
                 {formError}
               </div>
             )}
 
-            <form onSubmit={handleSaveProduct} className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
+            <form onSubmit={handleSaveProduct} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs text-slate-300 font-semibold mb-1">Product Name *</label>
                   <input
@@ -295,6 +409,7 @@ export default function ProductsPage() {
                     required
                     value={name}
                     onChange={(e) => setName(e.target.value)}
+                    placeholder="e.g. Chicken Fajita Pizza"
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-100 focus:border-amber-500"
                   />
                 </div>
@@ -310,7 +425,7 @@ export default function ProductsPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs text-slate-300 font-semibold mb-1">Category *</label>
                   <select
@@ -326,9 +441,10 @@ export default function ProductsPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs text-slate-300 font-semibold mb-1">Selling Base Price (Rs.) *</label>
+                  <label className="block text-xs text-slate-300 font-semibold mb-1">Base Price (Rs.) *</label>
                   <input
                     type="number"
+                    step="0.01"
                     required
                     value={basePrice}
                     onChange={(e) => setBasePrice(e.target.value)}
@@ -337,11 +453,12 @@ export default function ProductsPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-xs text-slate-300 font-semibold mb-1">Cost Price (Rs.)</label>
                   <input
                     type="number"
+                    step="0.01"
                     value={costPrice}
                     onChange={(e) => setCostPrice(e.target.value)}
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-100 font-mono focus:border-amber-500"
@@ -367,14 +484,14 @@ export default function ProductsPage() {
                 </div>
               </div>
 
+              {/* Product Image Upload Component */}
               <div>
-                <label className="block text-xs text-slate-300 font-semibold mb-1">Image URL</label>
-                <input
-                  type="text"
+                <ImageUploadInput
+                  label="Product Image"
                   value={image}
-                  onChange={(e) => setImage(e.target.value)}
+                  onChange={setImage}
                   placeholder="https://images.unsplash.com/..."
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-100 focus:border-amber-500"
+                  helpText="Upload a product photo from device or enter an image URL."
                 />
               </div>
 
@@ -404,6 +521,75 @@ export default function ProductsPage() {
                   className="px-5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow"
                 >
                   Save Product
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add/Edit Category Modal */}
+      {isCatModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-xl p-6 shadow-2xl space-y-4 my-8">
+            <h3 className="text-base font-bold text-slate-100 pb-2 border-b border-slate-800">
+              {editCategory ? 'Edit Category Details & Image' : 'Create New Category'}
+            </h3>
+
+            {catError && (
+              <div className="bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs p-3 rounded-xl">
+                {catError}
+              </div>
+            )}
+
+            <form onSubmit={handleSaveCategory} className="space-y-4">
+              <div>
+                <label className="block text-xs text-slate-300 font-semibold mb-1">Category Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={catName}
+                  onChange={(e) => setCatName(e.target.value)}
+                  placeholder="e.g. Gourmet Pizzas, Beverages, Side Orders"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-100 focus:border-amber-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs text-slate-300 font-semibold mb-1">Description</label>
+                <textarea
+                  rows={2}
+                  value={catDescription}
+                  onChange={(e) => setCatDescription(e.target.value)}
+                  placeholder="Category description..."
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-100 focus:border-amber-500"
+                />
+              </div>
+
+              {/* Category Image Upload Component */}
+              <div>
+                <ImageUploadInput
+                  label="Category Image"
+                  value={catImage}
+                  onChange={setCatImage}
+                  placeholder="https://images.unsplash.com/..."
+                  helpText="Upload a category icon/image or paste an image URL."
+                />
+              </div>
+
+              <div className="flex items-center justify-end space-x-2 pt-4 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setIsCatModalOpen(false)}
+                  className="px-4 py-2 text-xs text-slate-400 hover:text-slate-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow"
+                >
+                  Save Category
                 </button>
               </div>
             </form>

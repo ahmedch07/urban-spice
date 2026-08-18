@@ -6,6 +6,8 @@ import Navbar from '@/components/Navbar';
 import { Pizza, Plus, Edit2, Trash2, Layers, CheckCircle } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 
+import ImageUploadInput from '@/components/ImageUploadInput';
+
 export default function PizzaManagementPage() {
   const [currentUser, setCurrentUser] = useState<any>({ name: 'Admin', role: 'ADMIN' });
   const [activeTab, setActiveTab] = useState<'flavors' | 'sizes' | 'crusts' | 'toppings'>('flavors');
@@ -372,12 +374,12 @@ export default function PizzaManagementPage() {
               </div>
 
               <div>
-                <label className="block text-xs text-slate-300 font-semibold mb-1">Image URL</label>
-                <input
-                  type="text"
+                <ImageUploadInput
+                  label="Pizza Flavor Image"
                   value={flavorImg}
-                  onChange={(e) => setFlavorImg(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-100"
+                  onChange={setFlavorImg}
+                  placeholder="https://images.unsplash.com/..."
+                  helpText="Upload a flavor photo from device or paste an image URL."
                 />
               </div>
 

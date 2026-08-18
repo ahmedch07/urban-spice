@@ -83,7 +83,11 @@ export default function ProductGrid({
                     : 'bg-slate-900 text-slate-400 hover:bg-slate-800 hover:text-slate-200 border border-slate-800'
                 }`}
               >
-                <Icon className="w-3.5 h-3.5" />
+                {cat.image ? (
+                  <img src={cat.image} alt={cat.name} className="w-4 h-4 object-cover rounded-md" />
+                ) : (
+                  <Icon className="w-3.5 h-3.5" />
+                )}
                 <span>{cat.name}</span>
               </button>
             );

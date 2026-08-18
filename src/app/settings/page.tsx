@@ -5,6 +5,8 @@ import Sidebar from '@/components/Sidebar';
 import Navbar from '@/components/Navbar';
 import { Settings, Save, CheckCircle2, Store, Clock, Phone, Mail, DollarSign, Image } from 'lucide-react';
 
+import ImageUploadInput from '@/components/ImageUploadInput';
+
 export default function SettingsPage() {
   const [currentUser, setCurrentUser] = useState<any>({ name: 'Admin', role: 'ADMIN' });
   const [storeName, setStoreName] = useState('Slice & Spice Pizza POS');
@@ -126,15 +128,14 @@ export default function SettingsPage() {
                 />
               </div>
 
-              {/* Shop Logo URL */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Shop Logo Image URL</label>
-                <input
-                  type="text"
+              {/* Shop Logo */}
+              <div className="sm:col-span-2 lg:col-span-3">
+                <ImageUploadInput
+                  label="Shop Logo Image"
                   value={storeLogo}
-                  onChange={(e) => setStoreLogo(e.target.value)}
-                  placeholder="https://..."
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-100 focus:border-amber-500"
+                  onChange={setStoreLogo}
+                  placeholder="https://images.unsplash.com/..."
+                  helpText="Upload your official restaurant logo or paste a direct image URL. This logo will automatically appear on invoices and thermal receipts."
                 />
               </div>
 
