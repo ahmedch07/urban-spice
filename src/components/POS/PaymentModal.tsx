@@ -50,12 +50,13 @@ export default function PaymentModal({
   const activeDeliveryFee = orderType === 'DELIVERY' ? deliveryFee : 0;
   const grandTotal = Math.round(afterDiscount + taxAmount + activeDeliveryFee);
 
-  // Auto set amount paid to grand total when modal opens or method changes
+  // Reset modal states whenever modal opens or total changes
   useEffect(() => {
     if (isOpen) {
       setAmountPaid(grandTotal);
       setIsPendingPayment(false);
       setErrorMsg('');
+      setIsSubmitting(false);
     }
   }, [isOpen, grandTotal]);
 
@@ -73,6 +74,8 @@ export default function PaymentModal({
   };
 
   const handleCompletePayment = async () => {
+    if (isSubmitting) return;
+
     setErrorMsg('');
     if (!isPendingPayment && amountPaid < grandTotal) {
       setErrorMsg(`Tendered cash (${amountPaid}) is less than total (${grandTotal})`);
@@ -108,6 +111,7 @@ export default function PaymentModal({
         return;
       }
 
+      setIsSubmitting(false);
       onOrderCompleted(data.order);
     } catch (e) {
       console.error(e);
