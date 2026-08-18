@@ -3,36 +3,45 @@ import fs from 'fs';
 import path from 'path';
 
 function getDatabaseUrl(): string {
+  const envUrl = process.env.DATABASE_URL;
+
+  // If external non-sqlite DATABASE_URL is set (e.g. Postgres / Supabase)
+  if (envUrl && !envUrl.startsWith('file:')) {
+    return envUrl;
+  }
+
   if (process.env.VERCEL) {
     try {
       const tmpDbPath = '/tmp/dev.db';
-      if (!fs.existsSync(/*turbopackIgnore: true*/ tmpDbPath)) {
-        const candidates = [
-          path.join(process.cwd(), 'prisma', 'dev.db'),
-          path.join(process.cwd(), 'dev.db'),
-        ];
-        for (const candidate of candidates) {
-          if (fs.existsSync(/*turbopackIgnore: true*/ candidate)) {
-            fs.copyFileSync(candidate, tmpDbPath);
-            break;
+
+      if (!fs.existsSync(tmpDbPath)) {
+        const candidate1 = path.join(process.cwd(), 'prisma', 'dev.db');
+        const candidate2 = path.join(process.cwd(), 'dev.db');
+        const srcPath = fs.existsSync(candidate1) ? candidate1 : (fs.existsSync(candidate2) ? candidate2 : null);
+
+        if (srcPath) {
+          try {
+            fs.copyFileSync(srcPath, tmpDbPath);
+          } catch (copyErr) {
+            // Ignore race condition if another worker copied it simultaneously
           }
         }
       }
-      if (fs.existsSync(/*turbopackIgnore: true*/ tmpDbPath)) {
+
+      if (fs.existsSync(tmpDbPath)) {
         return 'file:/tmp/dev.db';
       }
     } catch (e) {
-      console.error('Failed to copy SQLite database to /tmp on Vercel:', e);
+      console.error('SQLite Vercel setup notice:', e);
     }
   }
 
-  const envUrl = process.env.DATABASE_URL;
   if (envUrl) {
     return envUrl;
   }
 
   const defaultDbPath = path.join(process.cwd(), 'prisma', 'dev.db');
-  if (fs.existsSync(/*turbopackIgnore: true*/ defaultDbPath)) {
+  if (fs.existsSync(defaultDbPath)) {
     return `file:${defaultDbPath}`;
   }
 

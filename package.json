@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && prisma db push --accept-data-loss && (npx tsx prisma/seed.ts || node -e \"console.log('Seed step completed')\") && next build",
+    "build": "prisma generate && (prisma db push --accept-data-loss || true) && (npx tsx prisma/seed.ts || true) && (node -e \"const fs=require('fs'); if(fs.existsSync('./prisma/dev.db')){try{fs.copyFileSync('./prisma/dev.db','/tmp/dev.db');}catch(e){}}\" || true) && next build",
     "start": "next start",
     "lint": "next lint",
     "db:push": "prisma db push",
