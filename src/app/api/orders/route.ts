@@ -110,6 +110,16 @@ export async function POST(request: Request) {
       if (existingCustomer) validCustomerId = customerId;
     }
 
+    // Validate User ID in DB to prevent foreign key errors if session token is stale
+    let validUserId = session.userId;
+    const existingUser = await prisma.user.findUnique({ where: { id: session.userId } });
+    if (!existingUser) {
+      const fallbackUser = await prisma.user.findFirst();
+      if (fallbackUser) {
+        validUserId = fallbackUser.id;
+      }
+    }
+
     // Lookup base custom pizza product ID if needed
     const customPizzaProduct = await prisma.product.findFirst({ where: { isPizza: true } });
 
@@ -156,7 +166,7 @@ export async function POST(request: Request) {
         data: {
           invoiceNo,
           customerId: validCustomerId,
-          userId: session.userId,
+          userId: validUserId,
           orderType: orderType || 'DINE_IN',
           tableNo: tableNo || null,
           status: orderStatus,
