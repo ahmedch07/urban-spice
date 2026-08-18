@@ -69,9 +69,9 @@ export default function Sidebar({ userRole = '', userName = 'User', userEmail = 
           </div>
           <div>
             <h1 className="font-extrabold text-base text-slate-100 tracking-tight leading-none">
-              Slice & Spice
+              Urban Spice
             </h1>
-            <p className="text-xs text-amber-500 font-medium mt-1">POS & Management</p>
+            <p className="text-xs text-amber-500 font-medium mt-1">Pizza & Restaurant POS</p>
           </div>
         </div>
       </div>

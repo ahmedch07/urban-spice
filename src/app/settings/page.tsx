@@ -9,20 +9,20 @@ import ImageUploadInput from '@/components/ImageUploadInput';
 
 export default function SettingsPage() {
   const [currentUser, setCurrentUser] = useState<any>({ name: 'Admin', role: 'ADMIN' });
-  const [storeName, setStoreName] = useState('Slice & Spice Pizza POS');
+  const [storeName, setStoreName] = useState('Urban Spice');
   const [storeLogo, setStoreLogo] = useState('https://images.unsplash.com/photo-1513104890138-7c749659a591?w=200&q=80');
-  const [storeAddress, setStoreAddress] = useState('123 Main Commercial Area, Gulberg III, Lahore');
-  const [storePhone, setStorePhone] = useState('+92 300 1234567');
-  const [whatsappNumber, setWhatsappNumber] = useState('+92 300 1234567');
-  const [storeEmail, setStoreEmail] = useState('orders@sliceandspice.com');
+  const [storeAddress, setStoreAddress] = useState('180 F, Near Klash Park, Millat Town, Faisalabad');
+  const [storePhone, setStorePhone] = useState('0300-5225898');
+  const [whatsappNumber, setWhatsappNumber] = useState('0300-5225898');
+  const [storeEmail, setStoreEmail] = useState('orders@urbanspice.com');
   const [currency, setCurrency] = useState('Rs.');
   const [taxRate, setTaxRate] = useState('5');
   const [invoicePrefix, setInvoicePrefix] = useState('INV-2026');
-  const [invoiceFooter, setInvoiceFooter] = useState('Thank you for ordering from Slice & Spice Pizza! Have a delicious day!');
+  const [invoiceFooter, setInvoiceFooter] = useState('Thank you for ordering from Urban Spice! Ultimate Taste In Every Bite!');
   const [openingTime, setOpeningTime] = useState('11:00 AM');
   const [closingTime, setClosingTime] = useState('02:00 AM');
   const [defaultDeliveryFee, setDefaultDeliveryFee] = useState('150');
-  const [socialMedia, setSocialMedia] = useState('@sliceandspicepizza');
+  const [socialMedia, setSocialMedia] = useState('@urbanspicefaisalabad');
   const [savedMsg, setSavedMsg] = useState(false);
 
   useEffect(() => {
