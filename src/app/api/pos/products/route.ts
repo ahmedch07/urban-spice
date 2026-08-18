@@ -24,9 +24,12 @@ export async function GET(request: Request) {
     const products = await prisma.product.findMany({
       where: whereClause,
       include: {
-        category: { select: { id: true, name: true, slug: true } },
+        category: { select: { id: true, name: true, slug: true, sortOrder: true } },
       },
-      orderBy: { name: 'asc' },
+      orderBy: [
+        { category: { sortOrder: 'asc' } },
+        { name: 'asc' },
+      ],
     });
 
     return NextResponse.json({ products });
