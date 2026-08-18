@@ -236,15 +236,19 @@ export async function POST(request: Request) {
         }
       }
 
-      // Log Audit
-      await tx.auditLog.create({
-        data: {
-          userId: session.userId,
-          userName: session.name,
-          action: 'CREATE_ORDER',
-          details: `Created Order ${createdOrder.invoiceNo} for ${grandTotal} PKR via ${paymentMethod}`,
-        },
-      });
+      // Log Audit (Safely)
+      try {
+        await tx.auditLog.create({
+          data: {
+            userId: validUserId,
+            userName: session.name || 'Staff',
+            action: 'CREATE_ORDER',
+            details: `Created Order ${createdOrder.invoiceNo} for ${grandTotal} PKR via ${paymentMethod}`,
+          },
+        });
+      } catch (auditErr) {
+        console.warn('Audit log write skipped:', auditErr);
+      }
 
       return createdOrder;
     });
