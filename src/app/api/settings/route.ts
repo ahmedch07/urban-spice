@@ -18,8 +18,8 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const session = await getCurrentUser();
-    if (!session || session.role !== 'ADMIN') {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    if (!session || (session.role !== 'ADMIN' && session.role !== 'MANAGER')) {
+      return NextResponse.json({ error: 'Forbidden. Admin or Manager role required.' }, { status: 403 });
     }
 
     const body = await request.json(); // Record<string, string>
@@ -27,22 +27,30 @@ export async function POST(request: Request) {
     for (const [key, value] of Object.entries(body)) {
       await prisma.storeSetting.upsert({
         where: { key },
-        create: { key, value: String(value) },
-        update: { value: String(value) },
+        create: { key, value: String(value ?? '') },
+        update: { value: String(value ?? '') },
       });
     }
 
-    await prisma.auditLog.create({
-      data: {
-        userId: session.userId,
-        userName: session.name,
-        action: 'UPDATE_STORE_SETTINGS',
-        details: `Updated store operational settings and tax/currency parameters.`,
-      },
-    });
+    // Safely attempt audit log
+    try {
+      if (session.userId) {
+        await prisma.auditLog.create({
+          data: {
+            userId: session.userId,
+            userName: session.name || 'Admin',
+            action: 'UPDATE_STORE_SETTINGS',
+            details: 'Updated store operational parameters and shop settings.',
+          },
+        });
+      }
+    } catch (auditErr) {
+      console.warn('Audit log write skipped:', auditErr);
+    }
 
     return NextResponse.json({ success: true, message: 'Settings saved successfully' });
-  } catch (error) {
-    return NextResponse.json({ error: 'Failed to save settings' }, { status: 500 });
+  } catch (error: any) {
+    console.error('Settings POST error:', error);
+    return NextResponse.json({ error: error?.message || 'Failed to save settings' }, { status: 500 });
   }
 }

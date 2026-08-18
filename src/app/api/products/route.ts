@@ -2,6 +2,66 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
 
+async function syncPizzaFlavorAndPrices(
+  name: string,
+  description: string | null,
+  image: string | null,
+  sizePrices: { small?: number; medium?: number; large?: number; xlarge?: number }
+) {
+  try {
+    let sizes = await prisma.pizzaSize.findMany({ orderBy: { sortOrder: 'asc' } });
+
+    let smallSize = sizes.find((s) => s.code === 'S');
+    let mediumSize = sizes.find((s) => s.code === 'M');
+    let largeSize = sizes.find((s) => s.code === 'L');
+    let xlargeSize = sizes.find((s) => s.code === 'XL');
+
+    if (!smallSize) smallSize = await prisma.pizzaSize.create({ data: { name: 'Small (7")', code: 'S', sortOrder: 1 } });
+    if (!mediumSize) mediumSize = await prisma.pizzaSize.create({ data: { name: 'Medium (10")', code: 'M', sortOrder: 2 } });
+    if (!largeSize) largeSize = await prisma.pizzaSize.create({ data: { name: 'Large (13")', code: 'L', sortOrder: 3 } });
+    if (!xlargeSize) xlargeSize = await prisma.pizzaSize.create({ data: { name: 'X.Large (17")', code: 'XL', sortOrder: 4 } });
+
+    let flavor = await prisma.pizzaFlavor.findFirst({ where: { name } });
+    if (!flavor) {
+      flavor = await prisma.pizzaFlavor.create({
+        data: { name, description, image },
+      });
+    } else {
+      flavor = await prisma.pizzaFlavor.update({
+        where: { id: flavor.id },
+        data: { description, image },
+      });
+    }
+
+    const priceMap: { sizeId: string; price: number }[] = [];
+    if (sizePrices.small !== undefined && smallSize) priceMap.push({ sizeId: smallSize.id, price: sizePrices.small });
+    if (sizePrices.medium !== undefined && mediumSize) priceMap.push({ sizeId: mediumSize.id, price: sizePrices.medium });
+    if (sizePrices.large !== undefined && largeSize) priceMap.push({ sizeId: largeSize.id, price: sizePrices.large });
+    if (sizePrices.xlarge !== undefined && xlargeSize) priceMap.push({ sizeId: xlargeSize.id, price: sizePrices.xlarge });
+
+    for (const item of priceMap) {
+      await prisma.pizzaFlavorPrice.upsert({
+        where: {
+          flavorId_sizeId: {
+            flavorId: flavor.id,
+            sizeId: item.sizeId,
+          },
+        },
+        create: {
+          flavorId: flavor.id,
+          sizeId: item.sizeId,
+          price: item.price,
+        },
+        update: {
+          price: item.price,
+        },
+      });
+    }
+  } catch (err) {
+    console.error('Failed to sync pizza flavor and prices:', err);
+  }
+}
+
 export async function GET() {
   try {
     const products = await prisma.product.findMany({
@@ -24,7 +84,22 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { name, SKU, categoryId, basePrice, costPrice, stock, minStock, description, image, isPizza } = body;
+    const {
+      name,
+      SKU,
+      categoryId,
+      basePrice,
+      costPrice,
+      stock,
+      minStock,
+      description,
+      image,
+      isPizza,
+      smallPrice,
+      mediumPrice,
+      largePrice,
+      xlargePrice,
+    } = body;
 
     if (!name || !SKU || !categoryId || basePrice === undefined) {
       return NextResponse.json({ error: 'Name, SKU, category, and base price are required' }, { status: 400 });
@@ -51,6 +126,15 @@ export async function POST(request: Request) {
       include: { category: true },
     });
 
+    if (isPizza) {
+      await syncPizzaFlavorAndPrices(newProduct.name, newProduct.description, newProduct.image, {
+        small: smallPrice ? parseFloat(smallPrice) : parseFloat(basePrice),
+        medium: mediumPrice ? parseFloat(mediumPrice) : parseFloat(basePrice) * 1.8,
+        large: largePrice ? parseFloat(largePrice) : parseFloat(basePrice) * 2.5,
+        xlarge: xlargePrice ? parseFloat(xlargePrice) : parseFloat(basePrice) * 3.2,
+      });
+    }
+
     await prisma.auditLog.create({
       data: {
         userId: session.userId,
@@ -75,7 +159,24 @@ export async function PUT(request: Request) {
     }
 
     const body = await request.json();
-    const { id, name, SKU, categoryId, basePrice, costPrice, stock, minStock, description, image, active } = body;
+    const {
+      id,
+      name,
+      SKU,
+      categoryId,
+      basePrice,
+      costPrice,
+      stock,
+      minStock,
+      description,
+      image,
+      active,
+      isPizza,
+      smallPrice,
+      mediumPrice,
+      largePrice,
+      xlargePrice,
+    } = body;
 
     if (!id) {
       return NextResponse.json({ error: 'Product ID required' }, { status: 400 });
@@ -94,9 +195,19 @@ export async function PUT(request: Request) {
         description: description !== undefined ? description?.trim() : undefined,
         image: image !== undefined ? image?.trim() : undefined,
         active: active !== undefined ? Boolean(active) : undefined,
+        isPizza: isPizza !== undefined ? Boolean(isPizza) : undefined,
       },
       include: { category: true },
     });
+
+    if (updated.isPizza) {
+      await syncPizzaFlavorAndPrices(updated.name, updated.description, updated.image, {
+        small: smallPrice ? parseFloat(smallPrice) : undefined,
+        medium: mediumPrice ? parseFloat(mediumPrice) : undefined,
+        large: largePrice ? parseFloat(largePrice) : undefined,
+        xlarge: xlargePrice ? parseFloat(xlargePrice) : undefined,
+      });
+    }
 
     await prisma.auditLog.create({
       data: {

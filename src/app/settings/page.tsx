@@ -24,6 +24,8 @@ export default function SettingsPage() {
   const [defaultDeliveryFee, setDefaultDeliveryFee] = useState('150');
   const [socialMedia, setSocialMedia] = useState('@urbanspicefaisalabad');
   const [savedMsg, setSavedMsg] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     fetch('/api/auth/me')
@@ -60,6 +62,8 @@ export default function SettingsPage() {
   const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
     setSavedMsg(false);
+    setErrorMsg('');
+    setIsSaving(true);
 
     try {
       const res = await fetch('/api/settings', {
@@ -83,12 +87,19 @@ export default function SettingsPage() {
         }),
       });
 
-      if (res.ok) {
+      const data = await res.json();
+
+      if (res.ok && data.success) {
         setSavedMsg(true);
-        setTimeout(() => setSavedMsg(false), 3000);
+        setTimeout(() => setSavedMsg(false), 4000);
+      } else {
+        setErrorMsg(data.error || 'Failed to save shop settings');
       }
-    } catch (e) {
-      console.error(e);
+    } catch (err: any) {
+      console.error('Settings save error:', err);
+      setErrorMsg('Network error while saving settings');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -281,13 +292,20 @@ export default function SettingsPage() {
               </div>
             </div>
 
+            {errorMsg && (
+              <div className="bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs p-3.5 rounded-xl font-medium">
+                {errorMsg}
+              </div>
+            )}
+
             <div className="pt-4 border-t border-slate-800 flex justify-end">
               <button
                 type="submit"
-                className="px-6 py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-extrabold text-xs rounded-xl shadow-lg shadow-amber-500/20 flex items-center space-x-2 transition-all"
+                disabled={isSaving}
+                className="px-6 py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-extrabold text-xs rounded-xl shadow-lg shadow-amber-500/20 flex items-center space-x-2 transition-all disabled:opacity-50"
               >
                 <Save className="w-4 h-4" />
-                <span>Save All Shop Settings</span>
+                <span>{isSaving ? 'Saving Settings...' : 'Save All Shop Settings'}</span>
               </button>
             </div>
           </form>
