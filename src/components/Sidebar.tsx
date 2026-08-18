@@ -19,6 +19,7 @@ import {
   LogOut,
   ChevronRight,
 } from 'lucide-react';
+import ThemeToggle from '@/components/ThemeToggle';
 
 interface SidebarProps {
   userRole?: string;
@@ -100,8 +101,10 @@ export default function Sidebar({ userRole = '', userName = 'User', userEmail = 
         })}
       </div>
 
-      {/* Footer User Profile & Logout */}
-      <div className="p-4 border-t border-slate-800 bg-slate-900/50">
+      {/* Footer User Profile, Theme & Logout */}
+      <div className="p-4 border-t border-slate-800 bg-slate-900/50 space-y-3">
+        <ThemeToggle variant="sidebar" />
+
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3 overflow-hidden">
             <div className="w-9 h-9 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-amber-400 font-bold text-sm shrink-0">

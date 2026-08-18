@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Clock, Percent, Keyboard, Wifi } from 'lucide-react';
+import { Clock, Percent, Keyboard } from 'lucide-react';
+import ThemeToggle from '@/components/ThemeToggle';
 
 interface NavbarProps {
   title: string;
@@ -35,7 +36,7 @@ export default function Navbar({ title }: NavbarProps) {
       </div>
 
       {/* POS Shortcuts & Clock */}
-      <div className="flex items-center space-x-6 text-sm">
+      <div className="flex items-center space-x-4 text-sm">
         {/* Keyboard Shortcuts guide */}
         <div className="hidden lg:flex items-center space-x-2 bg-slate-800/60 px-3 py-1.5 rounded-lg border border-slate-700/50 text-xs text-slate-300">
           <Keyboard className="w-4 h-4 text-amber-400" />
@@ -46,16 +47,13 @@ export default function Navbar({ title }: NavbarProps) {
         </div>
 
         {/* Live Tax Indicator */}
-        <div className="flex items-center space-x-1.5 text-xs text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-md border border-emerald-500/20">
+        <div className="hidden md:flex items-center space-x-1.5 text-xs text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-md border border-emerald-500/20">
           <Percent className="w-3.5 h-3.5" />
           <span>GST Tax: 5% Active</span>
         </div>
 
-        {/* Online Status */}
-        <div className="flex items-center space-x-1.5 text-xs text-slate-400">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span>System Online</span>
-        </div>
+        {/* Theme Switcher Button */}
+        <ThemeToggle variant="navbar" />
 
         {/* Real-time Clock */}
         <div className="flex items-center space-x-2 font-mono font-medium text-amber-400 bg-slate-950 px-3.5 py-1.5 rounded-lg border border-slate-800 shadow-inner">
