@@ -32,7 +32,7 @@ import {
 } from 'recharts';
 
 export default function DashboardPage() {
-  const [currentUser, setCurrentUser] = useState<any>({ name: 'Admin', role: 'ADMIN' });
+  const [currentUser, setCurrentUser] = useState<any>(null);
   const [metrics, setMetrics] = useState<any>({
     totalSales: 0,
     totalOrders: 0,

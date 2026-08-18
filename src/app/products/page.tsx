@@ -8,7 +8,7 @@ import { Package, Plus, Search, Edit2, Trash2, CheckCircle, XCircle, FolderPlus,
 import { formatCurrency } from '@/lib/utils';
 
 export default function ProductsPage() {
-  const [currentUser, setCurrentUser] = useState<any>({ name: 'Admin', role: 'ADMIN' });
+  const [currentUser, setCurrentUser] = useState<any>(null);
   const [products, setProducts] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');

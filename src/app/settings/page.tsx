@@ -8,7 +8,7 @@ import { Settings, Save, CheckCircle2, Store, Clock, Phone, Mail, DollarSign, Im
 import ImageUploadInput from '@/components/ImageUploadInput';
 
 export default function SettingsPage() {
-  const [currentUser, setCurrentUser] = useState<any>({ name: 'Admin', role: 'ADMIN' });
+  const [currentUser, setCurrentUser] = useState<any>(null);
   const [storeName, setStoreName] = useState('Urban Spice');
   const [storeLogo, setStoreLogo] = useState('https://images.unsplash.com/photo-1513104890138-7c749659a591?w=200&q=80');
   const [storeAddress, setStoreAddress] = useState('180 F, Near Klash Park, Millat Town, Faisalabad');

@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
@@ -27,9 +27,31 @@ interface SidebarProps {
   userEmail?: string;
 }
 
-export default function Sidebar({ userRole = '', userName = 'User', userEmail = '' }: SidebarProps) {
+export default function Sidebar({ userRole: propRole, userName: propName, userEmail: propEmail }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
+
+  const [sessionUser, setSessionUser] = useState<any>(() => {
+    if (propRole && propName) {
+      return { role: propRole, name: propName, email: propEmail || '' };
+    }
+    return null;
+  });
+
+  useEffect(() => {
+    if (propRole && propName) {
+      setSessionUser({ role: propRole, name: propName, email: propEmail || '' });
+    } else {
+      fetch('/api/auth/me')
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.user) {
+            setSessionUser(data.user);
+          }
+        })
+        .catch(console.error);
+    }
+  }, [propRole, propName, propEmail]);
 
   const handleLogout = async () => {
     try {
@@ -56,8 +78,10 @@ export default function Sidebar({ userRole = '', userName = 'User', userEmail = 
     { name: 'Audit Logs', href: '/audit-logs', icon: ShieldAlert, roles: ['ADMIN'] },
   ];
 
-  const effectiveRole = userRole || 'CASHIER';
-  const filteredNav = navItems.filter((item) => item.roles.includes(effectiveRole));
+  const currentRole = sessionUser?.role || propRole || 'ADMIN';
+  const currentName = sessionUser?.name || propName || 'User';
+
+  const filteredNav = navItems.filter((item) => item.roles.includes(currentRole));
 
   return (
     <aside className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col h-screen sticky top-0 select-none z-40">
@@ -108,14 +132,14 @@ export default function Sidebar({ userRole = '', userName = 'User', userEmail = 
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3 overflow-hidden">
             <div className="w-9 h-9 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-amber-400 font-bold text-sm shrink-0">
-              {userName.substring(0, 2).toUpperCase()}
+              {currentName.substring(0, 2).toUpperCase()}
             </div>
             <div className="truncate">
-              <p className="text-sm font-semibold text-slate-200 truncate">{userName}</p>
+              <p className="text-sm font-semibold text-slate-200 truncate">{currentName}</p>
               <span className={`inline-block px-1.5 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider ${
-                userRole === 'ADMIN' ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                currentRole === 'ADMIN' ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
               }`}>
-                {userRole}
+                {currentRole}
               </span>
             </div>
           </div>

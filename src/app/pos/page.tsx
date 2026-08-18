@@ -13,7 +13,7 @@ import { CartItem, CategoryItem, CustomerItem, OrderType, ProductItem } from '@/
 
 export default function POSPage() {
   // Session User
-  const [currentUser, setCurrentUser] = useState<any>({ name: 'Cashier', role: 'CASHIER' });
+  const [currentUser, setCurrentUser] = useState<any>(null);
 
   // POS Data
   const [categories, setCategories] = useState<CategoryItem[]>([]);

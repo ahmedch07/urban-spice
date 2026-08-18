@@ -8,7 +8,7 @@ import { Pizza, Plus, Edit2, Trash2, Layers, CheckCircle, Search, SlidersHorizon
 import { formatCurrency } from '@/lib/utils';
 
 export default function PizzaManagementPage() {
-  const [currentUser, setCurrentUser] = useState<any>({ name: 'Admin', role: 'ADMIN' });
+  const [currentUser, setCurrentUser] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<'flavors' | 'sizes' | 'crusts' | 'toppings'>('flavors');
 
   const [flavors, setFlavors] = useState<any[]>([]);
