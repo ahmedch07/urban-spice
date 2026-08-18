@@ -40,19 +40,23 @@ export async function POST(request: Request) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    // Target directory: public/uploads
-    const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
-    await mkdir(uploadsDir, { recursive: true });
-
-    // Generate safe unique filename
     const extName = path.extname(file.name) || `.${fileType.split('/')[1] || 'jpg'}`;
     const cleanExt = extName.toLowerCase();
     const uniqueName = `img-${Date.now()}-${Math.floor(Math.random() * 10000)}${cleanExt}`;
-    const filePath = path.join(uploadsDir, uniqueName);
 
-    await writeFile(filePath, buffer);
+    let fileUrl = '';
 
-    const fileUrl = `/uploads/${uniqueName}`;
+    try {
+      const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
+      await mkdir(uploadsDir, { recursive: true });
+      const filePath = path.join(uploadsDir, uniqueName);
+      await writeFile(filePath, buffer);
+      fileUrl = `/uploads/${uniqueName}`;
+    } catch (fsError) {
+      // Fallback for Vercel Serverless environment where filesystem is read-only
+      const base64String = buffer.toString('base64');
+      fileUrl = `data:${fileType};base64,${base64String}`;
+    }
 
     return NextResponse.json({
       success: true,

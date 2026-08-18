@@ -209,7 +209,7 @@ export default function ProductsPage() {
 
   return (
     <div className="flex h-screen bg-slate-950 text-slate-100 overflow-hidden font-sans">
-      <Sidebar userRole={currentUser.role} userName={currentUser.name} userEmail={currentUser.email} />
+      <Sidebar userRole={currentUser?.role} userName={currentUser?.name} userEmail={currentUser?.email} />
 
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         <Navbar title="Product & Category Management" />

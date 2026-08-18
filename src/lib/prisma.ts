@@ -8,18 +8,17 @@ function getDatabaseUrl(): string {
   if (process.env.VERCEL) {
     try {
       const tmpDbPath = '/tmp/dev.db';
-      if (!fs.existsSync(tmpDbPath)) {
-        const candidates = [
-          path.join(process.cwd(), 'prisma', 'dev.db'),
-          path.join(process.cwd(), 'dev.db'),
-        ];
-        for (const candidate of candidates) {
-          if (fs.existsSync(candidate)) {
-            fs.copyFileSync(candidate, tmpDbPath);
-            break;
-          }
-        }
+      const candidate1 = path.join(process.cwd(), 'prisma', 'dev.db');
+      const candidate2 = path.join(process.cwd(), 'dev.db');
+
+      if (fs.existsSync(candidate1)) {
+        fs.copyFileSync(candidate1, tmpDbPath);
+        return 'file:/tmp/dev.db';
+      } else if (fs.existsSync(candidate2)) {
+        fs.copyFileSync(candidate2, tmpDbPath);
+        return 'file:/tmp/dev.db';
       }
+
       if (fs.existsSync(tmpDbPath)) {
         return 'file:/tmp/dev.db';
       }
@@ -54,4 +53,3 @@ export const prisma =
   });
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
-
