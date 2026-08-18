@@ -86,10 +86,10 @@ export default function Sidebar({ userRole: propRole, userName: propName, userEm
   return (
     <aside className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col h-screen sticky top-0 select-none z-40">
       {/* Brand Header */}
-      <div className="p-5 border-b border-slate-800 flex items-center justify-between">
+      <div className="p-4 border-b border-slate-800 flex items-center justify-between">
         <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-red-600 flex items-center justify-center shadow-lg shadow-amber-500/20">
-            <Pizza className="w-6 h-6 text-white" />
+          <div className="w-10 h-10 rounded-full overflow-hidden border border-amber-500/40 bg-slate-950 flex items-center justify-center shrink-0 shadow-lg shadow-amber-500/10">
+            <img src="/logo.png" alt="Urban Spice Logo" className="w-full h-full object-cover" />
           </div>
           <div>
             <h1 className="font-extrabold text-base text-slate-100 tracking-tight leading-none">

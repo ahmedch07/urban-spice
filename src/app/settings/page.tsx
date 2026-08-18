@@ -12,7 +12,7 @@ import ImageUploadInput from '@/components/ImageUploadInput';
 export default function SettingsPage() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [storeName, setStoreName] = useState('Urban Spice');
-  const [storeLogo, setStoreLogo] = useState('https://images.unsplash.com/photo-1513104890138-7c749659a591?w=200&q=80');
+  const [storeLogo, setStoreLogo] = useState('/logo.png');
   const [storeAddress, setStoreAddress] = useState('180 F, Near Klash Park, Millat Town, Faisalabad');
   const [storePhone, setStorePhone] = useState('0300-5225898');
   const [whatsappNumber, setWhatsappNumber] = useState('0300-5225898');

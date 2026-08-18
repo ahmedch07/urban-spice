@@ -80,15 +80,9 @@ export default function ThermalReceiptModal({
           >
             {/* Store Header */}
             <div className="text-center pb-3 border-b border-dashed border-slate-400 space-y-0.5">
-              {storeSettings.storeLogo ? (
-                <div className="flex justify-center mb-1">
-                  <img src={storeSettings.storeLogo} alt="Logo" className="w-10 h-10 object-cover rounded-lg" />
-                </div>
-              ) : (
-                <div className="flex justify-center mb-1">
-                  <PizzaIcon className="w-6 h-6 text-black" />
-                </div>
-              )}
+              <div className="flex justify-center mb-1.5">
+                <img src={storeSettings.storeLogo || '/logo.png'} alt="Urban Spice Logo" className="w-14 h-14 object-contain rounded-full" />
+              </div>
               <h1 className="font-extrabold text-base uppercase tracking-tight">
                 {storeSettings.storeName}
               </h1>

@@ -29,7 +29,7 @@ async function main() {
   // 2. Store Settings (Urban Spice Official Details)
   const settings = [
     { key: 'storeName', value: 'Urban Spice' },
-    { key: 'storeLogo', value: '' }, // Blank logo as requested for user to add
+    { key: 'storeLogo', value: '/logo.png' },
     { key: 'storeAddress', value: '180 F, Near Klash Park, Millat Town, Faisalabad' },
     { key: 'storePhone', value: '0300-5225898' },
     { key: 'whatsappNumber', value: '0300-5225898' },
