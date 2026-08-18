@@ -9,7 +9,7 @@ import { UtensilsCrossed, Clock, CheckCircle2, ChevronRight, RefreshCw, Flame } 
 import { formatShortTime } from '@/lib/utils';
 
 export default function KitchenPage() {
-  const [currentUser, setCurrentUser] = useState<any>({ name: 'Kitchen Staff', role: 'CASHIER' });
+  const [currentUser, setCurrentUser] = useState<any>(null);
   const [orders, setOrders] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
