@@ -42,6 +42,7 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(loginUrl);
     }
 
+    // CASHIER accessing Admin-only routes is restricted to /pos
     const isAdminRoute = adminOnlyRoutes.some((route) =>
       pathname.startsWith(route)
     );
@@ -51,6 +52,7 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+  // Already logged in user navigating to /login
   if (pathname === '/login' && token) {
     const payload = await verifyJWT(token);
     if (payload) {

@@ -1,5 +1,33 @@
-import { redirect } from 'next/navigation';
+'use client';
+
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 export default function Home() {
-  redirect('/pos');
+  const router = useRouter();
+
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.user) {
+          if (data.user.role === 'ADMIN' || data.user.role === 'MANAGER') {
+            router.replace('/dashboard');
+          } else {
+            router.replace('/pos');
+          }
+        } else {
+          router.replace('/login');
+        }
+      })
+      .catch(() => {
+        router.replace('/login');
+      });
+  }, [router]);
+
+  return (
+    <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-400 text-xs font-mono">
+      Authenticating & Loading Dashboard...
+    </div>
+  );
 }
