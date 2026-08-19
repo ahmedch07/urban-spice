@@ -196,11 +196,11 @@ export default function ThermalReceiptModal({
             </div>
 
             {/* Receipt Footer */}
-            <div className="text-center pt-3 space-y-1 text-[10px] text-slate-700">
-              <p className="font-bold uppercase">{storeSettings.invoiceFooter}</p>
-              {storeSettings.socialMedia && <p className="text-[9px]">Follow Us: {storeSettings.socialMedia}</p>}
-              <p className="text-[8px] text-slate-400 mt-1">Powered by Slice & Spice POS System</p>
-            </div>
+            {storeSettings.invoiceFooter && (
+              <div className="text-center pt-3 space-y-1 text-[10px] text-slate-700">
+                <p className="font-bold uppercase">{storeSettings.invoiceFooter}</p>
+              </div>
+            )}
           </div>
         </div>
 
