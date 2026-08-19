@@ -3,13 +3,14 @@
 import React, { useState, useEffect } from 'react';
 import { X, CreditCard, Banknote, Building2, Globe, CheckCircle2, ArrowRight } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
-import { CartItem, CustomerItem, OrderType, PaymentMethod } from '@/lib/types';
+import { CartItem, CustomerItem, OrderType, PaymentMethod, RiderItem } from '@/lib/types';
 
 interface PaymentModalProps {
   isOpen: boolean;
   onClose: () => void;
   cart: CartItem[];
   selectedCustomer: CustomerItem | null;
+  selectedRider?: RiderItem | null;
   orderType: OrderType;
   tableNo: string;
   subtotal: number;
@@ -25,6 +26,7 @@ export default function PaymentModal({
   onClose,
   cart,
   selectedCustomer,
+  selectedRider,
   orderType,
   tableNo,
   subtotal,
@@ -90,6 +92,9 @@ export default function PaymentModal({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           customerId: selectedCustomer?.id || null,
+          riderId: selectedRider?.id || null,
+          riderName: selectedRider?.name || null,
+          riderPhone: selectedRider?.phone || null,
           orderType,
           tableNo,
           items: cart,

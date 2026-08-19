@@ -394,33 +394,13 @@ export default function CustomersPage() {
               </div>
 
               <div>
-                <label className="block text-xs text-slate-300 font-semibold mb-1">Phone Number *</label>
+                <label className="block text-xs text-slate-300 font-semibold mb-1">Contact Number *</label>
                 <input
                   type="text"
                   required
                   value={editPhone}
                   onChange={(e) => setEditPhone(e.target.value)}
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-100 font-mono"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs text-slate-300 font-semibold mb-1">WhatsApp Number</label>
-                <input
-                  type="text"
-                  value={editWhatsapp}
-                  onChange={(e) => setEditWhatsapp(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-100 font-mono"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs text-slate-300 font-semibold mb-1">Email Address</label>
-                <input
-                  type="email"
-                  value={editEmail}
-                  onChange={(e) => setEditEmail(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-100"
                 />
               </div>
 

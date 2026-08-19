@@ -11,7 +11,7 @@ import CustomizationModal from '@/components/POS/CustomizationModal';
 import CustomerModal from '@/components/POS/CustomerModal';
 import PaymentModal from '@/components/POS/PaymentModal';
 import ThermalReceiptModal from '@/components/POS/ThermalReceiptModal';
-import { CartItem, CategoryItem, CustomerItem, OrderType, ProductItem } from '@/lib/types';
+import { CartItem, CategoryItem, CustomerItem, OrderType, ProductItem, RiderItem } from '@/lib/types';
 
 export default function POSPage() {
   // Session User
@@ -21,6 +21,7 @@ export default function POSPage() {
   const [categories, setCategories] = useState<CategoryItem[]>([]);
   const [products, setProducts] = useState<ProductItem[]>([]);
   const [pizzaConfig, setPizzaConfig] = useState<any>({ flavors: [], sizes: [], crusts: [], toppings: [] });
+  const [riders, setRiders] = useState<RiderItem[]>([]);
 
   // Filters & Cart
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -29,6 +30,7 @@ export default function POSPage() {
 
   // Customer & Order Config
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerItem | null>(null);
+  const [selectedRider, setSelectedRider] = useState<RiderItem | null>(null);
   const [orderType, setOrderType] = useState<OrderType>('DINE_IN');
   const [tableNo, setTableNo] = useState<string>('');
   const [discount, setDiscount] = useState<number>(0);
@@ -56,7 +58,7 @@ export default function POSPage() {
       .catch(console.error);
   }, []);
 
-  // Fetch Categories, Products & Pizza Config
+  // Fetch Categories, Products, Pizza Config & Riders
   useEffect(() => {
     fetch('/api/pos/categories')
       .then((res) => res.json())
@@ -69,6 +71,13 @@ export default function POSPage() {
       .then((res) => res.json())
       .then((data) => {
         setPizzaConfig(data);
+      })
+      .catch(console.error);
+
+    fetch('/api/riders')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.riders) setRiders(data.riders);
       })
       .catch(console.error);
   }, []);
@@ -170,6 +179,7 @@ export default function POSPage() {
   const handleResetOrder = () => {
     setCart([]);
     setSelectedCustomer(null);
+    setSelectedRider(null);
     setDiscount(0);
     setTableNo('');
     setIsPaymentModalOpen(false);
@@ -219,6 +229,9 @@ export default function POSPage() {
             selectedCustomer={selectedCustomer}
             onOpenCustomerModal={() => setIsCustomerModalOpen(true)}
             onRemoveCustomer={() => setSelectedCustomer(null)}
+            riders={riders}
+            selectedRider={selectedRider}
+            onSelectRider={setSelectedRider}
             orderType={orderType}
             onOrderTypeChange={setOrderType}
             tableNo={tableNo}
@@ -257,6 +270,7 @@ export default function POSPage() {
         onClose={() => setIsPaymentModalOpen(false)}
         cart={cart}
         selectedCustomer={selectedCustomer}
+        selectedRider={selectedRider}
         orderType={orderType}
         tableNo={tableNo}
         subtotal={subtotal}

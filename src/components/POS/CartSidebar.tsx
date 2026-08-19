@@ -17,7 +17,7 @@ import {
   Edit2,
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
-import { CartItem, CustomerItem, OrderType } from '@/lib/types';
+import { CartItem, CustomerItem, OrderType, RiderItem } from '@/lib/types';
 
 interface CartSidebarProps {
   cart: CartItem[];
@@ -27,6 +27,9 @@ interface CartSidebarProps {
   selectedCustomer: CustomerItem | null;
   onOpenCustomerModal: () => void;
   onRemoveCustomer: () => void;
+  riders?: RiderItem[];
+  selectedRider?: RiderItem | null;
+  onSelectRider?: (rider: RiderItem | null) => void;
   orderType: OrderType;
   onOrderTypeChange: (type: OrderType) => void;
   tableNo: string;
@@ -50,6 +53,9 @@ export default function CartSidebar({
   selectedCustomer,
   onOpenCustomerModal,
   onRemoveCustomer,
+  riders = [],
+  selectedRider,
+  onSelectRider,
   orderType,
   onOrderTypeChange,
   tableNo,
@@ -154,6 +160,36 @@ export default function CartSidebar({
               placeholder="e.g. T-05"
               className="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1 text-xs text-slate-100 focus:outline-none focus:border-amber-500 font-mono"
             />
+          </div>
+        )}
+
+        {/* Delivery Order Rider Selector */}
+        {orderType === 'DELIVERY' && (
+          <div className="bg-slate-950 border border-slate-800/80 rounded-xl p-2.5 space-y-1">
+            <label className="block text-[11px] font-bold text-amber-400 uppercase tracking-wider flex items-center space-x-1">
+              <Truck className="w-3 h-3 text-amber-400" />
+              <span>Assign Delivery Rider *</span>
+            </label>
+            <select
+              value={selectedRider?.id || ''}
+              onChange={(e) => {
+                const found = riders.find((r) => r.id === e.target.value);
+                if (onSelectRider) onSelectRider(found || null);
+              }}
+              className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-100 font-semibold focus:outline-none focus:border-amber-500"
+            >
+              <option value="">-- Select Delivery Rider --</option>
+              {riders.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.name} ({r.phone})
+                </option>
+              ))}
+            </select>
+            {selectedRider && (
+              <p className="text-[11px] text-emerald-400 font-mono pt-0.5">
+                Assigned: <strong>{selectedRider.name}</strong> - {selectedRider.phone}
+              </p>
+            )}
           </div>
         )}
 

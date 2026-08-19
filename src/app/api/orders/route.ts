@@ -79,6 +79,9 @@ export async function POST(request: Request) {
     const body = await request.json();
     const {
       customerId,
+      riderId,
+      riderName,
+      riderPhone,
       orderType,
       tableNo,
       items,
@@ -108,6 +111,20 @@ export async function POST(request: Request) {
     if (customerId) {
       const existingCustomer = await prisma.customer.findUnique({ where: { id: customerId } });
       if (existingCustomer) validCustomerId = customerId;
+    }
+
+    // Validate rider ID if provided
+    let validRiderId = null;
+    let finalRiderName = riderName ? riderName.trim() : null;
+    let finalRiderPhone = riderPhone ? riderPhone.trim() : null;
+
+    if (riderId) {
+      const existingRider = await prisma.rider.findUnique({ where: { id: riderId } });
+      if (existingRider) {
+        validRiderId = existingRider.id;
+        if (!finalRiderName) finalRiderName = existingRider.name;
+        if (!finalRiderPhone) finalRiderPhone = existingRider.phone;
+      }
     }
 
     // Validate User ID in DB to prevent foreign key errors if session token is stale
@@ -166,6 +183,9 @@ export async function POST(request: Request) {
         data: {
           invoiceNo,
           customerId: validCustomerId,
+          riderId: validRiderId,
+          riderName: orderType === 'DELIVERY' ? finalRiderName : null,
+          riderPhone: orderType === 'DELIVERY' ? finalRiderPhone : null,
           userId: validUserId,
           orderType: orderType || 'DINE_IN',
           tableNo: tableNo || null,

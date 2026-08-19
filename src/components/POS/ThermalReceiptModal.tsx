@@ -113,6 +113,12 @@ export default function ThermalReceiptModal({
                   {order.customer.address && <div>Addr: {order.customer.address}</div>}
                 </div>
               )}
+              {order.orderType === 'DELIVERY' && order.riderName && (
+                <div className="pt-1 border-t border-slate-200 text-[10px] space-y-0.5">
+                  <div>Rider Name: <strong>{order.riderName}</strong></div>
+                  <div>Rider Contact: <strong>{order.riderPhone || '-'}</strong></div>
+                </div>
+              )}
             </div>
 
             {/* Items Table */}

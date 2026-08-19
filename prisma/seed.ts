@@ -60,7 +60,7 @@ async function main() {
       data: {
         name: 'Urban Spice Admin',
         email: 'admin@urbanspice.com',
-        phone: '03005225898',
+        phone: '0300-5225898',
         password: hashedAdminPassword,
         role: 'ADMIN',
         active: true,
@@ -71,11 +71,23 @@ async function main() {
       data: {
         name: 'Main Cashier',
         email: 'cashier@urbanspice.com',
-        phone: '03005225899',
+        phone: '0300-5225899',
         password: hashedCashierPassword,
         role: 'CASHIER',
         active: true,
       },
+    });
+  }
+
+  // Seed default Riders if none exist
+  const riderCount = await prisma.rider.count();
+  if (riderCount === 0) {
+    await prisma.rider.createMany({
+      data: [
+        { name: 'Ali', phone: '03001234567', vehicleNo: 'FSD-1234' },
+        { name: 'Hamza', phone: '03129876543', vehicleNo: 'FSD-5678' },
+        { name: 'Usama', phone: '03215554433', vehicleNo: 'FSD-9988' },
+      ],
     });
   }
 

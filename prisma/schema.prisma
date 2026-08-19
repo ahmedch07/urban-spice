@@ -134,29 +134,45 @@ model Topping {
   orderItemToppings OrderItemTopping[]
 }
 
+model Rider {
+  id        String   @id @default(uuid())
+  name      String
+  phone     String   @unique
+  vehicleNo String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orders Order[]
+}
+
 model Order {
-  id            String   @id @default(uuid())
-  invoiceNo     String   @unique
+  id            String    @id @default(uuid())
+  invoiceNo     String    @unique
   customerId    String?
   customer      Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  riderId       String?
+  rider         Rider?    @relation(fields: [riderId], references: [id], onDelete: SetNull)
+  riderName     String?
+  riderPhone    String?
   userId        String
-  user          User     @relation(fields: [userId], references: [id])
-  orderType     String   @default("DINE_IN") // DINE_IN, TAKEAWAY, DELIVERY
+  user          User      @relation(fields: [userId], references: [id])
+  orderType     String    @default("DINE_IN") // DINE_IN, TAKEAWAY, DELIVERY
   tableNo       String?
-  status        String   @default("PENDING") // PENDING, PREPARING, READY, COMPLETED, CANCELLED, REFUNDED
+  status        String    @default("PENDING") // PENDING, PREPARING, READY, COMPLETED, CANCELLED, REFUNDED
   subtotal      Float
-  discount      Float    @default(0.0)
-  discountType  String   @default("FIXED") // FIXED, PERCENTAGE
-  tax           Float    @default(0.0)
-  deliveryFee   Float    @default(0.0)
-  otherFee      Float    @default(0.0)
+  discount      Float     @default(0.0)
+  discountType  String    @default("FIXED") // FIXED, PERCENTAGE
+  tax           Float     @default(0.0)
+  deliveryFee   Float     @default(0.0)
+  otherFee      Float     @default(0.0)
   grandTotal    Float
-  paymentMethod String   @default("CASH") // CASH, CARD, BANK, ONLINE
+  paymentMethod String    @default("CASH") // CASH, CARD, BANK, ONLINE
   amountPaid    Float
-  change        Float    @default(0.0)
+  change        Float     @default(0.0)
   notes         String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   items OrderItem[]
 }

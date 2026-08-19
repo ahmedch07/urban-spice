@@ -97,6 +97,14 @@ export interface CustomerItem {
   totalSpent?: number;
 }
 
+export interface RiderItem {
+  id: string;
+  name: string;
+  phone: string;
+  vehicleNo?: string | null;
+  active?: boolean;
+}
+
 export type OrderType = 'DINE_IN' | 'TAKEAWAY' | 'DELIVERY';
 export type PaymentMethod = 'CASH' | 'CARD' | 'BANK' | 'ONLINE';
 export type OrderStatus = 'PENDING' | 'PREPARING' | 'READY' | 'COMPLETED' | 'CANCELLED' | 'REFUNDED';

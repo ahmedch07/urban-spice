@@ -12,6 +12,7 @@ import { formatCurrency, formatDate } from '@/lib/utils';
 export default function OrdersPage() {
   const [currentUser, setCurrentUser] = useState<any>({ name: 'Loading...', role: '' });
   const [orders, setOrders] = useState<any[]>([]);
+  const [riders, setRiders] = useState<any[]>([]);
   const [dateRange, setDateRange] = useState<string>('today');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
@@ -26,6 +27,13 @@ export default function OrdersPage() {
       .then((res) => res.json())
       .then((data) => {
         if (data.user) setCurrentUser(data.user);
+      })
+      .catch(console.error);
+
+    fetch('/api/riders')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.riders) setRiders(data.riders);
       })
       .catch(console.error);
   }, []);
@@ -67,6 +75,29 @@ export default function OrdersPage() {
       } else {
         const data = await res.json();
         alert(data.error || 'Failed to update order status');
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleUpdateRider = async (orderId: string, riderId: string) => {
+    const selectedR = riders.find((r) => r.id === riderId);
+    try {
+      const res = await fetch(`/api/orders/${orderId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          riderId: selectedR ? selectedR.id : null,
+          riderName: selectedR ? selectedR.name : null,
+          riderPhone: selectedR ? selectedR.phone : null,
+        }),
+      });
+      if (res.ok) {
+        fetchOrders();
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Failed to assign rider');
       }
     } catch (e) {
       console.error(e);
@@ -147,6 +178,7 @@ export default function OrdersPage() {
                     <th className="p-4">Order / Invoice #</th>
                     <th className="p-4">Customer & Contact</th>
                     <th className="p-4">Type & Table</th>
+                    <th className="p-4">Assigned Rider</th>
                     <th className="p-4">Items Summary</th>
                     <th className="p-4">Grand Total</th>
                     <th className="p-4">Payment</th>
@@ -158,13 +190,13 @@ export default function OrdersPage() {
                 <tbody className="divide-y divide-slate-800/60">
                   {isLoading ? (
                     <tr>
-                      <td colSpan={9} className="py-12 text-center text-slate-500">
+                      <td colSpan={10} className="py-12 text-center text-slate-500">
                         Loading order history...
                       </td>
                     </tr>
                   ) : orders.length === 0 ? (
                     <tr>
-                      <td colSpan={9} className="py-12 text-center text-slate-500">
+                      <td colSpan={10} className="py-12 text-center text-slate-500">
                         No orders found
                       </td>
                     </tr>
@@ -179,6 +211,34 @@ export default function OrdersPage() {
                         <td className="p-4">
                           <span className="font-semibold text-slate-300">{o.orderType}</span>
                           {o.tableNo && <div className="text-[10px] text-amber-400/80 font-mono">Table: {o.tableNo}</div>}
+                        </td>
+                        <td className="p-4">
+                          {o.orderType === 'DELIVERY' ? (
+                            <div className="space-y-1">
+                              {o.riderName ? (
+                                <div>
+                                  <div className="font-bold text-emerald-400">{o.riderName}</div>
+                                  <div className="text-[10px] text-slate-400 font-mono">{o.riderPhone || '-'}</div>
+                                </div>
+                              ) : (
+                                <span className="text-amber-400 font-semibold italic text-[11px]">Unassigned</span>
+                              )}
+                              <select
+                                value={o.riderId || ''}
+                                onChange={(e) => handleUpdateRider(o.id, e.target.value)}
+                                className="bg-slate-950 border border-slate-800 rounded px-1.5 py-0.5 text-[10px] text-slate-300 focus:outline-none focus:border-amber-500 mt-1 block w-full"
+                              >
+                                <option value="">Select Rider...</option>
+                                {riders.map((r) => (
+                                  <option key={r.id} value={r.id}>
+                                    {r.name} ({r.phone})
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          ) : (
+                            <span className="text-slate-500 font-mono">-</span>
+                          )}
                         </td>
                         <td className="p-4 max-w-xs">
                           <div className="text-slate-300 line-clamp-1 font-medium">
