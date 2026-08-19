@@ -9,7 +9,7 @@ import { Truck, Plus, Search, Edit2, Trash2, Phone, CheckCircle, XCircle, Refres
 import { RiderItem } from '@/lib/types';
 
 export default function RidersPage() {
-  const [currentUser, setCurrentUser] = useState<any>({ name: 'Loading...', role: '' });
+  const [currentUser, setCurrentUser] = useState<any>({ name: 'Admin', role: 'ADMIN' });
   const [riders, setRiders] = useState<RiderItem[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -37,7 +37,7 @@ export default function RidersPage() {
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
 
   useEffect(() => {
-    fetch('/api/auth/me')
+    fetch('/api/auth/me', { cache: 'no-store' })
       .then((res) => res.json())
       .then((data) => {
         if (data.user) setCurrentUser(data.user);
