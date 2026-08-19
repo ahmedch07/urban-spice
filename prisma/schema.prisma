@@ -146,6 +146,14 @@ model Rider {
   orders Order[]
 }
 
+model SalesDay {
+  id        String   @id @default(uuid())
+  dateKey   String   @unique
+  createdAt DateTime @default(now())
+
+  orders Order[]
+}
+
 model Order {
   id            String    @id @default(uuid())
   invoiceNo     String    @unique
@@ -157,6 +165,8 @@ model Order {
   riderPhone    String?
   userId        String
   user          User      @relation(fields: [userId], references: [id])
+  salesDayId    String?
+  salesDay      SalesDay? @relation(fields: [salesDayId], references: [id], onDelete: SetNull)
   orderType     String    @default("DINE_IN") // DINE_IN, TAKEAWAY, DELIVERY
   tableNo       String?
   status        String    @default("PENDING") // PENDING, PREPARING, READY, COMPLETED, CANCELLED, REFUNDED

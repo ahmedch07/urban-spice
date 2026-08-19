@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';
 import React, { useState, useEffect } from 'react';
 import Sidebar from '@/components/Sidebar';
 import Navbar from '@/components/Navbar';
-import { BarChart3, Download, Calendar, DollarSign, TrendingUp, Users } from 'lucide-react';
+import { BarChart3, Download, RotateCcw } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 
 export default function ReportsPage() {
@@ -13,6 +13,7 @@ export default function ReportsPage() {
   const [period, setPeriod] = useState<string>('month');
   const [reportData, setReportData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isStartingDay, setIsStartingDay] = useState(false);
 
   useEffect(() => {
     fetch('/api/auth/me')
@@ -35,6 +36,21 @@ export default function ReportsPage() {
       console.error(e);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleStartNewSalesDay = async () => {
+    setIsStartingDay(true);
+    try {
+      const res = await fetch('/api/reports', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to start sales day');
+      setPeriod('today');
+      await fetchReports();
+    } catch (error: any) {
+      alert(error.message || 'Failed to start sales day');
+    } finally {
+      setIsStartingDay(false);
     }
   };
 
@@ -76,6 +92,15 @@ export default function ReportsPage() {
                 </button>
               ))}
             </div>
+
+            <button
+              onClick={handleStartNewSalesDay}
+              disabled={isStartingDay}
+              className="px-4 py-2 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-slate-950 font-bold text-xs rounded-xl shadow flex items-center space-x-1.5 transition-colors"
+            >
+              <RotateCcw className="w-4 h-4" />
+              <span>{isStartingDay ? 'Starting...' : 'New Sales Day'}</span>
+            </button>
 
             <button
               onClick={handleExportCSV}
@@ -133,6 +158,40 @@ export default function ReportsPage() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {reportData?.salesOrders && (
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4 shadow-xl">
+              <h3 className="font-bold text-base text-slate-100">All Orders in Selected Period</h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-950 text-slate-400 uppercase">
+                    <tr>
+                      <th className="p-3">Invoice</th>
+                      <th className="p-3">Customer</th>
+                      <th className="p-3">Type</th>
+                      <th className="p-3">Payment</th>
+                      <th className="p-3">Status</th>
+                      <th className="p-3">Total</th>
+                      <th className="p-3">Date / Time</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60">
+                    {reportData.salesOrders.map((order: any) => (
+                      <tr key={order.id}>
+                        <td className="p-3 font-mono font-bold text-amber-400">{order.invoiceNo}</td>
+                        <td className="p-3 text-slate-200">{order.customer?.name || 'Walk-in Customer'}</td>
+                        <td className="p-3 text-slate-300">{order.orderType}</td>
+                        <td className="p-3 text-slate-300">{order.paymentMethod}</td>
+                        <td className="p-3 text-slate-300">{order.status}</td>
+                        <td className="p-3 font-mono font-bold text-emerald-400">{formatCurrency(order.grandTotal)}</td>
+                        <td className="p-3 text-slate-400">{new Date(order.createdAt).toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </main>

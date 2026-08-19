@@ -1,23 +1,38 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getCurrentUser } from '@/lib/auth';
+
+function getLocalDateKey(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function getDateRange(period: string, now = new Date()) {
+  const startDate = new Date(now);
+  startDate.setHours(0, 0, 0, 0);
+
+  if (period === 'today') return startDate;
+  if (period === 'week') {
+    startDate.setDate(startDate.getDate() - startDate.getDay());
+    return startDate;
+  }
+  if (period === 'year') {
+    startDate.setMonth(0, 1);
+    return startDate;
+  }
+
+  startDate.setDate(1);
+  return startDate;
+}
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const period = searchParams.get('period') || 'month'; // today, week, month, year
 
-    const now = new Date();
-    let startDate = new Date();
-
-    if (period === 'today') {
-      startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    } else if (period === 'week') {
-      startDate = new Date(now.setDate(now.getDate() - 7));
-    } else if (period === 'month') {
-      startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-    } else if (period === 'year') {
-      startDate = new Date(now.getFullYear(), 0, 1);
-    }
+    const startDate = getDateRange(period);
 
     // 1. Total Orders & Sales
     const orders = await prisma.order.findMany({
@@ -26,6 +41,7 @@ export async function GET(request: Request) {
         status: { notIn: ['CANCELLED', 'REFUNDED'] },
       },
       include: {
+        customer: { select: { name: true, phone: true } },
         items: {
           include: {
             product: { select: { costPrice: true } },
@@ -110,9 +126,39 @@ export async function GET(request: Request) {
       paymentDistribution,
       topProducts,
       lowStockProducts,
+      salesOrders: orders.map((order) => ({
+        id: order.id,
+        invoiceNo: order.invoiceNo,
+        createdAt: order.createdAt,
+        status: order.status,
+        orderType: order.orderType,
+        paymentMethod: order.paymentMethod,
+        grandTotal: order.grandTotal,
+        customer: order.customer,
+      })),
     });
   } catch (error) {
     console.error('Reports API error:', error);
     return NextResponse.json({ error: 'Failed to generate reports' }, { status: 500 });
+  }
+}
+
+export async function POST() {
+  try {
+    const session = await getCurrentUser();
+    if (!session || !['ADMIN', 'MANAGER'].includes(session.role)) {
+      return NextResponse.json({ error: 'Only Admin or Manager can start a sales day' }, { status: 403 });
+    }
+
+    const salesDay = await prisma.salesDay.upsert({
+      where: { dateKey: getLocalDateKey() },
+      create: { dateKey: getLocalDateKey() },
+      update: {},
+    });
+
+    return NextResponse.json({ success: true, salesDay });
+  } catch (error) {
+    console.error('Start sales day error:', error);
+    return NextResponse.json({ error: 'Failed to start sales day' }, { status: 500 });
   }
 }

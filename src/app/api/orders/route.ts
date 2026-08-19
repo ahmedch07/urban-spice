@@ -3,6 +3,13 @@ import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
 import { generateInvoiceNumber } from '@/lib/utils';
 
+function getLocalDateKey(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -170,6 +177,12 @@ export async function POST(request: Request) {
     const orderStatus = isPendingPayment ? 'PENDING' : 'COMPLETED';
     const finalAmountPaid = isPendingPayment ? (amountPaid || 0) : amountPaid;
 
+    const salesDay = await prisma.salesDay.upsert({
+      where: { dateKey: getLocalDateKey() },
+      create: { dateKey: getLocalDateKey() },
+      update: {},
+    });
+
     if (!isPendingPayment && finalAmountPaid < grandTotal) {
       return NextResponse.json(
         { error: `Payment amount (${finalAmountPaid}) is less than total amount (${grandTotal})` },
@@ -187,6 +200,7 @@ export async function POST(request: Request) {
           riderName: orderType === 'DELIVERY' ? finalRiderName : null,
           riderPhone: orderType === 'DELIVERY' ? finalRiderPhone : null,
           userId: validUserId,
+          salesDayId: salesDay.id,
           orderType: orderType || 'DINE_IN',
           tableNo: tableNo || null,
           status: orderStatus,
