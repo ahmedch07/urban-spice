@@ -2,6 +2,22 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser, hashPassword } from '@/lib/auth';
 
+async function createSafeAuditLog(userId: string, userName: string, action: string, details: string) {
+  try {
+    const userExists = userId ? await prisma.user.findUnique({ where: { id: userId } }) : null;
+    await prisma.auditLog.create({
+      data: {
+        userId: userExists ? userId : null,
+        userName: userName || 'Admin',
+        action,
+        details,
+      },
+    });
+  } catch (err) {
+    console.warn('Audit log creation skipped:', err);
+  }
+}
+
 export async function GET() {
   try {
     const session = await getCurrentUser();
@@ -61,18 +77,20 @@ export async function POST(request: Request) {
       select: { id: true, name: true, email: true, role: true, active: true },
     });
 
-    await prisma.auditLog.create({
-      data: {
-        userId: session.userId,
-        userName: session.name,
-        action: 'CREATE_EMPLOYEE',
-        details: `Created employee ${newEmployee.name} (${newEmployee.role})`,
-      },
-    });
+    await createSafeAuditLog(
+      session.userId,
+      session.name,
+      'CREATE_EMPLOYEE',
+      `Created employee ${newEmployee.name} (${newEmployee.role})`
+    );
 
     return NextResponse.json({ success: true, employee: newEmployee });
-  } catch (error) {
-    return NextResponse.json({ error: 'Failed to create employee' }, { status: 500 });
+  } catch (error: any) {
+    console.error('Create employee error:', error);
+    if (error?.code === 'P2002') {
+      return NextResponse.json({ error: 'User email already exists' }, { status: 400 });
+    }
+    return NextResponse.json({ error: error?.message || 'Failed to create employee' }, { status: 500 });
   }
 }
 
@@ -107,21 +125,19 @@ export async function PUT(request: Request) {
       select: { id: true, name: true, email: true, role: true, active: true },
     });
 
-    await prisma.auditLog.create({
-      data: {
-        userId: session.userId,
-        userName: session.name,
-        action: 'UPDATE_EMPLOYEE',
-        details: `Updated employee ${updated.name} profile/role`,
-      },
-    });
+    await createSafeAuditLog(
+      session.userId,
+      session.name,
+      'UPDATE_EMPLOYEE',
+      `Updated employee ${updated.name} profile/role`
+    );
 
     return NextResponse.json({ success: true, employee: updated });
   } catch (error: any) {
     if (error.code === 'P2002') {
       return NextResponse.json({ error: 'This email is already taken by another account' }, { status: 400 });
     }
-    return NextResponse.json({ error: 'Failed to update employee' }, { status: 500 });
+    return NextResponse.json({ error: error?.message || 'Failed to update employee' }, { status: 500 });
   }
 }
 
@@ -151,18 +167,12 @@ export async function DELETE(request: Request) {
 
     await prisma.user.delete({ where: { id } });
 
-    try {
-      await prisma.auditLog.create({
-        data: {
-          userId: session.userId,
-          userName: session.name,
-          action: 'DELETE_EMPLOYEE',
-          details: `Deleted employee account ${userToDelete.name} (${userToDelete.email})`,
-        },
-      });
-    } catch (auditError) {
-      console.warn('Audit log creation skipped:', auditError);
-    }
+    await createSafeAuditLog(
+      session.userId,
+      session.name,
+      'DELETE_EMPLOYEE',
+      `Deleted employee account ${userToDelete.name} (${userToDelete.email})`
+    );
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
