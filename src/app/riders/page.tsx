@@ -27,6 +27,8 @@ const addRiderSchema = z.object({
 
 type AddRiderFormValues = z.infer<typeof addRiderSchema>;
 
+import { useApp } from '@/context/AppContext';
+
 const editRiderSchema = z.object({
   name: z.string().min(1, 'Rider name is required'),
   phone: z.string().min(1, 'Phone number is required').min(7, 'Please enter a valid phone number'),
@@ -37,10 +39,9 @@ const editRiderSchema = z.object({
 type EditRiderFormValues = z.infer<typeof editRiderSchema>;
 
 export default function RidersPage() {
-  const [currentUser, setCurrentUser] = useState<any>({ name: 'Admin', role: 'ADMIN' });
-  const [riders, setRiders] = useState<RiderItem[]>([]);
+  const { currentUser, riders, refreshRiders, setRiders } = useApp();
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   // Add Rider Modal
   const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
@@ -56,30 +57,8 @@ export default function RidersPage() {
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
 
   useEffect(() => {
-    fetch('/api/auth/me', { cache: 'no-store' })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.user) setCurrentUser(data.user);
-      })
-      .catch(() => {});
-
-    fetchRiders();
-  }, []);
-
-  const fetchRiders = async () => {
-    setIsLoading(true);
-    try {
-      const res = await fetch('/api/riders?all=true', { cache: 'no-store' });
-      const data = await res.json();
-      if (data.riders) {
-        setRiders(mergeRiderOverrides(data.riders));
-      }
-    } catch {
-      toast.error('Failed to load riders list');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    refreshRiders();
+  }, [refreshRiders]);
 
   const openEditModal = (r: RiderItem) => {
     setEditingRider(r);
@@ -187,7 +166,7 @@ export default function RidersPage() {
 
             <Button
               variant="outline"
-              onClick={fetchRiders}
+              onClick={() => refreshRiders()}
               className="space-x-2"
               title="Refresh Fleet"
             >

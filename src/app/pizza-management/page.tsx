@@ -20,54 +20,61 @@ import {
   getCrustColumns,
   getToppingColumns,
 } from '@/columns';
-import { Pizza, Plus, X, AlertCircle, Layers, Disc, Sparkles } from 'lucide-react';
-import { toast } from '@/components/ui/sonner';
-import { formatCurrency } from '@/lib/utils';
+import { Pizza, Plus, X, AlertCircle} from 'lucide-react';
+import { useApp } from '@/context/AppContext';
 
 const flavorSchema = z.object({
   name: z.string().min(1, 'Flavor name is required'),
   description: z.string().optional(),
   image: z.string().optional(),
-  prices: z.record(z.string(), z.coerce.number().min(0, 'Price must be non-negative')),
+  sortOrder: z.coerce.number().default(0),
 });
 
 type FlavorFormValues = z.infer<typeof flavorSchema>;
 
 const sizeSchema = z.object({
   name: z.string().min(1, 'Size name is required'),
-  code: z.string().min(1, 'Size code is required'),
-  sortOrder: z.coerce.number().min(0, 'Sort order must be non-negative'),
+  code: z.string().min(1, 'Code is required'),
+  sortOrder: z.coerce.number().default(0),
 });
 
 type SizeFormValues = z.infer<typeof sizeSchema>;
 
 const genericItemSchema = z.object({
-  name: z.string().min(1, 'Name is required'),
+  name: z.string().min(1, 'Item name is required'),
   additionalPrice: z.coerce.number().min(0, 'Price must be non-negative'),
-  stock: z.coerce.number().min(0, 'Stock must be non-negative'),
+  stock: z.coerce.number().optional().default(100),
+  active: z.boolean().default(true),
 });
 
 type GenericItemFormValues = z.infer<typeof genericItemSchema>;
 
 export default function PizzaManagementPage() {
-  const [currentUser, setCurrentUser] = useState<any>(null);
+  const { currentUser, pizzaConfig, refreshPizzaConfig } = useApp();
   const [activeTab, setActiveTab] = useState<'flavors' | 'sizes' | 'crusts' | 'toppings'>('flavors');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const [flavors, setFlavors] = useState<any[]>([]);
-  const [sizes, setSizes] = useState<any[]>([]);
-  const [crusts, setCrusts] = useState<any[]>([]);
-  const [toppings, setToppings] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [flavors, setFlavors] = useState<any[]>(() => pizzaConfig?.flavors || []);
+  const [sizes, setSizes] = useState<any[]>(() => pizzaConfig?.sizes || []);
+  const [crusts, setCrusts] = useState<any[]>(() => pizzaConfig?.crusts || []);
+  const [toppings, setToppings] = useState<any[]>(() => pizzaConfig?.toppings || []);
 
-  // Modal State for Flavor
+  useEffect(() => {
+    if (pizzaConfig) {
+      setFlavors(pizzaConfig.flavors || []);
+      setSizes(pizzaConfig.sizes || []);
+      setCrusts(pizzaConfig.crusts || []);
+      setToppings(pizzaConfig.toppings || []);
+    }
+  }, [pizzaConfig]);
+
+  // Modal States
   const [isFlavorModalOpen, setIsFlavorModalOpen] = useState(false);
   const [editFlavor, setEditFlavor] = useState<any>(null);
 
-  // Modal State for Size
   const [isSizeModalOpen, setIsSizeModalOpen] = useState(false);
   const [editSizeItem, setEditSizeItem] = useState<any>(null);
 
-  // Modal state for Crust/Topping
   const [isGenericModalOpen, setIsGenericModalOpen] = useState(false);
   const [genericType, setGenericType] = useState<'crust' | 'topping'>('crust');
   const [genericItem, setGenericItem] = useState<any>(null);
@@ -82,40 +89,11 @@ export default function PizzaManagementPage() {
   const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
-    fetch('/api/auth/me')
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.user) setCurrentUser(data.user);
-      })
-      .catch(() => {});
-
-    fetchAllData();
-  }, []);
+    refreshPizzaConfig();
+  }, [refreshPizzaConfig]);
 
   const fetchAllData = async () => {
-    setIsLoading(true);
-    try {
-      const [fRes, sRes, cRes, tRes] = await Promise.all([
-        fetch('/api/pizza-management/flavors'),
-        fetch('/api/pizza-management/sizes'),
-        fetch('/api/pizza-management/crusts'),
-        fetch('/api/pizza-management/toppings'),
-      ]);
-
-      const fData = await fRes.json();
-      const sData = await sRes.json();
-      const cData = await cRes.json();
-      const tData = await tRes.json();
-
-      if (fData.flavors) setFlavors(fData.flavors);
-      if (sData.sizes) setSizes(sData.sizes);
-      if (cData.crusts) setCrusts(cData.crusts);
-      if (tData.toppings) setToppings(tData.toppings);
-    } catch {
-      toast.error('Failed to load pizza configuration records');
-    } finally {
-      setIsLoading(false);
-    }
+    await refreshPizzaConfig();
   };
 
   // Flavor Handlers
@@ -445,17 +423,16 @@ function FlavorModal({
     handleSubmit,
     control,
     formState: { errors, isSubmitting },
-  } = useForm<FlavorFormValues>({
+  } = useForm<any>({
     resolver: zodResolver(flavorSchema),
     defaultValues: {
       name: flavor?.name || '',
       description: flavor?.description || '',
       image: flavor?.image || '',
-      prices: defaultPrices,
     },
   });
 
-  const onSave = async (values: FlavorFormValues) => {
+  const onSave = async (values: any) => {
     setFlavorError('');
     const pricesArray = Object.entries(values.prices).map(([sizeId, price]) => ({
       sizeId,
@@ -532,8 +509,8 @@ function FlavorModal({
               placeholder="e.g. Chicken Tikka Special"
               error={!!errors.name}
             />
-            {errors.name && (
-              <p className="text-[11px] text-red-400 mt-1 font-medium">{errors.name.message}</p>
+            {errors.name?.message && (
+              <p className="text-[11px] text-red-400 mt-1 font-medium">{String(errors.name.message)}</p>
             )}
           </div>
 
@@ -622,7 +599,7 @@ function SizeModal({
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<SizeFormValues>({
+  } = useForm<any>({
     resolver: zodResolver(sizeSchema),
     defaultValues: {
       name: sizeItem?.name || '',
@@ -631,7 +608,7 @@ function SizeModal({
     },
   });
 
-  const onSave = async (values: SizeFormValues) => {
+  const onSave = async (values: any) => {
     setSizeError('');
     try {
       let res;
@@ -701,8 +678,8 @@ function SizeModal({
               placeholder="e.g. Small, Medium, Large, Jumbo, Party"
               error={!!errors.name}
             />
-            {errors.name && (
-              <p className="text-[11px] text-red-400 mt-1 font-medium">{errors.name.message}</p>
+            {errors.name?.message && (
+              <p className="text-[11px] text-red-400 mt-1 font-medium">{String(errors.name.message)}</p>
             )}
           </div>
 
@@ -716,8 +693,8 @@ function SizeModal({
                 className="font-mono uppercase"
                 error={!!errors.code}
               />
-              {errors.code && (
-                <p className="text-[11px] text-red-400 mt-1 font-medium">{errors.code.message}</p>
+              {errors.code?.message && (
+                <p className="text-[11px] text-red-400 mt-1 font-medium">{String(errors.code.message)}</p>
               )}
             </div>
             <div>
@@ -769,7 +746,7 @@ function GenericCrustToppingModal({
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<GenericItemFormValues>({
+  } = useForm<any>({
     resolver: zodResolver(genericItemSchema),
     defaultValues: {
       name: item?.name || '',
@@ -778,7 +755,7 @@ function GenericCrustToppingModal({
     },
   });
 
-  const onSave = async (values: GenericItemFormValues) => {
+  const onSave = async (values: any) => {
     setGenericError('');
     try {
       const endpoint = type === 'crust' ? '/api/pizza-management/crusts' : '/api/pizza-management/toppings';
@@ -845,8 +822,8 @@ function GenericCrustToppingModal({
               {...register('name')}
               error={!!errors.name}
             />
-            {errors.name && (
-              <p className="text-[11px] text-red-400 mt-1 font-medium">{errors.name.message}</p>
+            {errors.name?.message && (
+              <p className="text-[11px] text-red-400 mt-1 font-medium">{String(errors.name.message)}</p>
             )}
           </div>
 

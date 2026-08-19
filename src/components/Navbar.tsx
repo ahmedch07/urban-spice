@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
 import { Clock, Percent, Keyboard, Menu } from 'lucide-react';
-import ThemeToggle from '@/components/ThemeToggle';
 
 interface NavbarProps {
   title: string;
@@ -10,6 +10,8 @@ interface NavbarProps {
 
 export default function Navbar({ title }: NavbarProps) {
   const [time, setTime] = useState<string>('');
+  const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     const update = () => {
@@ -27,6 +29,59 @@ export default function Navbar({ title }: NavbarProps) {
     const interval = setInterval(update, 1000);
     return () => clearInterval(interval);
   }, []);
+
+  const handleF2Search = () => {
+    if (pathname === '/pos') {
+      const searchInput = document.getElementById('pos-search-input');
+      if (searchInput) searchInput.focus();
+    } else {
+      router.push('/pos');
+      setTimeout(() => {
+        const searchInput = document.getElementById('pos-search-input');
+        if (searchInput) searchInput.focus();
+      }, 300);
+    }
+  };
+
+  const handleF4NewOrder = () => {
+    if (pathname === '/pos') {
+      window.dispatchEvent(new Event('pos-shortcut-new-order'));
+    } else {
+      router.push('/pos');
+      setTimeout(() => {
+        window.dispatchEvent(new Event('pos-shortcut-new-order'));
+      }, 300);
+    }
+  };
+
+  const handleF8Checkout = () => {
+    if (pathname === '/pos') {
+      window.dispatchEvent(new Event('pos-shortcut-checkout'));
+    } else {
+      router.push('/pos');
+      setTimeout(() => {
+        window.dispatchEvent(new Event('pos-shortcut-checkout'));
+      }, 300);
+    }
+  };
+
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'F2') {
+        e.preventDefault();
+        handleF2Search();
+      } else if (e.key === 'F4') {
+        e.preventDefault();
+        handleF4NewOrder();
+      } else if (e.key === 'F8') {
+        e.preventDefault();
+        handleF8Checkout();
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [pathname]);
 
   const toggleSidebar = () => {
     window.dispatchEvent(new Event('toggle-sidebar'));
@@ -50,15 +105,36 @@ export default function Navbar({ title }: NavbarProps) {
         </h1>
       </div>
 
-      {/* Right: POS Shortcuts, Tax Badge, Theme, Clock */}
+      {/* Right: POS Shortcuts, Tax Badge, Clock */}
       <div className="flex items-center space-x-1.5 sm:space-x-3 shrink-0">
-        {/* Keyboard Shortcuts Guide */}
+        {/* Interactive Keyboard Shortcuts Guide */}
         <div className="hidden xl:flex items-center space-x-2 bg-slate-800/60 px-3 py-1.5 rounded-lg border border-slate-700/50 text-xs text-slate-300">
           <Keyboard className="w-4 h-4 text-amber-400" />
           <span>Shortcuts:</span>
-          <kbd className="px-1.5 py-0.5 bg-slate-950 border border-slate-700 rounded font-mono text-amber-300 text-[10px]">F2</kbd> Search
-          <kbd className="px-1.5 py-0.5 bg-slate-950 border border-slate-700 rounded font-mono text-amber-300 text-[10px]">F4</kbd> New Order
-          <kbd className="px-1.5 py-0.5 bg-slate-950 border border-slate-700 rounded font-mono text-amber-300 text-[10px]">F8</kbd> Checkout
+          <button
+            onClick={handleF2Search}
+            title="Focus Search Input (F2)"
+            className="flex items-center space-x-1 hover:opacity-80 transition cursor-pointer"
+          >
+            <kbd className="px-1.5 py-0.5 bg-slate-950 border border-slate-700 rounded font-mono text-amber-300 text-[10px]">F2</kbd>
+            <span>Search</span>
+          </button>
+          <button
+            onClick={handleF4NewOrder}
+            title="Clear & Start New Order (F4)"
+            className="flex items-center space-x-1 hover:opacity-80 transition cursor-pointer ml-1"
+          >
+            <kbd className="px-1.5 py-0.5 bg-slate-950 border border-slate-700 rounded font-mono text-amber-300 text-[10px]">F4</kbd>
+            <span>New Order</span>
+          </button>
+          <button
+            onClick={handleF8Checkout}
+            title="Open Payment Checkout (F8)"
+            className="flex items-center space-x-1 hover:opacity-80 transition cursor-pointer ml-1"
+          >
+            <kbd className="px-1.5 py-0.5 bg-slate-950 border border-slate-700 rounded font-mono text-amber-300 text-[10px]">F8</kbd>
+            <span>Checkout</span>
+          </button>
         </div>
 
         {/* Live Tax Indicator */}
@@ -66,9 +142,6 @@ export default function Navbar({ title }: NavbarProps) {
           <Percent className="w-3.5 h-3.5" />
           <span>GST: 5%</span>
         </div>
-
-        {/* Theme Switcher Button */}
-        <ThemeToggle variant="navbar" />
 
         {/* Real-time Clock */}
         <div className="flex items-center space-x-1.5 font-mono font-bold text-xs sm:text-sm text-amber-400 bg-slate-950 px-2.5 sm:px-3 py-1.5 rounded-xl border border-slate-800 shadow-inner shrink-0">

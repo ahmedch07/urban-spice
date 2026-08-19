@@ -16,31 +16,27 @@ import {
 } from 'lucide-react';
 import { formatShortTime } from '@/lib/utils';
 
+import { useApp } from '@/context/AppContext';
+
 export default function KitchenPage() {
-  const [currentUser, setCurrentUser] = useState<any>(null);
-  const [orders, setOrders] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const { currentUser, orders: globalOrders } = useApp();
+  const [orders, setOrders] = useState<any[]>(() => globalOrders || []);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [mobileTab, setMobileTab] = useState<'all' | 'pending' | 'preparing' | 'ready'>('all');
 
   useEffect(() => {
-    fetch('/api/auth/me')
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.user) setCurrentUser(data.user);
-      })
-      .catch(() => {});
-  }, []);
+    if (globalOrders && globalOrders.length > 0 && orders.length === 0) {
+      setOrders(globalOrders);
+    }
+  }, [globalOrders, orders.length]);
 
   const fetchKitchenOrders = async () => {
-    setIsLoading(true);
     try {
       const res = await fetch('/api/orders?range=today&limit=50');
       const data = await res.json();
       if (data.orders) setOrders(data.orders);
     } catch {
-      toast.error('Failed to sync kitchen orders');
-    } finally {
-      setIsLoading(false);
+      // silent background sync
     }
   };
 

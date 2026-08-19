@@ -19,7 +19,6 @@ import {
 } from '@/components/ui/select';
 import { DataTable } from '@/components/ui/data-table';
 import { getInventoryColumns } from '@/columns';
-import { toast } from '@/components/ui/sonner';
 import { Boxes, Plus, AlertTriangle, RefreshCw, X, AlertCircle } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 
@@ -43,10 +42,11 @@ const newIngredientSchema = z.object({
 
 type NewIngredientFormValues = z.infer<typeof newIngredientSchema>;
 
+import { useApp } from '@/context/AppContext';
+
 export default function InventoryPage() {
-  const [currentUser, setCurrentUser] = useState<any>({ name: 'Admin', role: 'ADMIN' });
-  const [inventoryItems, setInventoryItems] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { currentUser, inventoryItems, refreshInventory } = useApp();
+  const [isLoading, setIsLoading] = useState(false);
 
   // Stock Adjustment Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -56,28 +56,8 @@ export default function InventoryPage() {
   const [isNewItemModalOpen, setIsNewItemModalOpen] = useState(false);
 
   useEffect(() => {
-    fetch('/api/auth/me')
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.user) setCurrentUser(data.user);
-      })
-      .catch(() => {});
-
-    fetchInventory();
-  }, []);
-
-  const fetchInventory = async () => {
-    setIsLoading(true);
-    try {
-      const res = await fetch('/api/inventory');
-      const data = await res.json();
-      if (data.items) setInventoryItems(data.items);
-    } catch {
-      toast.error('Failed to fetch inventory items');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    refreshInventory();
+  }, [refreshInventory]);
 
   const handleOpenAdjustment = (item: any) => {
     setSelectedItem(item);
@@ -166,7 +146,7 @@ export default function InventoryPage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={fetchInventory}
+                onClick={() => refreshInventory()}
                 className="space-x-1"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
@@ -192,7 +172,7 @@ export default function InventoryPage() {
           onClose={() => setIsModalOpen(false)}
           onSuccess={() => {
             setIsModalOpen(false);
-            fetchInventory();
+            refreshInventory();
           }}
         />
       )}
@@ -203,7 +183,7 @@ export default function InventoryPage() {
           onClose={() => setIsNewItemModalOpen(false)}
           onSuccess={() => {
             setIsNewItemModalOpen(false);
-            fetchInventory();
+            refreshInventory();
           }}
         />
       )}

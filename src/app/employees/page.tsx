@@ -22,6 +22,7 @@ import { DeleteConfirmModal } from '@/components/ui/delete-confirm-modal';
 import { getEmployeeColumns } from '@/columns';
 import { toast } from '@/components/ui/sonner';
 import { UserCheck, Plus, X, AlertCircle } from 'lucide-react';
+import { useApp } from '@/context/AppContext';
 
 const createEmployeeSchema = z.object({
   name: z.string().min(1, 'Employee name is required'),
@@ -44,9 +45,9 @@ const editEmployeeSchema = z.object({
 type EditEmployeeFormValues = z.infer<typeof editEmployeeSchema>;
 
 export default function EmployeesPage() {
-  const [currentUser, setCurrentUser] = useState<any>({ name: 'Admin', role: 'ADMIN' });
-  const [employees, setEmployees] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { currentUser, employees, refreshEmployees } = useApp();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   // Add Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -62,28 +63,8 @@ export default function EmployeesPage() {
   const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
-    fetch('/api/auth/me')
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.user) setCurrentUser(data.user);
-      })
-      .catch(() => {});
-
-    fetchEmployees();
-  }, []);
-
-  const fetchEmployees = async () => {
-    setIsLoading(true);
-    try {
-      const res = await fetch('/api/employees');
-      const data = await res.json();
-      if (data.employees) setEmployees(data.employees);
-    } catch {
-      toast.error('Failed to load employee accounts');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    refreshEmployees();
+  }, [refreshEmployees]);
 
   const openEditModal = (emp: any) => {
     setEditingEmployee(emp);
@@ -113,7 +94,7 @@ export default function EmployeesPage() {
       }
       toast.success('Employee account deleted');
       setIsDeleteModalOpen(false);
-      fetchEmployees();
+      refreshEmployees();
     } catch {
       toast.error('Network error deleting employee');
       setDeleteErrorMsg('Network error deleting employee');
@@ -121,6 +102,18 @@ export default function EmployeesPage() {
       setIsDeleting(false);
     }
   };
+
+  const filteredEmployees = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return employees;
+    return employees.filter(
+      (e: any) =>
+        e.name?.toLowerCase().includes(q) ||
+        e.email?.toLowerCase().includes(q) ||
+        e.role?.toLowerCase().includes(q) ||
+        e.phone?.toLowerCase().includes(q)
+    );
+  }, [employees, searchQuery]);
 
   const columns = useMemo(
     () =>
@@ -164,7 +157,7 @@ export default function EmployeesPage() {
           {/* Employees List DataTable */}
           <DataTable
             columns={columns}
-            data={employees}
+            data={filteredEmployees}
             isLoading={isLoading}
             loadingMessage="Loading staff list..."
             emptyMessage='No employee accounts found. Click "Add New Staff" to create one.'
@@ -178,7 +171,7 @@ export default function EmployeesPage() {
           onClose={() => setIsModalOpen(false)}
           onSuccess={() => {
             setIsModalOpen(false);
-            fetchEmployees();
+            refreshEmployees();
           }}
         />
       )}
@@ -190,7 +183,7 @@ export default function EmployeesPage() {
           onClose={() => setIsEditModalOpen(false)}
           onSuccess={() => {
             setIsEditModalOpen(false);
-            fetchEmployees();
+            refreshEmployees();
           }}
         />
       )}

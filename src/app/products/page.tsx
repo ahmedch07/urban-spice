@@ -48,14 +48,20 @@ const categorySchema = z.object({
   image: z.string().optional(),
 });
 
+import { useApp } from '@/context/AppContext';
+
 type CategoryFormValues = z.infer<typeof categorySchema>;
 
 export default function ProductsPage() {
-  const [currentUser, setCurrentUser] = useState<any>(null);
-  const [products, setProducts] = useState<any[]>([]);
-  const [categories, setCategories] = useState<any[]>([]);
+  const {
+    currentUser,
+    products,
+    categories,
+    refreshProducts,
+    refreshCategories,
+  } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Add/Edit Product Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -72,41 +78,10 @@ export default function ProductsPage() {
   const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
-    fetch('/api/auth/me')
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.user) setCurrentUser(data.user);
-      })
-      .catch(() => {});
-
-    fetchCategories();
-    fetchProducts();
-  }, []);
-
-  const fetchCategories = async () => {
-    try {
-      const res = await fetch('/api/categories');
-      const data = await res.json();
-      if (data.categories) {
-        setCategories(data.categories);
-      }
-    } catch {
-      toast.error('Failed to load menu categories');
-    }
-  };
-
-  const fetchProducts = async () => {
-    setIsLoading(true);
-    try {
-      const res = await fetch('/api/products');
-      const data = await res.json();
-      if (data.products) setProducts(data.products);
-    } catch {
-      toast.error('Failed to load menu products');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    // Silent background refresh
+    refreshCategories();
+    refreshProducts();
+  }, [refreshCategories, refreshProducts]);
 
   const handleOpenModal = (prod: any = null) => {
     setEditProduct(prod);
@@ -138,8 +113,8 @@ export default function ProductsPage() {
         return;
       }
       setIsDeleteModalOpen(false);
-      fetchProducts();
-    } catch (e) {
+      refreshProducts();
+    } catch {
       setDeleteErrorMsg('Network error deleting product');
     } finally {
       setIsDeleting(false);
@@ -234,7 +209,7 @@ export default function ProductsPage() {
                       {c.name}
                     </h4>
                     <span className="text-[10px] text-slate-500 font-mono">
-                      {c._count?.products || 0} items
+                      {(c as any)._count?.products || 0} items
                     </span>
                   </div>
                 </div>
@@ -275,7 +250,7 @@ export default function ProductsPage() {
           onClose={() => setIsModalOpen(false)}
           onSuccess={() => {
             setIsModalOpen(false);
-            fetchProducts();
+            refreshProducts();
           }}
         />
       )}
@@ -287,8 +262,8 @@ export default function ProductsPage() {
           onClose={() => setIsCatModalOpen(false)}
           onSuccess={() => {
             setIsCatModalOpen(false);
-            fetchCategories();
-            fetchProducts();
+            refreshCategories();
+            refreshProducts();
           }}
         />
       )}

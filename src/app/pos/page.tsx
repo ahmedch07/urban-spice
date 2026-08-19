@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Sidebar from '@/components/Sidebar';
 import Navbar from '@/components/Navbar';
 import ProductGrid from '@/components/POS/ProductGrid';
@@ -11,24 +11,42 @@ import CustomizationModal from '@/components/POS/CustomizationModal';
 import CustomerModal from '@/components/POS/CustomerModal';
 import PaymentModal from '@/components/POS/PaymentModal';
 import ThermalReceiptModal from '@/components/POS/ThermalReceiptModal';
-import { CartItem, CategoryItem, CustomerItem, OrderType, ProductItem, RiderItem } from '@/lib/types';
-import { mergeRiderOverrides } from '@/lib/rider-overrides';
+import { CartItem, CustomerItem, OrderType, ProductItem, RiderItem } from '@/lib/types';
+import { useApp } from '@/context/AppContext';
 import { formatCurrency } from '@/lib/utils';
 
 export default function POSPage() {
-  // Session User
-  const [currentUser, setCurrentUser] = useState<any>(null);
-
-  // POS Data
-  const [categories, setCategories] = useState<CategoryItem[]>([]);
-  const [products, setProducts] = useState<ProductItem[]>([]);
-  const [pizzaConfig, setPizzaConfig] = useState<any>({ flavors: [], sizes: [], crusts: [], toppings: [] });
-  const [riders, setRiders] = useState<RiderItem[]>([]);
+  const {
+    currentUser,
+    categories,
+    products: globalProducts,
+    pizzaConfig,
+    riders,
+    storeSettings,
+  } = useApp();
 
   // Filters & Cart
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [cart, setCart] = useState<CartItem[]>([]);
+
+  // Filter products instantaneously in memory
+  const products = useMemo(() => {
+    return globalProducts.filter((p) => {
+      const matchCat =
+        selectedCategory === 'all' ||
+        p.categoryId === selectedCategory ||
+        p.category?.id === selectedCategory ||
+        p.category?.name.toLowerCase() === selectedCategory.toLowerCase();
+
+      const matchSearch =
+        !searchQuery.trim() ||
+        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.SKU.toLowerCase().includes(searchQuery.toLowerCase());
+
+      return matchCat && matchSearch;
+    });
+  }, [globalProducts, selectedCategory, searchQuery]);
 
   // Customer & Order Config
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerItem | null>(null);
@@ -37,8 +55,8 @@ export default function POSPage() {
   const [tableNo, setTableNo] = useState<string>('');
   const [discount, setDiscount] = useState<number>(0);
   const [discountType, setDiscountType] = useState<'FIXED' | 'PERCENTAGE'>('FIXED');
-  const [deliveryFee, setDeliveryFee] = useState<number>(150);
-  const [taxRate, setTaxRate] = useState<number>(5);
+  const [deliveryFee, setDeliveryFee] = useState<number>(() => Number(storeSettings.defaultDeliveryFee) || 100);
+  const [taxRate, setTaxRate] = useState<number>(() => (storeSettings.taxEnabled === 'true' ? Number(storeSettings.taxRate) || 0 : 0));
 
   // Modals visibility
   const [isPizzaModalOpen, setIsPizzaModalOpen] = useState<boolean>(false);
@@ -49,55 +67,6 @@ export default function POSPage() {
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState<boolean>(false);
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState<boolean>(false);
   const [completedOrder, setCompletedOrder] = useState<any>(null);
-
-  // Load User Profile
-  useEffect(() => {
-    fetch('/api/auth/me')
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.user) setCurrentUser(data.user);
-      })
-      .catch(() => {});
-  }, []);
-
-  // Fetch Categories, Products, Pizza Config & Riders
-  useEffect(() => {
-    fetch('/api/pos/categories')
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.categories) setCategories(data.categories);
-      })
-      .catch(() => {});
-
-    fetch('/api/pos/pizza-config')
-      .then((res) => res.json())
-      .then((data) => {
-        setPizzaConfig(data);
-      })
-      .catch(() => {});
-
-    const fetchRiders = () => fetch('/api/riders?all=true', { cache: 'no-store' })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.riders) setRiders(mergeRiderOverrides(data.riders));
-      })
-      .catch(() => {});
-
-    fetchRiders();
-    window.addEventListener('riders-updated', fetchRiders);
-    return () => window.removeEventListener('riders-updated', fetchRiders);
-  }, []);
-
-  // Fetch Products based on category/search
-  useEffect(() => {
-    const url = `/api/pos/products?categoryId=${selectedCategory}&search=${encodeURIComponent(searchQuery)}`;
-    fetch(url)
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.products) setProducts(data.products);
-      })
-      .catch(() => {});
-  }, [selectedCategory, searchQuery]);
 
   // Keyboard Shortcuts Listener (F2 Search, F4 New Order, F8 Checkout, ESC Close)
   useEffect(() => {
@@ -120,8 +89,20 @@ export default function POSPage() {
       }
     };
 
+    const handleNewOrder = () => handleResetOrder();
+    const handleCheckout = () => {
+      if (cart.length > 0) setIsPaymentModalOpen(true);
+    };
+
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('pos-shortcut-new-order', handleNewOrder);
+    window.addEventListener('pos-shortcut-checkout', handleCheckout);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('pos-shortcut-new-order', handleNewOrder);
+      window.removeEventListener('pos-shortcut-checkout', handleCheckout);
+    };
   }, [cart]);
 
   // Open Pizza Modal with category preselected
@@ -300,7 +281,7 @@ export default function POSPage() {
         isOpen={isPizzaModalOpen}
         onClose={() => setIsPizzaModalOpen(false)}
         onAddToCart={handleAddToCart}
-        pizzaConfig={pizzaConfig}
+        pizzaConfig={pizzaConfig || { flavors: [], sizes: [], crusts: [], toppings: [] }}
         initialCategoryName={modalCategoryName}
         initialFlavorName={modalFlavorName}
       />

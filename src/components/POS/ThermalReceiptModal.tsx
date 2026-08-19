@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { X, Printer, Download, CheckCircle2, Plus } from 'lucide-react';
 import { formatCurrency, formatDate } from '@/lib/utils';
+import { useApp } from '@/context/AppContext';
 
 interface ThermalReceiptModalProps {
   isOpen: boolean;
@@ -17,37 +18,7 @@ export default function ThermalReceiptModal({
   order,
   onNewOrder,
 }: ThermalReceiptModalProps) {
-  const [storeSettings, setStoreSettings] = useState<any>({
-    storeName: 'Slice & Spice Pizza POS',
-    storeAddress: '123 Main Commercial Area, Gulberg III, Lahore',
-    storePhone: '+92 300 1234567',
-    whatsappNumber: '+92 300 1234567',
-    storeEmail: 'orders@sliceandspice.com',
-    currency: 'Rs.',
-    taxRate: '5',
-    invoiceFooter: 'Thank you for ordering from Slice & Spice Pizza! Have a delicious day!',
-    socialMedia: '@sliceandspicepizza',
-  });
-
-  useEffect(() => {
-    if (isOpen) {
-      try {
-        const cached = localStorage.getItem('urban_spice_store_settings');
-        if (cached) {
-          setStoreSettings((prev: any) => ({ ...prev, ...JSON.parse(cached) }));
-        }
-      } catch (e) {}
-
-      fetch('/api/settings')
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.settings && Object.keys(data.settings).length > 0) {
-            setStoreSettings((prev: any) => ({ ...prev, ...data.settings }));
-          }
-        })
-        .catch(() => {});
-    }
-  }, [isOpen]);
+  const { storeSettings } = useApp();
 
   if (!isOpen || !order) return null;
 

@@ -17,6 +17,7 @@ import { getCustomerColumns } from '@/columns';
 import { Users, Search, X, AlertCircle } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import { formatCurrency, formatDate } from '@/lib/utils';
+import { useApp } from '@/context/AppContext';
 
 const editCustomerSchema = z.object({
   name: z.string().min(1, 'Customer name is required'),
@@ -31,50 +32,40 @@ const editCustomerSchema = z.object({
 type EditCustomerFormValues = z.infer<typeof editCustomerSchema>;
 
 export default function CustomersPage() {
-  const [currentUser, setCurrentUser] = useState<any>({ name: 'User', role: '' });
-  const [customers, setCustomers] = useState<any[]>([]);
+  const { currentUser, customers, refreshCustomers } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Selected Customer Profile Modal
+  // View Customer Profile Drawer
   const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
-  const [customerOrders, setCustomerOrders] = useState<any[]>([]);
-  const [favoriteProducts, setFavoriteProducts] = useState<any[]>([]);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [customerOrders, setCustomerOrders] = useState<any[]>([]);
+  const [favoriteProducts, setFavoriteProducts] = useState<{ name: string; count: number }[]>([]);
 
-  // Edit Customer Modal State
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  // Edit Customer Modal
   const [editingCustomer, setEditingCustomer] = useState<any>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
-  // Delete Customer Modal State
+  // Delete Customer Modal
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deletingCustomer, setDeletingCustomer] = useState<any>(null);
   const [deleteErrorMsg, setDeleteErrorMsg] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
-    fetch('/api/auth/me')
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.user) setCurrentUser(data.user);
-      })
-      .catch(() => {});
+    refreshCustomers();
+  }, [refreshCustomers]);
 
-    fetchCustomers();
-  }, [searchQuery]);
-
-  const fetchCustomers = async () => {
-    setIsLoading(true);
-    try {
-      const res = await fetch(`/api/pos/customers?q=${encodeURIComponent(searchQuery)}`);
-      const data = await res.json();
-      if (data.customers) setCustomers(data.customers);
-    } catch {
-      toast.error('Failed to load customer records');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const filteredCustomers = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return customers;
+    return customers.filter(
+      (c: any) =>
+        c.name.toLowerCase().includes(q) ||
+        c.phone.toLowerCase().includes(q) ||
+        (c.email && c.email.toLowerCase().includes(q))
+    );
+  }, [customers, searchQuery]);
 
   const handleOpenProfile = async (customer: any) => {
     setSelectedCustomer(customer);
@@ -131,7 +122,7 @@ export default function CustomersPage() {
       }
       toast.success('Customer deleted successfully');
       setIsDeleteModalOpen(false);
-      fetchCustomers();
+      refreshCustomers();
     } catch {
       toast.error('Network error deleting customer');
       setDeleteErrorMsg('Network error deleting customer');
@@ -178,7 +169,7 @@ export default function CustomersPage() {
 
           <DataTable
             columns={columns}
-            data={customers}
+            data={filteredCustomers}
             isLoading={isLoading}
             loadingMessage="Loading customers..."
             emptyMessage="No customer records found"
@@ -301,7 +292,7 @@ export default function CustomersPage() {
           onClose={() => setIsEditModalOpen(false)}
           onSuccess={() => {
             setIsEditModalOpen(false);
-            fetchCustomers();
+            refreshCustomers();
           }}
         />
       )}

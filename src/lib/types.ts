@@ -58,6 +58,13 @@ export interface ToppingItem {
   active: boolean;
 }
 
+export interface PizzaConfig {
+  flavors: PizzaFlavorItem[];
+  sizes: PizzaSizeItem[];
+  crusts: CrustItem[];
+  toppings: ToppingItem[];
+}
+
 export interface CartItemTopping {
   toppingId: string;
   name: string;

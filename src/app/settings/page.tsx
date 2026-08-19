@@ -13,46 +13,41 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import ImageUploadInput from '@/components/ImageUploadInput';
 import { toast } from '@/components/ui/sonner';
-import { Store, Save, CheckCircle2, AlertCircle } from 'lucide-react';
+import { useApp } from '@/context/AppContext';
+import {
+  Store,
+  Receipt,
+  Clock,
+  Coins,
+  CheckCircle2,
+  AlertCircle,
+  Save,
+  Share2,
+} from 'lucide-react';
 
 const storeSettingsSchema = z.object({
   storeName: z.string().min(1, 'Shop name is required'),
-  storeLogo: z.string().optional(),
-  storeAddress: z.string().min(1, 'Shop address is required'),
+  storeLogo: z.string().optional().default(''),
+  storeAddress: z.string().min(1, 'Address is required'),
   storePhone: z.string().min(1, 'Phone number is required'),
-  whatsappNumber: z.string().optional(),
-  storeEmail: z.string().optional(),
+  whatsappNumber: z.string().optional().default(''),
+  storeEmail: z.string().email('Invalid email address').optional().or(z.literal('')),
   currency: z.string().min(1, 'Currency symbol is required'),
-  taxRate: z.string().min(1, 'Tax rate is required'),
-  invoicePrefix: z.string().optional(),
-  invoiceFooter: z.string().optional(),
-  openingTime: z.string().optional(),
-  closingTime: z.string().optional(),
-  defaultDeliveryFee: z.string().optional(),
-  socialMedia: z.string().optional(),
+  taxRate: z.string().default('0'),
+  taxEnabled: z.enum(['true', 'false']).default('false'),
+  invoicePrefix: z.string().min(1, 'Invoice prefix is required'),
+  invoiceFooter: z.string().min(1, 'Receipt footer text is required'),
+  openingTime: z.string().default('11:00 AM'),
+  closingTime: z.string().default('02:00 AM'),
+  defaultDeliveryFee: z.string().default('100'),
+  socialMedia: z.string().optional().default(''),
+  receiptSize: z.enum(['80mm', '58mm']).default('80mm'),
 });
 
 type StoreSettingsFormValues = z.infer<typeof storeSettingsSchema>;
 
-const defaultValues: StoreSettingsFormValues = {
-  storeName: 'Urban Spice',
-  storeLogo: '/logo.png',
-  storeAddress: '180 F, Near Klash Park, Millat Town, Faisalabad',
-  storePhone: '0300-5225898',
-  whatsappNumber: '0300-5225898',
-  storeEmail: 'orders@urbanspice.com',
-  currency: 'Rs.',
-  taxRate: '0',
-  invoicePrefix: 'INV-2026',
-  invoiceFooter: 'Thank you for ordering from Urban Spice! Ultimate Taste In Every Bite!',
-  openingTime: '11:00 AM',
-  closingTime: '02:00 AM',
-  defaultDeliveryFee: '150',
-  socialMedia: '@urbanspicefaisalabad',
-};
-
 export default function SettingsPage() {
-  const [currentUser, setCurrentUser] = useState<any>(null);
+  const { currentUser, storeSettings, refreshSettings } = useApp();
   const [savedMsg, setSavedMsg] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -62,42 +57,16 @@ export default function SettingsPage() {
     control,
     reset,
     formState: { errors, isSubmitting },
-  } = useForm<StoreSettingsFormValues>({
+  } = useForm<any>({
     resolver: zodResolver(storeSettingsSchema),
-    defaultValues,
+    defaultValues: storeSettings,
   });
 
   useEffect(() => {
-    fetch('/api/auth/me')
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.user) setCurrentUser(data.user);
-      })
-      .catch(() => {});
+    reset(storeSettings);
+  }, [storeSettings, reset]);
 
-    // Fetch latest settings from Server API and merge with LocalStorage
-    fetch('/api/settings')
-      .then((res) => res.json())
-      .then((data) => {
-        let merged = { ...defaultValues, ...(data.settings || {}) };
-        try {
-          const cached = localStorage.getItem('urban_spice_store_settings');
-          if (cached) {
-            merged = { ...merged, ...JSON.parse(cached) };
-          }
-        } catch {}
-
-        reset(merged);
-      })
-      .catch(() => {
-        try {
-          const cached = localStorage.getItem('urban_spice_store_settings');
-          if (cached) reset({ ...defaultValues, ...JSON.parse(cached) });
-        } catch {}
-      });
-  }, [reset]);
-
-  const onSave = async (values: StoreSettingsFormValues) => {
+  const onSave = async (values: any) => {
     setSavedMsg(false);
     setErrorMsg('');
 
@@ -122,6 +91,7 @@ export default function SettingsPage() {
       }
 
       setSavedMsg(true);
+      await refreshSettings();
       toast.success('Store settings saved successfully!');
       setTimeout(() => setSavedMsg(false), 4000);
     } catch {
@@ -169,8 +139,8 @@ export default function SettingsPage() {
                   className="font-semibold"
                   error={!!errors.storeName}
                 />
-                {errors.storeName && (
-                  <p className="text-[11px] text-red-400 mt-1 font-medium">{errors.storeName.message}</p>
+                {errors.storeName?.message && (
+                  <p className="text-[11px] text-red-400 mt-1 font-medium">{String(errors.storeName.message)}</p>
                 )}
               </div>
 
@@ -201,8 +171,8 @@ export default function SettingsPage() {
                   className="font-mono"
                   error={!!errors.currency}
                 />
-                {errors.currency && (
-                  <p className="text-[11px] text-red-400 mt-1 font-medium">{errors.currency.message}</p>
+                {errors.currency?.message && (
+                  <p className="text-[11px] text-red-400 mt-1 font-medium">{String(errors.currency.message)}</p>
                 )}
               </div>
 
@@ -215,8 +185,8 @@ export default function SettingsPage() {
                   className="font-mono"
                   error={!!errors.storePhone}
                 />
-                {errors.storePhone && (
-                  <p className="text-[11px] text-red-400 mt-1 font-medium">{errors.storePhone.message}</p>
+                {errors.storePhone?.message && (
+                  <p className="text-[11px] text-red-400 mt-1 font-medium">{String(errors.storePhone.message)}</p>
                 )}
               </div>
 
@@ -247,8 +217,8 @@ export default function SettingsPage() {
                   {...register('storeAddress')}
                   error={!!errors.storeAddress}
                 />
-                {errors.storeAddress && (
-                  <p className="text-[11px] text-red-400 mt-1 font-medium">{errors.storeAddress.message}</p>
+                {errors.storeAddress?.message && (
+                  <p className="text-[11px] text-red-400 mt-1 font-medium">{String(errors.storeAddress.message)}</p>
                 )}
               </div>
 
@@ -262,8 +232,8 @@ export default function SettingsPage() {
                   className="font-mono"
                   error={!!errors.taxRate}
                 />
-                {errors.taxRate && (
-                  <p className="text-[11px] text-red-400 mt-1 font-medium">{errors.taxRate.message}</p>
+                {errors.taxRate?.message && (
+                  <p className="text-[11px] text-red-400 mt-1 font-medium">{String(errors.taxRate.message)}</p>
                 )}
               </div>
 

@@ -20,8 +20,8 @@ import {
   X,
 } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
-import ThemeToggle from '@/components/ThemeToggle';
 import { DeleteConfirmModal } from '@/components/ui/delete-confirm-modal';
+import { useApp } from '@/context/AppContext';
 
 interface SidebarProps {
   userRole?: string;
@@ -31,31 +31,16 @@ interface SidebarProps {
 
 export default function Sidebar({ userRole: propRole, userName: propName, userEmail: propEmail }: SidebarProps) {
   const pathname = usePathname();
+  const { currentUser } = useApp();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-  const [sessionUser, setSessionUser] = useState<any>(() => {
-    if (propRole && propName) {
-      return { role: propRole, name: propName, email: propEmail || '' };
-    }
-    return null;
-  });
-
-  useEffect(() => {
-    if (propRole && propName) {
-      setSessionUser({ role: propRole, name: propName, email: propEmail || '' });
-    } else {
-      fetch('/api/auth/me')
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.user) {
-            setSessionUser(data.user);
-          }
-        })
-        .catch(() => {});
-    }
-  }, [propRole, propName, propEmail]);
+  const sessionUser = {
+    role: propRole || currentUser?.role || 'CASHIER',
+    name: propName || currentUser?.name || 'Staff User',
+    email: propEmail || currentUser?.email || '',
+  };
 
   useEffect(() => {
     const handleToggle = () => setIsMobileOpen((prev) => !prev);
@@ -149,10 +134,8 @@ export default function Sidebar({ userRole: propRole, userName: propName, userEm
         })}
       </div>
 
-      {/* Footer User Profile, Theme & Logout */}
+      {/* Footer User Profile & Logout */}
       <div className="p-4 border-t border-slate-800 bg-slate-900/50 space-y-3">
-        <ThemeToggle variant="sidebar" />
-
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3 overflow-hidden">
             <div className="w-9 h-9 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-amber-400 font-bold text-sm shrink-0">

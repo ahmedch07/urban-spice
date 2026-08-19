@@ -13,11 +13,25 @@ import { topProductColumns, salesOrderColumns } from '@/columns';
 import { Download, RotateCcw } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 
+import { useApp } from '@/context/AppContext';
+
 export default function ReportsPage() {
-  const [currentUser, setCurrentUser] = useState<any>({ name: 'Admin', role: 'ADMIN' });
-  const [period, setPeriod] = useState<string>('month');
-  const [reportData, setReportData] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const { currentUser } = useApp();
+  const [period, setPeriod] = useState<any>('today');
+  const [reportData, setReportData] = useState<any>({
+    totalSales: 0,
+    totalOrders: 0,
+    totalDiscount: 0,
+    totalTax: 0,
+    cashSales: 0,
+    cardSales: 0,
+    pendingPayments: 0,
+    averageOrderValue: 0,
+    topProducts: [],
+    recentOrders: [],
+    paymentBreakdown: [],
+  });
+  const [isLoading, setIsLoading] = useState(false);
 
   // Start New Day Modal
   const [isNewDayModalOpen, setIsNewDayModalOpen] = useState(false);
@@ -25,13 +39,6 @@ export default function ReportsPage() {
   const [isStartingDay, setIsStartingDay] = useState(false);
 
   useEffect(() => {
-    fetch('/api/auth/me')
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.user) setCurrentUser(data.user);
-      })
-      .catch(() => {});
-
     fetchReports();
   }, [period]);
 

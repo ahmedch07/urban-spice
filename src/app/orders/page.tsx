@@ -22,42 +22,29 @@ import { toast } from '@/components/ui/sonner';
 import { Receipt, Search, Filter, RefreshCw } from 'lucide-react';
 import { mergeRiderOverrides } from '@/lib/rider-overrides';
 
+import { useApp } from '@/context/AppContext';
+
 export default function OrdersPage() {
-  const [currentUser, setCurrentUser] = useState<any>({ name: 'Loading...', role: '' });
-  const [orders, setOrders] = useState<any[]>([]);
-  const [riders, setRiders] = useState<any[]>([]);
+  const { currentUser, orders: globalOrders, riders, refreshOrders } = useApp();
+  const [orders, setOrders] = useState<any[]>(() => globalOrders || []);
   const [dateRange, setDateRange] = useState<string>('today');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   // Selected Order for Receipt Modal
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [isReceiptOpen, setIsReceiptOpen] = useState<boolean>(false);
 
+  // Sync with global preloaded orders when available
   useEffect(() => {
-    fetch('/api/auth/me')
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.user) setCurrentUser(data.user);
-      })
-      .catch(() => {});
+    if (globalOrders && globalOrders.length > 0 && orders.length === 0) {
+      setOrders(globalOrders);
+    }
+  }, [globalOrders, orders.length]);
 
-    const fetchRiders = () =>
-      fetch('/api/riders?all=true', { cache: 'no-store' })
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.riders) setRiders(mergeRiderOverrides(data.riders));
-        })
-        .catch(() => {});
-
-    fetchRiders();
-    window.addEventListener('riders-updated', fetchRiders);
-    return () => window.removeEventListener('riders-updated', fetchRiders);
-  }, []);
-
-  const fetchOrders = async () => {
-    setIsLoading(true);
+  const fetchOrders = async (showLoading = false) => {
+    if (showLoading) setIsLoading(true);
     try {
       const url = `/api/orders?range=${dateRange}&status=${statusFilter}&search=${encodeURIComponent(searchQuery)}`;
       const res = await fetch(url);
@@ -71,7 +58,9 @@ export default function OrdersPage() {
   };
 
   useEffect(() => {
-    fetchOrders();
+    const hasMemoryData = orders.length > 0 || (globalOrders && globalOrders.length > 0);
+    const isFiltered = dateRange !== 'today' || statusFilter !== 'ALL' || searchQuery !== '';
+    fetchOrders(!hasMemoryData || isFiltered);
   }, [dateRange, statusFilter, searchQuery]);
 
   const [statusConfirm, setStatusConfirm] = useState<{ orderId: string; newStatus: string } | null>(null);
@@ -106,6 +95,7 @@ export default function OrdersPage() {
       toast.success(`Order status updated to ${newStatus}`);
       setStatusConfirm(null);
       fetchOrders();
+      refreshOrders();
     } catch {
       toast.error('Network error updating status');
       setStatusErrorMsg('Network error updating status');
@@ -215,7 +205,7 @@ export default function OrdersPage() {
               <Button
                 variant="outline"
                 size="icon"
-                onClick={fetchOrders}
+                onClick={() => fetchOrders(true)}
                 title="Refresh Orders"
               >
                 <RefreshCw className="w-4 h-4" />
