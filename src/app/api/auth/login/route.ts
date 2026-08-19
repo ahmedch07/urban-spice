@@ -18,9 +18,16 @@ export async function POST(request: Request) {
       where: { email: email.toLowerCase().trim() },
     });
 
-    if (!user || !user.active) {
+    if (!user) {
       return NextResponse.json(
-        { error: 'Invalid email or account is inactive' },
+        { error: 'No staff account found with this email address. Please check the email or create it in Staff Management.' },
+        { status: 401 }
+      );
+    }
+
+    if (!user.active) {
+      return NextResponse.json(
+        { error: 'This account has been deactivated. Please contact Admin.' },
         { status: 401 }
       );
     }
@@ -28,7 +35,7 @@ export async function POST(request: Request) {
     const isValid = await verifyPassword(password, user.password);
     if (!isValid) {
       return NextResponse.json(
-        { error: 'Invalid email or password' },
+        { error: 'Incorrect password. Please double-check your password.' },
         { status: 401 }
       );
     }
