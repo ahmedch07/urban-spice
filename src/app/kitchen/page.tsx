@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic';
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import Sidebar from '@/components/Sidebar';
 import Navbar from '@/components/Navbar';
 import {
@@ -11,7 +11,6 @@ import {
   ChevronRight,
   RefreshCw,
   Flame,
-  Utensils,
   Layers,
 } from 'lucide-react';
 import { formatShortTime } from '@/lib/utils';

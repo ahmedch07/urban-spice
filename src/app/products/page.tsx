@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -19,12 +19,10 @@ import {
   SelectItem,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
 import { DataTable } from '@/components/ui/data-table';
 import { DeleteConfirmModal } from '@/components/ui/delete-confirm-modal';
 import { getProductColumns } from '@/columns';
-import { Package, Plus, Search, Edit2, Trash2, FolderPlus, Layers, X, AlertCircle } from 'lucide-react';
-import { formatCurrency } from '@/lib/utils';
+import { Package, Plus, Search, FolderPlus, Layers, X, AlertCircle } from 'lucide-react';
 
 const productSchema = z.object({
   name: z.string().min(1, 'Product name is required'),

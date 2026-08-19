@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Sidebar from '@/components/Sidebar';
 import Navbar from '@/components/Navbar';
 import ThermalReceiptModal from '@/components/POS/ThermalReceiptModal';
@@ -15,12 +15,10 @@ import {
   SelectContent,
   SelectItem,
 } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
 import { DataTable } from '@/components/ui/data-table';
 import { DeleteConfirmModal } from '@/components/ui/delete-confirm-modal';
 import { getOrderColumns } from '@/columns';
-import { Search, Printer, RefreshCw } from 'lucide-react';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { Search, RefreshCw } from 'lucide-react';
 import { mergeRiderOverrides } from '@/lib/rider-overrides';
 
 export default function OrdersPage() {

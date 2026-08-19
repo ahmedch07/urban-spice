@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Clock, Percent, Keyboard, Menu } from 'lucide-react';
 import ThemeToggle from '@/components/ThemeToggle';
 

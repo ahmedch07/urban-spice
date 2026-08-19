@@ -1,7 +1,6 @@
 'use client';
 
-import React from 'react';
-import { Search, Pizza, Package, Layers, Sparkles, Utensils, Flame, Coffee, PlusCircle } from 'lucide-react';
+import { Search, Pizza, Package, Layers } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { CategoryItem, ProductItem } from '@/lib/types';
 

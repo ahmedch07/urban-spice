@@ -1,9 +1,8 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import { useState, useRef } from 'react';
 import {
   Upload,
-  Image as ImageIcon,
   RefreshCw,
   CheckCircle2,
   AlertCircle,

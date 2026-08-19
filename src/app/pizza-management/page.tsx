@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -12,7 +12,6 @@ import ImageUploadInput from '@/components/ImageUploadInput';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
 import { DataTable } from '@/components/ui/data-table';
 import { DeleteConfirmModal } from '@/components/ui/delete-confirm-modal';
 import {
@@ -21,7 +20,7 @@ import {
   getCrustColumns,
   getToppingColumns,
 } from '@/columns';
-import { Pizza, Plus, Edit2, Trash2, X, AlertCircle } from 'lucide-react';
+import { Pizza, Plus, X, AlertCircle } from 'lucide-react';
 
 const flavorSchema = z.object({
   name: z.string().min(1, 'Flavor name is required'),

@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { X, Plus, Minus, Check, Pizza as PizzaIcon, Sparkles, Layers } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { X, Plus, Minus, Check, Pizza as PizzaIcon, Sparkles } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { CartItem, CartItemTopping } from '@/lib/types';
 

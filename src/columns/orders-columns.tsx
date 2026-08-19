@@ -1,4 +1,3 @@
-import React from 'react';
 import { ColumnDef } from '@/components/ui/data-table';
 import { Button } from '@/components/ui/button';
 import { Printer } from 'lucide-react';

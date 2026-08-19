@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { DataTable } from '@/components/ui/data-table';
 import { DeleteConfirmModal } from '@/components/ui/delete-confirm-modal';
-import { Truck, Plus, Search, Edit2, RefreshCw, X, ShieldAlert, AlertCircle } from 'lucide-react';
+import { Truck, Plus, Search,Edit2, RefreshCw, X, AlertCircle } from 'lucide-react';
 import { RiderItem } from '@/lib/types';
 import { mergeRiderOverrides, saveRiderOverride } from '@/lib/rider-overrides';
 
@@ -439,7 +439,7 @@ function EditRiderModal({
       <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 space-y-4 shadow-2xl">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <Edit2 className="w-5 h-5 text-amber-400" />
+            <Edit2  className="w-5 h-5 text-amber-400" />
             <h3 className="text-base font-bold text-slate-100">Edit Delivery Rider Profile</h3>
           </div>
           <button onClick={onClose} className="p-1 text-slate-400 hover:text-slate-200">

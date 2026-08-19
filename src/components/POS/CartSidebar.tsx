@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
   ShoppingBag,
   Trash2,
@@ -14,7 +14,6 @@ import {
   ShoppingBag as TakeawayIcon,
   CreditCard,
   X,
-  Edit2,
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { CartItem, CustomerItem, OrderType, RiderItem } from '@/lib/types';
@@ -76,7 +75,6 @@ export default function CartSidebar({
 }: CartSidebarProps) {
   const [showDiscountInput, setShowDiscountInput] = useState(false);
   const [showTaxInput, setShowTaxInput] = useState(false);
-  const [showTaxBreakdown, setShowTaxBreakdown] = useState(false);
 
   // Subtotal Calculation
   const subtotal = cart.reduce((sum, item) => sum + item.totalPrice, 0);

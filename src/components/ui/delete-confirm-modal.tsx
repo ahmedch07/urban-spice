@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import type { ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, AlertCircle, Trash2, X } from 'lucide-react';
 
@@ -9,7 +9,7 @@ export interface DeleteConfirmModalProps {
   onClose: () => void;
   onConfirm: () => void | Promise<void>;
   title?: string;
-  description?: React.ReactNode;
+  description?: ReactNode;
   confirmText?: string;
   cancelText?: string;
   isLoading?: boolean;
@@ -90,5 +90,3 @@ export function DeleteConfirmModal({
     </div>
   );
 }
-
-export default DeleteConfirmModal;

@@ -1,4 +1,3 @@
-import React from 'react';
 import { ColumnDef } from '@/components/ui/data-table';
 import { formatCurrency, formatDate } from '@/lib/utils';
 

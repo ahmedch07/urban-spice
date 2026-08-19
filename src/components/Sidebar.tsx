@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import {
   ShoppingBag,
   Receipt,
@@ -30,7 +30,6 @@ interface SidebarProps {
 
 export default function Sidebar({ userRole: propRole, userName: propName, userEmail: propEmail }: SidebarProps) {
   const pathname = usePathname();
-  const router = useRouter();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);

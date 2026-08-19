@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -20,7 +20,7 @@ import {
 import { DataTable } from '@/components/ui/data-table';
 import { DeleteConfirmModal } from '@/components/ui/delete-confirm-modal';
 import { getEmployeeColumns } from '@/columns';
-import { UserCheck, Plus, Mail, Phone, Edit2, Trash2, Check, X, AlertTriangle, AlertCircle } from 'lucide-react';
+import { UserCheck, Plus, X, AlertCircle } from 'lucide-react';
 
 const createEmployeeSchema = z.object({
   name: z.string().min(1, 'Employee name is required'),

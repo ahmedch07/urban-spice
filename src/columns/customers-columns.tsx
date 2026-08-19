@@ -1,4 +1,3 @@
-import React from 'react';
 import { ColumnDef } from '@/components/ui/data-table';
 import { Button } from '@/components/ui/button';
 import { Eye } from 'lucide-react';

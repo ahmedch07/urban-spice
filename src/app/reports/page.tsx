@@ -2,15 +2,15 @@
 
 export const dynamic = 'force-dynamic';
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import Sidebar from '@/components/Sidebar';
 import Navbar from '@/components/Navbar';
 import { Button } from '@/components/ui/button';
 import { DataTable } from '@/components/ui/data-table';
 import { DeleteConfirmModal } from '@/components/ui/delete-confirm-modal';
 import { topProductColumns, salesOrderColumns } from '@/columns';
-import { BarChart3, Download, RotateCcw } from 'lucide-react';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { Download, RotateCcw } from 'lucide-react';
+import { formatCurrency } from '@/lib/utils';
 
 export default function ReportsPage() {
   const [currentUser, setCurrentUser] = useState<any>({ name: 'Admin', role: 'ADMIN' });
@@ -165,6 +165,7 @@ export default function ReportsPage() {
               <DataTable
                 columns={topProductColumns}
                 data={reportData.topProducts}
+                isLoading={isLoading}
                 emptyMessage="No product sales records in this period."
               />
             </div>
@@ -177,6 +178,7 @@ export default function ReportsPage() {
               <DataTable
                 columns={salesOrderColumns}
                 data={reportData.salesOrders}
+                isLoading={isLoading}
                 emptyMessage="No orders in this period."
               />
             </div>

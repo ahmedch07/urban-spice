@@ -1,4 +1,4 @@
-import React from "react";
+import type { ReactNode } from "react";
 import {
   Table,
   TableHeader,
@@ -10,9 +10,9 @@ import {
 import { cn } from "@/lib/utils";
 
 export interface ColumnDef<T> {
-  header: React.ReactNode | string;
+  header: ReactNode | string;
   accessorKey?: keyof T | string;
-  cell?: (row: T, index: number) => React.ReactNode;
+  cell?: (row: T, index: number) => ReactNode;
   className?: string;
   headerClassName?: string;
   align?: "left" | "center" | "right";
@@ -23,7 +23,7 @@ export interface DataTableProps<T> {
   data: T[];
   isLoading?: boolean;
   loadingMessage?: string;
-  emptyMessage?: string | React.ReactNode;
+  emptyMessage?: string | ReactNode;
   keyExtractor?: (row: T, index: number) => string | number;
   onRowClick?: (row: T) => void;
   className?: string;

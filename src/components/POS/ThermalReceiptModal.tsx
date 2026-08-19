@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { X, Printer, Download, CheckCircle2, Pizza as PizzaIcon, Plus } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { X, Printer, Download, CheckCircle2, Plus } from 'lucide-react';
 import { formatCurrency, formatDate } from '@/lib/utils';
 
 interface ThermalReceiptModalProps {

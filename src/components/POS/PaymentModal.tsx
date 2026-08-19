@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { X, CreditCard, Banknote, Building2, Globe, CheckCircle2, ArrowRight } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { X, CreditCard, Banknote, Building2, Globe, CheckCircle2 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { CartItem, CustomerItem, OrderType, PaymentMethod, RiderItem } from '@/lib/types';
 
