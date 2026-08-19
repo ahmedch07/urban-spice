@@ -42,7 +42,8 @@ function getDatabaseUrl(): string {
 
   const defaultDbPath = path.join(process.cwd(), 'prisma', 'dev.db');
   if (fs.existsSync(defaultDbPath)) {
-    return `file:${defaultDbPath}`;
+    const normalized = defaultDbPath.replace(/\\/g, '/');
+    return `file:${normalized}`;
   }
 
   return 'file:./prisma/dev.db';
