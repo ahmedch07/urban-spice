@@ -19,6 +19,7 @@ import {
   SelectItem,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { toast } from '@/components/ui/sonner';
 import { DataTable } from '@/components/ui/data-table';
 import { DeleteConfirmModal } from '@/components/ui/delete-confirm-modal';
 import { getProductColumns } from '@/columns';
@@ -76,7 +77,7 @@ export default function ProductsPage() {
       .then((data) => {
         if (data.user) setCurrentUser(data.user);
       })
-      .catch(console.error);
+      .catch(() => {});
 
     fetchCategories();
     fetchProducts();
@@ -89,8 +90,8 @@ export default function ProductsPage() {
       if (data.categories) {
         setCategories(data.categories);
       }
-    } catch (e) {
-      console.error('Failed to fetch categories:', e);
+    } catch {
+      toast.error('Failed to load menu categories');
     }
   };
 
@@ -100,8 +101,8 @@ export default function ProductsPage() {
       const res = await fetch('/api/products');
       const data = await res.json();
       if (data.products) setProducts(data.products);
-    } catch (e) {
-      console.error(e);
+    } catch {
+      toast.error('Failed to load menu products');
     } finally {
       setIsLoading(false);
     }

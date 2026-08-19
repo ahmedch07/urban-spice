@@ -18,7 +18,8 @@ import {
 import { DataTable } from '@/components/ui/data-table';
 import { DeleteConfirmModal } from '@/components/ui/delete-confirm-modal';
 import { getOrderColumns } from '@/columns';
-import { Search, RefreshCw } from 'lucide-react';
+import { toast } from '@/components/ui/sonner';
+import { Receipt, Search, Filter, RefreshCw } from 'lucide-react';
 import { mergeRiderOverrides } from '@/lib/rider-overrides';
 
 export default function OrdersPage() {
@@ -40,7 +41,7 @@ export default function OrdersPage() {
       .then((data) => {
         if (data.user) setCurrentUser(data.user);
       })
-      .catch(console.error);
+      .catch(() => {});
 
     const fetchRiders = () =>
       fetch('/api/riders?all=true', { cache: 'no-store' })
@@ -48,7 +49,7 @@ export default function OrdersPage() {
         .then((data) => {
           if (data.riders) setRiders(mergeRiderOverrides(data.riders));
         })
-        .catch(console.error);
+        .catch(() => {});
 
     fetchRiders();
     window.addEventListener('riders-updated', fetchRiders);
@@ -62,8 +63,8 @@ export default function OrdersPage() {
       const res = await fetch(url);
       const data = await res.json();
       if (data.orders) setOrders(data.orders);
-    } catch (e) {
-      console.error(e);
+    } catch {
+      toast.error('Failed to load orders');
     } finally {
       setIsLoading(false);
     }
@@ -98,12 +99,15 @@ export default function OrdersPage() {
       const data = await res.json();
       if (!res.ok) {
         setStatusErrorMsg(data.error || 'Failed to update order status');
+        toast.error(data.error || 'Failed to update order status');
         setIsUpdatingStatus(false);
         return;
       }
+      toast.success(`Order status updated to ${newStatus}`);
       setStatusConfirm(null);
       fetchOrders();
-    } catch (e) {
+    } catch {
+      toast.error('Network error updating status');
       setStatusErrorMsg('Network error updating status');
     } finally {
       setIsUpdatingStatus(false);
@@ -123,10 +127,13 @@ export default function OrdersPage() {
         }),
       });
       if (res.ok) {
+        toast.success('Rider assigned successfully');
         fetchOrders();
+      } else {
+        toast.error('Failed to assign rider');
       }
-    } catch (e) {
-      console.error(e);
+    } catch {
+      toast.error('Network error assigning rider');
     }
   };
 

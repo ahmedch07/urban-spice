@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { DataTable } from '@/components/ui/data-table';
 import { DeleteConfirmModal } from '@/components/ui/delete-confirm-modal';
+import { toast } from '@/components/ui/sonner';
 import { Truck, Plus, Search,Edit2, RefreshCw, X, AlertCircle } from 'lucide-react';
 import { RiderItem } from '@/lib/types';
 import { mergeRiderOverrides, saveRiderOverride } from '@/lib/rider-overrides';
@@ -60,7 +61,7 @@ export default function RidersPage() {
       .then((data) => {
         if (data.user) setCurrentUser(data.user);
       })
-      .catch(console.error);
+      .catch(() => {});
 
     fetchRiders();
   }, []);
@@ -73,8 +74,8 @@ export default function RidersPage() {
       if (data.riders) {
         setRiders(mergeRiderOverrides(data.riders));
       }
-    } catch (e) {
-      console.error(e);
+    } catch {
+      toast.error('Failed to load riders list');
     } finally {
       setIsLoading(false);
     }
@@ -103,9 +104,11 @@ export default function RidersPage() {
       const data = await res.json();
       if (!res.ok) {
         setDeleteErrorMsg(data.error || 'Failed to delete rider');
+        toast.error(data.error || 'Failed to delete rider');
         setIsDeleting(false);
         return;
       }
+      toast.success('Rider deleted successfully');
       setIsDeleteModalOpen(false);
       setRiders((currentRiders) => currentRiders.filter((r) => r.id !== deletingRider.id));
       saveRiderOverride(deletingRider.id, { ...deletingRider, active: false });

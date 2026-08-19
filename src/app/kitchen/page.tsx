@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 import { useState, useEffect } from 'react';
 import Sidebar from '@/components/Sidebar';
 import Navbar from '@/components/Navbar';
+import { toast } from '@/components/ui/sonner';
 import {
   Clock,
   CheckCircle2,
@@ -27,7 +28,7 @@ export default function KitchenPage() {
       .then((data) => {
         if (data.user) setCurrentUser(data.user);
       })
-      .catch(console.error);
+      .catch(() => {});
   }, []);
 
   const fetchKitchenOrders = async () => {
@@ -36,8 +37,8 @@ export default function KitchenPage() {
       const res = await fetch('/api/orders?range=today&limit=50');
       const data = await res.json();
       if (data.orders) setOrders(data.orders);
-    } catch (e) {
-      console.error(e);
+    } catch {
+      toast.error('Failed to sync kitchen orders');
     } finally {
       setIsLoading(false);
     }
@@ -57,10 +58,13 @@ export default function KitchenPage() {
         body: JSON.stringify({ status }),
       });
       if (res.ok) {
+        toast.success(`Order status updated to ${status}`);
         fetchKitchenOrders();
+      } else {
+        toast.error('Failed to update kitchen order status');
       }
-    } catch (e) {
-      console.error(e);
+    } catch {
+      toast.error('Network error updating order status');
     }
   };
 

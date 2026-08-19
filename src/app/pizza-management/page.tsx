@@ -20,7 +20,9 @@ import {
   getCrustColumns,
   getToppingColumns,
 } from '@/columns';
-import { Pizza, Plus, X, AlertCircle } from 'lucide-react';
+import { Pizza, Plus, X, AlertCircle, Layers, Disc, Sparkles } from 'lucide-react';
+import { toast } from '@/components/ui/sonner';
+import { formatCurrency } from '@/lib/utils';
 
 const flavorSchema = z.object({
   name: z.string().min(1, 'Flavor name is required'),
@@ -85,7 +87,7 @@ export default function PizzaManagementPage() {
       .then((data) => {
         if (data.user) setCurrentUser(data.user);
       })
-      .catch(console.error);
+      .catch(() => {});
 
     fetchAllData();
   }, []);
@@ -109,8 +111,8 @@ export default function PizzaManagementPage() {
       if (sData.sizes) setSizes(sData.sizes);
       if (cData.crusts) setCrusts(cData.crusts);
       if (tData.toppings) setToppings(tData.toppings);
-    } catch (e) {
-      console.error(e);
+    } catch {
+      toast.error('Failed to load pizza configuration records');
     } finally {
       setIsLoading(false);
     }

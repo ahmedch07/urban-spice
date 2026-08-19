@@ -8,6 +8,7 @@ import Navbar from '@/components/Navbar';
 import { Button } from '@/components/ui/button';
 import { DataTable } from '@/components/ui/data-table';
 import { DeleteConfirmModal } from '@/components/ui/delete-confirm-modal';
+import { toast } from '@/components/ui/sonner';
 import { topProductColumns, salesOrderColumns } from '@/columns';
 import { Download, RotateCcw } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
@@ -29,7 +30,7 @@ export default function ReportsPage() {
       .then((data) => {
         if (data.user) setCurrentUser(data.user);
       })
-      .catch(console.error);
+      .catch(() => {});
 
     fetchReports();
   }, [period]);
@@ -40,8 +41,8 @@ export default function ReportsPage() {
       const res = await fetch(`/api/reports?period=${period}`);
       const data = await res.json();
       setReportData(data);
-    } catch (e) {
-      console.error(e);
+    } catch {
+      toast.error('Failed to load financial reports');
     } finally {
       setIsLoading(false);
     }

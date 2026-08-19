@@ -9,6 +9,7 @@ import {
   Loader2,
   Trash2,
 } from 'lucide-react';
+import { toast } from '@/components/ui/sonner';
 import { Button } from '@/components/ui/button';
 
 interface ImageUploadInputProps {
@@ -82,9 +83,10 @@ export default function ImageUploadInput({
 
       onChange(data.url);
       setSuccessMsg('Image uploaded successfully.');
+      toast.success('Image uploaded successfully!');
       setTimeout(() => setSuccessMsg(''), 3500);
     } catch (err: any) {
-      console.error('Upload failed:', err);
+      toast.error(err.message || 'Image upload failed. Please try again.');
       setErrorMsg(err.message || 'Image upload failed. Please try again.');
     } finally {
       setIsUploading(false);

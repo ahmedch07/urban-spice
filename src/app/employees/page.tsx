@@ -20,6 +20,7 @@ import {
 import { DataTable } from '@/components/ui/data-table';
 import { DeleteConfirmModal } from '@/components/ui/delete-confirm-modal';
 import { getEmployeeColumns } from '@/columns';
+import { toast } from '@/components/ui/sonner';
 import { UserCheck, Plus, X, AlertCircle } from 'lucide-react';
 
 const createEmployeeSchema = z.object({
@@ -66,7 +67,7 @@ export default function EmployeesPage() {
       .then((data) => {
         if (data.user) setCurrentUser(data.user);
       })
-      .catch(console.error);
+      .catch(() => {});
 
     fetchEmployees();
   }, []);
@@ -77,8 +78,8 @@ export default function EmployeesPage() {
       const res = await fetch('/api/employees');
       const data = await res.json();
       if (data.employees) setEmployees(data.employees);
-    } catch (e) {
-      console.error(e);
+    } catch {
+      toast.error('Failed to load employee accounts');
     } finally {
       setIsLoading(false);
     }
@@ -106,13 +107,16 @@ export default function EmployeesPage() {
       const data = await res.json();
       if (!res.ok) {
         setDeleteErrorMsg(data.error || 'Failed to delete employee');
+        toast.error(data.error || 'Failed to delete employee');
         setIsDeleting(false);
         return;
       }
+      toast.success('Employee account deleted');
       setIsDeleteModalOpen(false);
       fetchEmployees();
-    } catch (e) {
-      setDeleteErrorMsg('Network error');
+    } catch {
+      toast.error('Network error deleting employee');
+      setDeleteErrorMsg('Network error deleting employee');
     } finally {
       setIsDeleting(false);
     }

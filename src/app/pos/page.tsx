@@ -57,7 +57,7 @@ export default function POSPage() {
       .then((data) => {
         if (data.user) setCurrentUser(data.user);
       })
-      .catch(console.error);
+      .catch(() => {});
   }, []);
 
   // Fetch Categories, Products, Pizza Config & Riders
@@ -67,21 +67,21 @@ export default function POSPage() {
       .then((data) => {
         if (data.categories) setCategories(data.categories);
       })
-      .catch(console.error);
+      .catch(() => {});
 
     fetch('/api/pos/pizza-config')
       .then((res) => res.json())
       .then((data) => {
         setPizzaConfig(data);
       })
-      .catch(console.error);
+      .catch(() => {});
 
     const fetchRiders = () => fetch('/api/riders?all=true', { cache: 'no-store' })
       .then((res) => res.json())
       .then((data) => {
         if (data.riders) setRiders(mergeRiderOverrides(data.riders));
       })
-      .catch(console.error);
+      .catch(() => {});
 
     fetchRiders();
     window.addEventListener('riders-updated', fetchRiders);
@@ -96,7 +96,7 @@ export default function POSPage() {
       .then((data) => {
         if (data.products) setProducts(data.products);
       })
-      .catch(console.error);
+      .catch(() => {});
   }, [selectedCategory, searchQuery]);
 
   // Keyboard Shortcuts Listener (F2 Search, F4 New Order, F8 Checkout, ESC Close)

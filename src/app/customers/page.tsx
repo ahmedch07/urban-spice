@@ -15,6 +15,7 @@ import { DataTable } from '@/components/ui/data-table';
 import { DeleteConfirmModal } from '@/components/ui/delete-confirm-modal';
 import { getCustomerColumns } from '@/columns';
 import { Users, Search, X, AlertCircle } from 'lucide-react';
+import { toast } from '@/components/ui/sonner';
 import { formatCurrency, formatDate } from '@/lib/utils';
 
 const editCustomerSchema = z.object({
@@ -57,7 +58,7 @@ export default function CustomersPage() {
       .then((data) => {
         if (data.user) setCurrentUser(data.user);
       })
-      .catch(console.error);
+      .catch(() => {});
 
     fetchCustomers();
   }, [searchQuery]);
@@ -68,8 +69,8 @@ export default function CustomersPage() {
       const res = await fetch(`/api/pos/customers?q=${encodeURIComponent(searchQuery)}`);
       const data = await res.json();
       if (data.customers) setCustomers(data.customers);
-    } catch (e) {
-      console.error(e);
+    } catch {
+      toast.error('Failed to load customer records');
     } finally {
       setIsLoading(false);
     }
@@ -97,8 +98,8 @@ export default function CustomersPage() {
         const favList = Object.values(favMap).sort((a, b) => b.count - a.count).slice(0, 5);
         setFavoriteProducts(favList);
       }
-    } catch (e) {
-      console.error(e);
+    } catch {
+      toast.error('Failed to load customer order history');
     }
   };
 
@@ -124,12 +125,15 @@ export default function CustomersPage() {
       const data = await res.json();
       if (!res.ok) {
         setDeleteErrorMsg(data.error || 'Failed to delete customer');
+        toast.error(data.error || 'Failed to delete customer');
         setIsDeleting(false);
         return;
       }
+      toast.success('Customer deleted successfully');
       setIsDeleteModalOpen(false);
       fetchCustomers();
-    } catch (e) {
+    } catch {
+      toast.error('Network error deleting customer');
       setDeleteErrorMsg('Network error deleting customer');
     } finally {
       setIsDeleting(false);

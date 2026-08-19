@@ -11,8 +11,9 @@ import Navbar from '@/components/Navbar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Store, Save, CheckCircle2, AlertCircle } from 'lucide-react';
 import ImageUploadInput from '@/components/ImageUploadInput';
+import { toast } from '@/components/ui/sonner';
+import { Store, Save, CheckCircle2, AlertCircle } from 'lucide-react';
 
 const storeSettingsSchema = z.object({
   storeName: z.string().min(1, 'Shop name is required'),
@@ -72,7 +73,7 @@ export default function SettingsPage() {
       .then((data) => {
         if (data.user) setCurrentUser(data.user);
       })
-      .catch(console.error);
+      .catch(() => {});
 
     // Fetch latest settings from Server API and merge with LocalStorage
     fetch('/api/settings')
@@ -84,7 +85,7 @@ export default function SettingsPage() {
           if (cached) {
             merged = { ...merged, ...JSON.parse(cached) };
           }
-        } catch (e) {}
+        } catch {}
 
         reset(merged);
       })
@@ -92,7 +93,7 @@ export default function SettingsPage() {
         try {
           const cached = localStorage.getItem('urban_spice_store_settings');
           if (cached) reset({ ...defaultValues, ...JSON.parse(cached) });
-        } catch (e) {}
+        } catch {}
       });
   }, [reset]);
 
@@ -104,9 +105,7 @@ export default function SettingsPage() {
     try {
       localStorage.setItem('urban_spice_store_settings', JSON.stringify(values));
       window.dispatchEvent(new CustomEvent('store-settings-updated', { detail: values }));
-    } catch (e) {
-      console.error('LocalStorage write error:', e);
-    }
+    } catch {}
 
     try {
       const res = await fetch('/api/settings', {
@@ -118,18 +117,22 @@ export default function SettingsPage() {
       const data = await res.json();
       if (!res.ok) {
         setErrorMsg(data.error || 'Failed to save settings to server (saved to local device storage).');
+        toast.error(data.error || 'Failed to save settings to server');
         return;
       }
 
       setSavedMsg(true);
+      toast.success('Store settings saved successfully!');
       setTimeout(() => setSavedMsg(false), 4000);
-    } catch (e) {
+    } catch {
       setSavedMsg(true); // Still saved to local storage
+      toast.success('Store settings saved to local device!');
       setTimeout(() => setSavedMsg(false), 4000);
     }
   };
 
   const onInvalid = () => {
+    toast.error('Please check the form for errors and required fields');
     setErrorMsg('Please check the form for errors and required fields');
   };
 

@@ -45,7 +45,7 @@ export default function ThermalReceiptModal({
             setStoreSettings((prev: any) => ({ ...prev, ...data.settings }));
           }
         })
-        .catch(console.error);
+        .catch(() => {});
     }
   }, [isOpen]);
 

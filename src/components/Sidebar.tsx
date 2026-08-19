@@ -19,6 +19,7 @@ import {
   ChevronRight,
   X,
 } from 'lucide-react';
+import { toast } from '@/components/ui/sonner';
 import ThemeToggle from '@/components/ThemeToggle';
 import { DeleteConfirmModal } from '@/components/ui/delete-confirm-modal';
 
@@ -52,7 +53,7 @@ export default function Sidebar({ userRole: propRole, userName: propName, userEm
             setSessionUser(data.user);
           }
         })
-        .catch(console.error);
+        .catch(() => {});
     }
   }, [propRole, propName, propEmail]);
 
@@ -71,8 +72,8 @@ export default function Sidebar({ userRole: propRole, userName: propName, userEm
     setIsLoggingOut(true);
     try {
       await fetch('/api/auth/logout', { method: 'POST' });
-    } catch (error) {
-      console.error('Logout error:', error);
+    } catch {
+      toast.error('Failed to log out cleanly');
     } finally {
       window.location.href = '/login';
     }

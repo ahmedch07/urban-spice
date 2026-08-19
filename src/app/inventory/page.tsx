@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/select';
 import { DataTable } from '@/components/ui/data-table';
 import { getInventoryColumns } from '@/columns';
+import { toast } from '@/components/ui/sonner';
 import { Boxes, Plus, AlertTriangle, RefreshCw, X, AlertCircle } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 
@@ -60,7 +61,7 @@ export default function InventoryPage() {
       .then((data) => {
         if (data.user) setCurrentUser(data.user);
       })
-      .catch(console.error);
+      .catch(() => {});
 
     fetchInventory();
   }, []);
@@ -71,8 +72,8 @@ export default function InventoryPage() {
       const res = await fetch('/api/inventory');
       const data = await res.json();
       if (data.items) setInventoryItems(data.items);
-    } catch (e) {
-      console.error(e);
+    } catch {
+      toast.error('Failed to fetch inventory items');
     } finally {
       setIsLoading(false);
     }

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { X, CreditCard, Banknote, Building2, Globe, CheckCircle2 } from 'lucide-react';
+import { toast } from '@/components/ui/sonner';
 import { formatCurrency } from '@/lib/utils';
 import { CartItem, CustomerItem, OrderType, PaymentMethod, RiderItem } from '@/lib/types';
 
@@ -117,9 +118,10 @@ export default function PaymentModal({
       }
 
       setIsSubmitting(false);
+      toast.success('Order processed successfully!');
       onOrderCompleted(data.order);
-    } catch (e) {
-      console.error(e);
+    } catch {
+      toast.error('Network error submitting order');
       setErrorMsg('Network error submitting order');
       setIsSubmitting(false);
     }
