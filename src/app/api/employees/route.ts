@@ -84,7 +84,7 @@ export async function PUT(request: Request) {
     }
 
     const body = await request.json();
-    const { id, name, phone, role, active, password } = body;
+    const { id, name, email, phone, role, active, password } = body;
 
     const dataToUpdate: any = {
       name: name?.trim(),
@@ -92,6 +92,10 @@ export async function PUT(request: Request) {
       role: role || undefined,
       active: active !== undefined ? Boolean(active) : undefined,
     };
+
+    if (email && email.trim() !== '') {
+      dataToUpdate.email = email.toLowerCase().trim();
+    }
 
     if (password && password.trim() !== '') {
       dataToUpdate.password = await hashPassword(password);
@@ -113,7 +117,10 @@ export async function PUT(request: Request) {
     });
 
     return NextResponse.json({ success: true, employee: updated });
-  } catch (error) {
+  } catch (error: any) {
+    if (error.code === 'P2002') {
+      return NextResponse.json({ error: 'This email is already taken by another account' }, { status: 400 });
+    }
     return NextResponse.json({ error: 'Failed to update employee' }, { status: 500 });
   }
 }
@@ -132,8 +139,9 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'Employee ID required' }, { status: 400 });
     }
 
-    if (id === session.userId) {
-      return NextResponse.json({ error: 'You cannot delete your own active account' }, { status: 400 });
+    const totalUsers = await prisma.user.count();
+    if (totalUsers <= 1) {
+      return NextResponse.json({ error: 'System must have at least one active user account.' }, { status: 400 });
     }
 
     const userToDelete = await prisma.user.findUnique({ where: { id } });

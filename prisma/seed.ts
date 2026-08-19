@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('Cleaning and initializing Urban Spice database with complete menu...');
 
-  // 1. Clean all existing data completely
+  // 1. Clean data (preserving User accounts so client accounts are never wiped)
   await prisma.auditLog.deleteMany();
   await prisma.orderItemTopping.deleteMany();
   await prisma.orderItem.deleteMany();
@@ -23,7 +23,7 @@ async function main() {
   await prisma.product.deleteMany();
   await prisma.category.deleteMany();
   await prisma.customer.deleteMany();
-  await prisma.user.deleteMany();
+  // Store settings upserted instead of wiping
   await prisma.storeSetting.deleteMany();
 
   // 2. Store Settings (Urban Spice Official Details)
@@ -50,31 +50,34 @@ async function main() {
     await prisma.storeSetting.create({ data: setting });
   }
 
-  // 3. Store User Accounts (Admin & Cashier)
-  const hashedAdminPassword = await bcrypt.hash('admin123', 10);
-  const hashedCashierPassword = await bcrypt.hash('cashier123', 10);
+  // 3. Store User Accounts (Only if no users exist in database)
+  const userCount = await prisma.user.count();
+  if (userCount === 0) {
+    const hashedAdminPassword = await bcrypt.hash('admin123', 10);
+    const hashedCashierPassword = await bcrypt.hash('cashier123', 10);
 
-  const adminUser = await prisma.user.create({
-    data: {
-      name: 'Urban Spice Admin',
-      email: 'admin@urbanspice.com',
-      phone: '03005225898',
-      password: hashedAdminPassword,
-      role: 'ADMIN',
-      active: true,
-    },
-  });
+    await prisma.user.create({
+      data: {
+        name: 'Urban Spice Admin',
+        email: 'admin@urbanspice.com',
+        phone: '03005225898',
+        password: hashedAdminPassword,
+        role: 'ADMIN',
+        active: true,
+      },
+    });
 
-  await prisma.user.create({
-    data: {
-      name: 'Main Cashier',
-      email: 'cashier@urbanspice.com',
-      phone: '03005225899',
-      password: hashedCashierPassword,
-      role: 'CASHIER',
-      active: true,
-    },
-  });
+    await prisma.user.create({
+      data: {
+        name: 'Main Cashier',
+        email: 'cashier@urbanspice.com',
+        phone: '03005225899',
+        password: hashedCashierPassword,
+        role: 'CASHIER',
+        active: true,
+      },
+    });
+  }
 
   // 4. Pizza Sizes
   const sizeSmall = await prisma.pizzaSize.create({ data: { name: 'Small (7")', code: 'S', sortOrder: 1 } });
@@ -301,14 +304,17 @@ async function main() {
   }
 
   // Audit Logs
-  await prisma.auditLog.create({
-    data: {
-      userId: adminUser.id,
-      userName: adminUser.name,
-      action: 'SYSTEM_INITIALIZATION',
-      details: 'Populated database with official Urban Spice Menu items and multi-size pizza prices.',
-    },
-  });
+  const firstUser = await prisma.user.findFirst();
+  if (firstUser) {
+    await prisma.auditLog.create({
+      data: {
+        userId: firstUser.id,
+        userName: firstUser.name,
+        action: 'SYSTEM_INITIALIZATION',
+        details: 'Populated database with official Urban Spice Menu items and multi-size pizza prices.',
+      },
+    });
+  }
 
   console.log('Urban Spice official menu database initialization complete!');
 }

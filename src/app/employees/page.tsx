@@ -25,6 +25,7 @@ export default function EmployeesPage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<any>(null);
   const [editName, setEditName] = useState('');
+  const [editEmail, setEditEmail] = useState('');
   const [editPhone, setEditPhone] = useState('');
   const [editRole, setEditRole] = useState('CASHIER');
   const [editPassword, setEditPassword] = useState('');
@@ -84,6 +85,7 @@ export default function EmployeesPage() {
   const openEditModal = (emp: any) => {
     setEditingEmployee(emp);
     setEditName(emp.name || '');
+    setEditEmail(emp.email || '');
     setEditPhone(emp.phone || '');
     setEditRole(emp.role || 'CASHIER');
     setEditPassword('');
@@ -102,6 +104,7 @@ export default function EmployeesPage() {
         body: JSON.stringify({
           id: editingEmployee.id,
           name: editName,
+          email: editEmail,
           phone: editPhone,
           role: editRole,
           password: editPassword.trim() !== '' ? editPassword : undefined,
@@ -217,13 +220,8 @@ export default function EmployeesPage() {
                         </button>
                         <button
                           onClick={() => openDeleteModal(emp)}
-                          disabled={currentUser?.id === emp.id}
-                          className={`p-2 bg-slate-800 rounded-xl transition border border-slate-700 flex items-center space-x-1 ${
-                            currentUser?.id === emp.id
-                              ? 'text-slate-600 opacity-50 cursor-not-allowed'
-                              : 'hover:bg-red-500/20 text-red-400 hover:border-red-500/40'
-                          }`}
-                          title={currentUser?.id === emp.id ? 'Cannot delete logged in account' : 'Delete Account'}
+                          className="p-2 bg-slate-800 hover:bg-red-500/20 text-red-400 hover:border-red-500/40 rounded-xl transition border border-slate-700 flex items-center space-x-1"
+                          title="Delete Account"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                           <span className="text-[11px] font-semibold">Delete</span>
@@ -356,12 +354,13 @@ export default function EmployeesPage() {
               </div>
 
               <div>
-                <label className="block text-xs text-slate-400 font-semibold mb-1">Email Address (Read-only)</label>
+                <label className="block text-xs text-slate-300 font-semibold mb-1">Email Address *</label>
                 <input
                   type="email"
-                  disabled
-                  value={editingEmployee?.email || ''}
-                  className="w-full bg-slate-950/60 border border-slate-800/80 rounded-xl p-2.5 text-xs text-slate-500 font-mono cursor-not-allowed"
+                  required
+                  value={editEmail}
+                  onChange={(e) => setEditEmail(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-100 font-mono focus:border-amber-500"
                 />
               </div>
 
