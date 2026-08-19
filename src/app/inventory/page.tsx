@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/select';
 import { DataTable } from '@/components/ui/data-table';
 import { getInventoryColumns } from '@/columns';
+import { toast } from '@/components/ui/sonner';
 import { Boxes, Plus, AlertTriangle, RefreshCw, X, AlertCircle } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 
@@ -42,11 +43,20 @@ const newIngredientSchema = z.object({
 
 type NewIngredientFormValues = z.infer<typeof newIngredientSchema>;
 
+import { useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 
 export default function InventoryPage() {
-  const { currentUser, inventoryItems, refreshInventory } = useApp();
+  const router = useRouter();
+  const { currentUser, inventoryItems, refreshInventory, isGlobalLoading } = useApp();
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (!isGlobalLoading && currentUser && currentUser.role === 'CASHIER') {
+      toast.error('Access Denied: Cashier accounts cannot access Inventory Stock');
+      router.replace('/pos');
+    }
+  }, [currentUser, isGlobalLoading, router]);
 
   // Stock Adjustment Modal
   const [isModalOpen, setIsModalOpen] = useState(false);

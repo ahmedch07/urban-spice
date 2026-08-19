@@ -44,10 +44,20 @@ const editEmployeeSchema = z.object({
 
 type EditEmployeeFormValues = z.infer<typeof editEmployeeSchema>;
 
+import { useRouter } from 'next/navigation';
+
 export default function EmployeesPage() {
-  const { currentUser, employees, refreshEmployees } = useApp();
+  const router = useRouter();
+  const { currentUser, employees, refreshEmployees, isGlobalLoading } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (!isGlobalLoading && currentUser && currentUser.role !== 'ADMIN') {
+      toast.error('Access Denied: Admin privileges required to access Staff Management');
+      router.replace('/pos');
+    }
+  }, [currentUser, isGlobalLoading, router]);
 
   // Add Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);

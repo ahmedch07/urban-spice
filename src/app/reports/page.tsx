@@ -13,11 +13,20 @@ import { topProductColumns, salesOrderColumns } from '@/columns';
 import { Download, RotateCcw } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 
+import { useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 
 export default function ReportsPage() {
-  const { currentUser } = useApp();
+  const router = useRouter();
+  const { currentUser, isGlobalLoading } = useApp();
   const [period, setPeriod] = useState<any>('today');
+
+  useEffect(() => {
+    if (!isGlobalLoading && currentUser && currentUser.role === 'CASHIER') {
+      toast.error('Access Denied: Cashier accounts cannot access Sales Reports');
+      router.replace('/pos');
+    }
+  }, [currentUser, isGlobalLoading, router]);
   const [reportData, setReportData] = useState<any>({
     totalSales: 0,
     totalOrders: 0,

@@ -46,10 +46,20 @@ const storeSettingsSchema = z.object({
 
 type StoreSettingsFormValues = z.infer<typeof storeSettingsSchema>;
 
+import { useRouter } from 'next/navigation';
+
 export default function SettingsPage() {
-  const { currentUser, storeSettings, refreshSettings } = useApp();
+  const router = useRouter();
+  const { currentUser, storeSettings, refreshSettings, isGlobalLoading } = useApp();
   const [savedMsg, setSavedMsg] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+
+  useEffect(() => {
+    if (!isGlobalLoading && currentUser && currentUser.role !== 'ADMIN') {
+      toast.error('Access Denied: Admin privileges required to access Store Settings');
+      router.replace('/pos');
+    }
+  }, [currentUser, isGlobalLoading, router]);
 
   const {
     register,

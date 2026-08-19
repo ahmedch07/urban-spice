@@ -56,8 +56,13 @@ export default function LoginPage() {
         return;
       }
 
-      router.push('/pos');
-      router.refresh();
+      if (data.user) {
+        try {
+          localStorage.setItem('urban_spice_cached_user', JSON.stringify(data.user));
+        } catch {}
+      }
+
+      window.location.href = '/pos';
     } catch (err) {
       setServerError('Connection failed. Please check server.');
     }

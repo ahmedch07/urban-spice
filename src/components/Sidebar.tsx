@@ -31,16 +31,14 @@ interface SidebarProps {
 
 export default function Sidebar({ userRole: propRole, userName: propName, userEmail: propEmail }: SidebarProps) {
   const pathname = usePathname();
-  const { currentUser } = useApp();
+  const { currentUser, isGlobalLoading } = useApp();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-  const sessionUser = {
-    role: propRole || currentUser?.role || 'CASHIER',
-    name: propName || currentUser?.name || 'Staff User',
-    email: propEmail || currentUser?.email || '',
-  };
+  // Authoritative role: ONLY from server-confirmed currentUser, never guess
+  const currentRole = currentUser?.role?.toUpperCase() || '';
+  const currentName = currentUser?.name || propName || 'Staff User';
 
   useEffect(() => {
     const handleToggle = () => setIsMobileOpen((prev) => !prev);
@@ -56,6 +54,7 @@ export default function Sidebar({ userRole: propRole, userName: propName, userEm
   const handleConfirmLogout = async () => {
     setIsLoggingOut(true);
     try {
+      localStorage.removeItem('urban_spice_cached_user');
       await fetch('/api/auth/logout', { method: 'POST' });
     } catch {
       toast.error('Failed to log out cleanly');
@@ -78,13 +77,11 @@ export default function Sidebar({ userRole: propRole, userName: propName, userEm
     { name: 'Store Settings', href: '/settings', icon: Settings, roles: ['ADMIN'] },
   ];
 
-  const currentRole = sessionUser?.role || propRole || 'ADMIN';
-  const currentName = sessionUser?.name || propName || 'User';
-
-  const filteredNav = navItems.filter((item) => item.roles.includes(currentRole));
+  // Only filter once role is confirmed; show nothing until then
+  const filteredNav = currentRole ? navItems.filter((item) => item.roles.includes(currentRole)) : [];
 
   const sidebarContent = (
-    <div className="flex flex-col h-full bg-slate-900 border-r border-slate-800 select-none">
+    <div className="flex flex-col w-full h-full bg-slate-900 border-r border-slate-800 select-none">
       {/* Brand Header */}
       <div className="p-4 border-b border-slate-800 flex items-center justify-between">
         <div className="flex items-center space-x-3">

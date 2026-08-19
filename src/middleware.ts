@@ -17,6 +17,7 @@ const protectedRoutes = [
   '/orders',
   '/kitchen',
   '/customers',
+  '/riders',
   '/dashboard',
   ...adminOnlyRoutes,
 ];

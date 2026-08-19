@@ -92,7 +92,15 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const [currentUser, setCurrentUser] = useState<UserSession | null>(null);
+  const [currentUser, setCurrentUser] = useState<UserSession | null>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('urban_spice_cached_user');
+        if (cached) return JSON.parse(cached);
+      } catch {}
+    }
+    return null;
+  });
   const [storeSettings, setStoreSettings] = useState<StoreSettings>(() => {
     if (typeof window !== 'undefined') {
       try {
@@ -112,12 +120,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [orders, setOrders] = useState<any[]>([]);
   const [isGlobalLoading, setIsGlobalLoading] = useState<boolean>(true);
 
-  // 1. Fetch User Session
+  // 1. Fetch User Session (NEVER cache this)
   const refreshUser = useCallback(async () => {
     try {
-      const res = await fetch('/api/auth/me');
+      const res = await fetch('/api/auth/me', { cache: 'no-store' });
       const data = await res.json();
-      if (data.user) setCurrentUser(data.user);
+      if (data.user) {
+        setCurrentUser(data.user);
+        try {
+          localStorage.setItem('urban_spice_cached_user', JSON.stringify(data.user));
+        } catch {}
+      } else {
+        setCurrentUser(null);
+        try {
+          localStorage.removeItem('urban_spice_cached_user');
+        } catch {}
+      }
     } catch {}
   }, []);
 
@@ -223,11 +241,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     } catch {}
   }, []);
 
-  // Preload all critical APIs once on site load / reload
+  // Preload all critical APIs: user FIRST (for role), then everything else in parallel
   const refreshAll = useCallback(async () => {
     setIsGlobalLoading(true);
+    // Step 1: Always fetch user first so role is confirmed before other data loads
+    await refreshUser();
+    // Step 2: Load everything else in parallel
     await Promise.allSettled([
-      refreshUser(),
       refreshSettings(),
       refreshCategories(),
       refreshProducts(),

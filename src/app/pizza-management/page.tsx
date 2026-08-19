@@ -20,7 +20,8 @@ import {
   getCrustColumns,
   getToppingColumns,
 } from '@/columns';
-import { Pizza, Plus, X, AlertCircle} from 'lucide-react';
+import { Pizza, Plus, X, AlertCircle } from 'lucide-react';
+import { toast } from '@/components/ui/sonner';
 import { useApp } from '@/context/AppContext';
 
 const flavorSchema = z.object({
@@ -49,10 +50,20 @@ const genericItemSchema = z.object({
 
 type GenericItemFormValues = z.infer<typeof genericItemSchema>;
 
+import { useRouter } from 'next/navigation';
+
 export default function PizzaManagementPage() {
-  const { currentUser, pizzaConfig, refreshPizzaConfig } = useApp();
+  const router = useRouter();
+  const { currentUser, pizzaConfig, refreshPizzaConfig, isGlobalLoading } = useApp();
   const [activeTab, setActiveTab] = useState<'flavors' | 'sizes' | 'crusts' | 'toppings'>('flavors');
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (!isGlobalLoading && currentUser && currentUser.role === 'CASHIER') {
+      toast.error('Access Denied: Cashier accounts cannot access Pizza Management');
+      router.replace('/pos');
+    }
+  }, [currentUser, isGlobalLoading, router]);
 
   const [flavors, setFlavors] = useState<any[]>(() => pizzaConfig?.flavors || []);
   const [sizes, setSizes] = useState<any[]>(() => pizzaConfig?.sizes || []);

@@ -48,20 +48,30 @@ const categorySchema = z.object({
   image: z.string().optional(),
 });
 
+import { useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 
 type CategoryFormValues = z.infer<typeof categorySchema>;
 
 export default function ProductsPage() {
+  const router = useRouter();
   const {
     currentUser,
     products,
     categories,
     refreshProducts,
     refreshCategories,
+    isGlobalLoading,
   } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (!isGlobalLoading && currentUser && currentUser.role === 'CASHIER') {
+      toast.error('Access Denied: Cashier accounts cannot access Products Catalog');
+      router.replace('/pos');
+    }
+  }, [currentUser, isGlobalLoading, router]);
 
   // Add/Edit Product Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
