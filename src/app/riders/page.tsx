@@ -8,6 +8,8 @@ import Navbar from '@/components/Navbar';
 import { Truck, Plus, Search, Edit2, Trash2, Phone, CheckCircle, XCircle, RefreshCw, X, ShieldAlert } from 'lucide-react';
 import { RiderItem } from '@/lib/types';
 
+const RIDER_OVERRIDES_KEY = 'urban-spice-rider-overrides';
+
 export default function RidersPage() {
   const [currentUser, setCurrentUser] = useState<any>({ name: 'Admin', role: 'ADMIN' });
   const [riders, setRiders] = useState<RiderItem[]>([]);
@@ -52,12 +54,25 @@ export default function RidersPage() {
     try {
       const res = await fetch('/api/riders?all=true', { cache: 'no-store' });
       const data = await res.json();
-      if (data.riders) setRiders(data.riders);
+      if (data.riders) {
+        const savedOverrides = JSON.parse(localStorage.getItem(RIDER_OVERRIDES_KEY) || '{}') as Record<string, RiderItem | null>;
+        const serverRiders = data.riders.filter((rider: RiderItem) => !(rider.id in savedOverrides));
+        const overriddenRiders = Object.values(savedOverrides).filter((rider): rider is RiderItem => rider !== null);
+        setRiders(
+          [...serverRiders, ...overriddenRiders].sort((first, second) => first.name.localeCompare(second.name))
+        );
+      }
     } catch (e) {
       console.error(e);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const saveRiderOverride = (id: string, rider: RiderItem | null) => {
+    const savedOverrides = JSON.parse(localStorage.getItem(RIDER_OVERRIDES_KEY) || '{}') as Record<string, RiderItem | null>;
+    savedOverrides[id] = rider;
+    localStorage.setItem(RIDER_OVERRIDES_KEY, JSON.stringify(savedOverrides));
   };
 
   const handleCreateRider = async (e: React.FormEvent) => {
@@ -83,6 +98,7 @@ export default function RidersPage() {
       setName('');
       setPhone('');
       setVehicleNo('');
+      saveRiderOverride(data.rider.id, data.rider);
       setRiders((currentRiders) =>
         [...currentRiders, data.rider].sort((first, second) => first.name.localeCompare(second.name))
       );
@@ -124,6 +140,7 @@ export default function RidersPage() {
         return;
       }
       setIsEditModalOpen(false);
+      saveRiderOverride(data.rider.id, data.rider);
       setRiders((currentRiders) =>
         currentRiders
           .map((rider) => (rider.id === data.rider.id ? data.rider : rider))
@@ -157,6 +174,7 @@ export default function RidersPage() {
       }
       setIsDeleteModalOpen(false);
       setIsDeleting(false);
+      saveRiderOverride(deletingRider.id, null);
       setRiders((currentRiders) => currentRiders.filter((rider) => rider.id !== deletingRider.id));
     } catch (e) {
       setDeleteErrorMsg('Network error deleting rider');
