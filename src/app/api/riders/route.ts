@@ -2,10 +2,12 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const all = searchParams.get('all') === 'true';
     const riders = await prisma.rider.findMany({
-      where: { active: true },
+      where: all ? undefined : { active: true },
       orderBy: { name: 'asc' },
     });
     return NextResponse.json({ riders });
