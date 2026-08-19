@@ -2,11 +2,45 @@
 
 export const dynamic = 'force-dynamic';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
 import Sidebar from '@/components/Sidebar';
 import Navbar from '@/components/Navbar';
-import { Boxes, Plus, AlertTriangle, ArrowUpRight, ArrowDownRight, RefreshCw } from 'lucide-react';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@/components/ui/select';
+import { DataTable } from '@/components/ui/data-table';
+import { getInventoryColumns } from '@/columns';
+import { Boxes, Plus, AlertTriangle, RefreshCw, X, AlertCircle } from 'lucide-react';
+import { formatCurrency } from '@/lib/utils';
+
+const stockAdjustmentSchema = z.object({
+  type: z.enum(['ADD', 'REMOVE', 'WASTE', 'ADJUSTMENT']),
+  quantity: z.coerce.number().positive('Quantity must be greater than 0'),
+  notes: z.string().optional(),
+});
+
+type StockAdjustmentFormValues = z.infer<typeof stockAdjustmentSchema>;
+
+const newIngredientSchema = z.object({
+  name: z.string().min(1, 'Ingredient name is required'),
+  SKU: z.string().min(1, 'SKU is required'),
+  unit: z.string().min(1, 'Unit is required'),
+  currentStock: z.coerce.number().min(0, 'Current stock must be non-negative'),
+  minStock: z.coerce.number().min(0, 'Min threshold must be non-negative'),
+  costPerUnit: z.coerce.number().min(0, 'Cost per unit must be non-negative'),
+  supplier: z.string().optional(),
+});
+
+type NewIngredientFormValues = z.infer<typeof newIngredientSchema>;
 
 export default function InventoryPage() {
   const [currentUser, setCurrentUser] = useState<any>({ name: 'Admin', role: 'ADMIN' });
@@ -16,19 +50,9 @@ export default function InventoryPage() {
   // Stock Adjustment Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<any>(null);
-  const [transType, setTransType] = useState<string>('ADD'); // ADD, REMOVE, WASTE, ADJUSTMENT
-  const [quantity, setQuantity] = useState<string>('');
-  const [notes, setNotes] = useState<string>('');
 
   // New Raw Material Modal
   const [isNewItemModalOpen, setIsNewItemModalOpen] = useState(false);
-  const [newItemName, setNewItemName] = useState('');
-  const [newItemSKU, setNewItemSKU] = useState('');
-  const [newItemUnit, setNewItemUnit] = useState('kg');
-  const [newItemStock, setNewItemStock] = useState('50');
-  const [newItemMinStock, setNewItemMinStock] = useState('10');
-  const [newItemCost, setNewItemCost] = useState('100');
-  const [newItemSupplier, setNewItemSupplier] = useState('');
 
   useEffect(() => {
     fetch('/api/auth/me')
@@ -56,323 +80,455 @@ export default function InventoryPage() {
 
   const handleOpenAdjustment = (item: any) => {
     setSelectedItem(item);
-    setTransType('ADD');
-    setQuantity('');
-    setNotes('');
     setIsModalOpen(true);
   };
 
-  const handleSaveTransaction = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedItem || !quantity) return;
-
-    try {
-      const res = await fetch('/api/inventory', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          actionType: 'STOCK_TRANSACTION',
-          inventoryItemId: selectedItem.id,
-          type: transType,
-          quantity: parseFloat(quantity),
-          notes,
-        }),
-      });
-
-      if (res.ok) {
-        setIsModalOpen(false);
-        fetchInventory();
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const handleCreateNewItem = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const res = await fetch('/api/inventory', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          actionType: 'CREATE_ITEM',
-          name: newItemName,
-          SKU: newItemSKU,
-          unit: newItemUnit,
-          quantity: parseFloat(newItemStock),
-          minStock: parseFloat(newItemMinStock),
-          costPerUnit: parseFloat(newItemCost),
-          supplier: newItemSupplier,
-        }),
-      });
-
-      if (res.ok) {
-        setIsNewItemModalOpen(false);
-        fetchInventory();
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  };
+  const columns = useMemo(
+    () =>
+      getInventoryColumns({
+        onAdjust: handleOpenAdjustment,
+      }),
+    []
+  );
 
   return (
     <div className="flex h-screen bg-slate-950 text-slate-100 overflow-hidden font-sans">
       <Sidebar userRole={currentUser?.role} userName={currentUser?.name} userEmail={currentUser?.email} />
 
       <div className="flex-1 flex flex-col h-full overflow-hidden">
-        <Navbar title="Inventory & Ingredients Stock" />
+        <Navbar title="Real-Time Raw Inventory & Stock Management" />
 
         <main className="flex-1 overflow-y-auto p-6 space-y-6">
-          {/* Action Header */}
-          <div className="flex items-center justify-between bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-lg">
-            <div className="flex items-center space-x-2">
-              <Boxes className="w-5 h-5 text-amber-400" />
-              <h3 className="font-bold text-slate-100 text-base">Raw Ingredients & Supplies</h3>
+          {/* Header Action Banner */}
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-lg">
+            <div className="flex items-center space-x-3">
+              <div className="w-12 h-12 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold">
+                <Boxes className="w-6 h-6" />
+              </div>
+              <div>
+                <h2 className="text-base font-bold text-slate-100">Ingredient Stock & Recipe Inventory</h2>
+                <p className="text-xs text-slate-400">
+                  Stock levels auto-deduct when pizza or menu orders are prepared.
+                </p>
+              </div>
             </div>
 
-            <button
-              onClick={() => {
-                setNewItemSKU(`INV-RAW-${Math.floor(10 + Math.random() * 90)}`);
-                setIsNewItemModalOpen(true);
-              }}
-              className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl flex items-center space-x-1.5 shadow transition-colors"
+            <Button
+              variant="default"
+              onClick={() => setIsNewItemModalOpen(true)}
+              className="space-x-2"
             >
               <Plus className="w-4 h-4" />
               <span>Add Raw Ingredient</span>
-            </button>
+            </Button>
           </div>
 
-          {/* Table */}
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-950 text-slate-400 uppercase font-semibold border-b border-slate-800">
-                  <tr>
-                    <th className="p-4">Ingredient Name</th>
-                    <th className="p-4">SKU</th>
-                    <th className="p-4">Unit</th>
-                    <th className="p-4">Current Stock</th>
-                    <th className="p-4">Min Threshold</th>
-                    <th className="p-4">Cost / Unit</th>
-                    <th className="p-4">Supplier</th>
-                    <th className="p-4 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/60">
-                  {isLoading ? (
-                    <tr>
-                      <td colSpan={8} className="py-12 text-center text-slate-500">
-                        Loading inventory data...
-                      </td>
-                    </tr>
-                  ) : inventoryItems.length === 0 ? (
-                    <tr>
-                      <td colSpan={8} className="py-12 text-center text-slate-500">
-                        No raw inventory items registered
-                      </td>
-                    </tr>
-                  ) : (
-                    inventoryItems.map((item) => (
-                      <tr key={item.id} className="hover:bg-slate-800/40 transition-colors">
-                        <td className="p-4 font-bold text-slate-200">{item.name}</td>
-                        <td className="p-4 font-mono text-slate-400">{item.SKU}</td>
-                        <td className="p-4 font-semibold text-amber-400">{item.unit}</td>
-                        <td className="p-4 font-mono">
-                          <span
-                            className={`font-bold text-sm ${
-                              item.currentStock <= item.minStock ? 'text-red-400' : 'text-slate-100'
-                            }`}
-                          >
-                            {item.currentStock}
-                          </span>
-                        </td>
-                        <td className="p-4 font-mono text-slate-400">{item.minStock}</td>
-                        <td className="p-4 font-mono text-slate-300">{formatCurrency(item.costPerUnit)}</td>
-                        <td className="p-4 text-slate-400">{item.supplier || '-'}</td>
-                        <td className="p-4 text-right">
-                          <button
-                            onClick={() => handleOpenAdjustment(item)}
-                            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-amber-400 font-bold rounded-lg transition-colors"
-                          >
-                            Stock Adjust
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+          {/* Quick Metrics */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl flex items-center justify-between shadow">
+              <div>
+                <span className="text-xs text-slate-400 font-semibold uppercase">Total Tracked Items</span>
+                <div className="text-2xl font-black text-slate-100 font-mono mt-1">
+                  {inventoryItems.length}
+                </div>
+              </div>
+              <Boxes className="w-8 h-8 text-slate-600" />
             </div>
+
+            <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl flex items-center justify-between shadow">
+              <div>
+                <span className="text-xs text-slate-400 font-semibold uppercase">Low Stock Alerts</span>
+                <div className="text-2xl font-black text-rose-400 font-mono mt-1">
+                  {inventoryItems.filter((i) => i.currentStock <= i.minStock).length}
+                </div>
+              </div>
+              <AlertTriangle className="w-8 h-8 text-rose-500/50" />
+            </div>
+
+            <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl flex items-center justify-between shadow">
+              <div>
+                <span className="text-xs text-slate-400 font-semibold uppercase">Estimated Asset Value</span>
+                <div className="text-2xl font-black text-amber-400 font-mono mt-1">
+                  {formatCurrency(
+                    inventoryItems.reduce((acc, curr) => acc + curr.currentStock * curr.costPerUnit, 0)
+                  )}
+                </div>
+              </div>
+              <span className="text-xs text-emerald-400 font-bold">In-Stock Value</span>
+            </div>
+          </div>
+
+          {/* Inventory DataTable */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between px-1">
+              <h3 className="font-bold text-sm text-slate-200">Stock Directory ({inventoryItems.length})</h3>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={fetchInventory}
+                className="space-x-1"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>Refresh</span>
+              </Button>
+            </div>
+
+            <DataTable
+              columns={columns}
+              data={inventoryItems}
+              isLoading={isLoading}
+              loadingMessage="Loading inventory..."
+              emptyMessage="No raw inventory items found. Add ingredients to track stock!"
+            />
           </div>
         </main>
       </div>
 
       {/* Stock Adjustment Modal */}
       {isModalOpen && selectedItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 space-y-4 shadow-2xl">
-            <h3 className="text-base font-bold text-slate-100">
-              Adjust Stock: <span className="text-amber-400">{selectedItem.name}</span>
-            </h3>
-
-            <form onSubmit={handleSaveTransaction} className="space-y-3">
-              <div>
-                <label className="block text-xs text-slate-300 font-semibold mb-1">Transaction Type</label>
-                <select
-                  value={transType}
-                  onChange={(e) => setTransType(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-100 font-bold"
-                >
-                  <option value="ADD">ADD (+) Purchase / Restock</option>
-                  <option value="REMOVE">REMOVE (-) Usage</option>
-                  <option value="WASTE">WASTE (-) Spoilage / Expired</option>
-                  <option value="ADJUSTMENT">ADJUSTMENT (=) Set Exact Stock</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs text-slate-300 font-semibold mb-1">
-                  Quantity ({selectedItem.unit}) *
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  required
-                  value={quantity}
-                  onChange={(e) => setQuantity(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-100 font-mono font-bold"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs text-slate-300 font-semibold mb-1">Notes / Reason</label>
-                <input
-                  type="text"
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="e.g. Weekly Restock Invoice #884"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-100"
-                />
-              </div>
-
-              <div className="flex justify-end space-x-2 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 text-xs text-slate-400"
-                >
-                  Cancel
-                </button>
-                <button type="submit" className="px-5 py-2 bg-amber-500 text-slate-950 font-bold text-xs rounded-xl">
-                  Save Stock Change
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <StockAdjustmentModal
+          item={selectedItem}
+          onClose={() => setIsModalOpen(false)}
+          onSuccess={() => {
+            setIsModalOpen(false);
+            fetchInventory();
+          }}
+        />
       )}
 
       {/* New Ingredient Modal */}
       {isNewItemModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 space-y-4 shadow-2xl">
-            <h3 className="text-base font-bold text-slate-100">Add Raw Ingredient</h3>
-
-            <form onSubmit={handleCreateNewItem} className="space-y-3">
-              <div>
-                <label className="block text-xs text-slate-300 font-semibold mb-1">Ingredient Name *</label>
-                <input
-                  type="text"
-                  required
-                  value={newItemName}
-                  onChange={(e) => setNewItemName(e.target.value)}
-                  placeholder="e.g. Cheddar Cheese Blocks"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-100"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs text-slate-300 font-semibold mb-1">SKU *</label>
-                  <input
-                    type="text"
-                    required
-                    value={newItemSKU}
-                    onChange={(e) => setNewItemSKU(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-100 font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-slate-300 font-semibold mb-1">Unit (kg, l, pcs) *</label>
-                  <input
-                    type="text"
-                    required
-                    value={newItemUnit}
-                    onChange={(e) => setNewItemUnit(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-100 font-mono"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs text-slate-300 font-semibold mb-1">Initial Stock</label>
-                  <input
-                    type="number"
-                    value={newItemStock}
-                    onChange={(e) => setNewItemStock(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-100 font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-slate-300 font-semibold mb-1">Min Threshold</label>
-                  <input
-                    type="number"
-                    value={newItemMinStock}
-                    onChange={(e) => setNewItemMinStock(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-100 font-mono"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs text-slate-300 font-semibold mb-1">Cost Per Unit (Rs.)</label>
-                  <input
-                    type="number"
-                    value={newItemCost}
-                    onChange={(e) => setNewItemCost(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-100 font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-slate-300 font-semibold mb-1">Supplier Name</label>
-                  <input
-                    type="text"
-                    value={newItemSupplier}
-                    onChange={(e) => setNewItemSupplier(e.target.value)}
-                    placeholder="e.g. Metro Wholesale"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-100"
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-end space-x-2 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setIsNewItemModalOpen(false)}
-                  className="px-4 py-2 text-xs text-slate-400"
-                >
-                  Cancel
-                </button>
-                <button type="submit" className="px-5 py-2 bg-amber-500 text-slate-950 font-bold text-xs rounded-xl">
-                  Create Ingredient
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <NewIngredientModal
+          onClose={() => setIsNewItemModalOpen(false)}
+          onSuccess={() => {
+            setIsNewItemModalOpen(false);
+            fetchInventory();
+          }}
+        />
       )}
+    </div>
+  );
+}
+
+function StockAdjustmentModal({
+  item,
+  onClose,
+  onSuccess,
+}: {
+  item: any;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [errorMsg, setErrorMsg] = useState('');
+
+  const {
+    register,
+    handleSubmit,
+    control,
+    formState: { errors, isSubmitting },
+  } = useForm<StockAdjustmentFormValues>({
+    resolver: zodResolver(stockAdjustmentSchema),
+    defaultValues: {
+      type: 'ADD',
+      quantity: 1,
+      notes: '',
+    },
+  });
+
+  const onSave = async (values: StockAdjustmentFormValues) => {
+    setErrorMsg('');
+    try {
+      const res = await fetch('/api/inventory', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          actionType: 'STOCK_TRANSACTION',
+          inventoryItemId: item.id,
+          type: values.type,
+          quantity: values.quantity,
+          notes: values.notes,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        setErrorMsg(data.error || 'Failed to adjust stock');
+        return;
+      }
+      onSuccess();
+    } catch (e) {
+      setErrorMsg('Network error');
+    }
+  };
+
+  const onInvalid = () => {
+    setErrorMsg('Please enter a valid adjustment quantity');
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 space-y-4 shadow-2xl">
+        <div className="flex items-center justify-between">
+          <h3 className="text-base font-bold text-slate-100">
+            Adjust Stock: <span className="text-amber-400">{item.name}</span>
+          </h3>
+          <button onClick={onClose} className="p-1 text-slate-400 hover:text-slate-200">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {errorMsg && (
+          <div className="p-3 bg-red-500/10 border border-red-500/30 text-red-400 text-xs rounded-xl flex items-center space-x-2">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span>{errorMsg}</span>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit(onSave, onInvalid)} className="space-y-3" noValidate>
+          <div>
+            <label className="block text-xs text-slate-300 font-semibold mb-1">Transaction Type</label>
+            <Controller
+              name="type"
+              control={control}
+              render={({ field }) => (
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select transaction type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ADD">ADD (+) Purchase / Restock</SelectItem>
+                    <SelectItem value="REMOVE">REMOVE (-) Usage</SelectItem>
+                    <SelectItem value="WASTE">WASTE (-) Spoilage / Expired</SelectItem>
+                    <SelectItem value="ADJUSTMENT">ADJUSTMENT (=) Set Exact Stock</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs text-slate-300 font-semibold mb-1">
+              Quantity ({item.unit}) *
+            </label>
+            <Input
+              type="number"
+              step="0.01"
+              {...register('quantity')}
+              className="font-mono font-bold"
+              error={!!errors.quantity}
+            />
+            {errors.quantity && (
+              <p className="text-[11px] text-red-400 mt-1 font-medium">{errors.quantity.message}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-xs text-slate-300 font-semibold mb-1">Notes / Reason</label>
+            <Input
+              type="text"
+              {...register('notes')}
+              placeholder="e.g. Weekly Restock Invoice #884"
+            />
+          </div>
+
+          <div className="flex justify-end space-x-2 pt-4 border-t border-slate-800">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="default"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? 'Saving...' : 'Save Stock Change'}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function NewIngredientModal({
+  onClose,
+  onSuccess,
+}: {
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [errorMsg, setErrorMsg] = useState('');
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<NewIngredientFormValues>({
+    resolver: zodResolver(newIngredientSchema),
+    defaultValues: {
+      name: '',
+      SKU: '',
+      unit: 'kg',
+      currentStock: 50,
+      minStock: 10,
+      costPerUnit: 100,
+      supplier: '',
+    },
+  });
+
+  const onCreate = async (values: NewIngredientFormValues) => {
+    setErrorMsg('');
+    try {
+      const res = await fetch('/api/inventory', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          actionType: 'CREATE_ITEM',
+          name: values.name,
+          SKU: values.SKU,
+          unit: values.unit,
+          currentStock: values.currentStock,
+          minStock: values.minStock,
+          costPerUnit: values.costPerUnit,
+          supplier: values.supplier,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        setErrorMsg(data.error || 'Failed to create ingredient');
+        return;
+      }
+      onSuccess();
+    } catch (e) {
+      setErrorMsg('Network error');
+    }
+  };
+
+  const onInvalid = () => {
+    setErrorMsg('Please fill in all ingredient fields correctly');
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 space-y-4 shadow-2xl">
+        <div className="flex items-center justify-between">
+          <h3 className="text-base font-bold text-slate-100">Add Raw Ingredient</h3>
+          <button onClick={onClose} className="p-1 text-slate-400 hover:text-slate-200">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {errorMsg && (
+          <div className="p-3 bg-red-500/10 border border-red-500/30 text-red-400 text-xs rounded-xl flex items-center space-x-2">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span>{errorMsg}</span>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit(onCreate, onInvalid)} className="space-y-3" noValidate>
+          <div>
+            <label className="block text-xs text-slate-300 font-semibold mb-1">Ingredient Name *</label>
+            <Input
+              type="text"
+              {...register('name')}
+              placeholder="e.g. Cheddar Cheese Blocks"
+              error={!!errors.name}
+            />
+            {errors.name && (
+              <p className="text-[11px] text-red-400 mt-1 font-medium">{errors.name.message}</p>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs text-slate-300 font-semibold mb-1">SKU *</label>
+              <Input
+                type="text"
+                {...register('SKU')}
+                className="font-mono"
+                error={!!errors.SKU}
+              />
+              {errors.SKU && (
+                <p className="text-[11px] text-red-400 mt-1 font-medium">{errors.SKU.message}</p>
+              )}
+            </div>
+            <div>
+              <label className="block text-xs text-slate-300 font-semibold mb-1">Unit (kg, l, pcs) *</label>
+              <Input
+                type="text"
+                {...register('unit')}
+                className="font-mono"
+                error={!!errors.unit}
+              />
+              {errors.unit && (
+                <p className="text-[11px] text-red-400 mt-1 font-medium">{errors.unit.message}</p>
+              )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs text-slate-300 font-semibold mb-1">Initial Stock</label>
+              <Input
+                type="number"
+                step="0.01"
+                {...register('currentStock')}
+                className="font-mono"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-300 font-semibold mb-1">Min Threshold</label>
+              <Input
+                type="number"
+                step="0.01"
+                {...register('minStock')}
+                className="font-mono"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs text-slate-300 font-semibold mb-1">Cost Per Unit (Rs.)</label>
+              <Input
+                type="number"
+                step="0.01"
+                {...register('costPerUnit')}
+                className="font-mono"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-300 font-semibold mb-1">Supplier Name</label>
+              <Input
+                type="text"
+                {...register('supplier')}
+                placeholder="e.g. Metro Wholesale"
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end space-x-2 pt-4 border-t border-slate-800">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="default"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? 'Saving...' : 'Add Ingredient'}
+            </Button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

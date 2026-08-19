@@ -3,7 +3,6 @@ import type { NextRequest } from 'next/server';
 import { verifyJWT } from '@/lib/jwt';
 
 const adminOnlyRoutes = [
-  '/dashboard',
   '/products',
   '/pizza-management',
   '/inventory',
@@ -18,12 +17,18 @@ const protectedRoutes = [
   '/orders',
   '/kitchen',
   '/customers',
+  '/dashboard',
   ...adminOnlyRoutes,
 ];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const token = request.cookies.get('token')?.value;
+
+  // Redirect /dashboard to /pos
+  if (pathname === '/dashboard' || pathname.startsWith('/dashboard/')) {
+    return NextResponse.redirect(new URL('/pos', request.url));
+  }
 
   const isProtectedRoute = protectedRoutes.some((route) =>
     pathname.startsWith(route)
@@ -56,11 +61,7 @@ export async function middleware(request: NextRequest) {
   if (pathname === '/login' && token) {
     const payload = await verifyJWT(token);
     if (payload) {
-      if (payload.role === 'ADMIN' || payload.role === 'MANAGER') {
-        return NextResponse.redirect(new URL('/dashboard', request.url));
-      } else {
-        return NextResponse.redirect(new URL('/pos', request.url));
-      }
+      return NextResponse.redirect(new URL('/pos', request.url));
     }
   }
 

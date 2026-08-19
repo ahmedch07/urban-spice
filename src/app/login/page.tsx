@@ -1,44 +1,65 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Pizza, Lock, Mail, ArrowRight } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { Pizza, Lock, Mail, ArrowRight, AlertCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+
+const loginSchema = z.object({
+  email: z
+    .string()
+    .min(1, 'Email address is required')
+    .email('Please enter a valid email address'),
+  password: z
+    .string()
+    .min(1, 'Password is required')
+    .min(4, 'Password must be at least 4 characters'),
+});
+
+type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [serverError, setServerError] = useState('');
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setIsLoading(true);
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: '',
+      password: '',
+    },
+  });
+
+  const onSubmit = async (values: LoginFormValues) => {
+    setServerError('');
 
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify(values),
       });
 
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || 'Authentication failed');
-        setIsLoading(false);
+        setServerError(data.error || 'Authentication failed');
         return;
       }
 
-      if (data.user.role === 'ADMIN' || data.user.role === 'MANAGER') {
-        router.push('/dashboard');
-      } else {
-        router.push('/pos');
-      }
+      router.push('/pos');
       router.refresh();
     } catch (err) {
-      setError('Connection failed. Please check server.');
-      setIsLoading(false);
+      setServerError('Connection failed. Please check server.');
     }
   };
 
@@ -59,53 +80,60 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* Error Notification */}
-        {error && (
-          <div className="p-3.5 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-xs font-medium text-center">
-            {error}
+        {/* Server Error Notification */}
+        {serverError && (
+          <div className="p-3.5 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-xs font-medium text-center flex items-center justify-center space-x-2">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span>{serverError}</span>
           </div>
         )}
 
         {/* Login Form */}
-        <form onSubmit={handleLogin} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1.5">Email Address</label>
             <div className="relative">
               <Mail className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
-              <input
+              <Input
                 type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                {...register('email')}
                 placeholder="Enter registered email"
-                className="w-full pl-10 pr-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-100 placeholder-slate-600 focus:outline-none focus:border-amber-500 transition-colors"
+                className="pl-10 h-11 text-xs"
+                error={!!errors.email}
               />
             </div>
+            {errors.email && (
+              <p className="text-[11px] text-red-400 mt-1 font-medium">{errors.email.message}</p>
+            )}
           </div>
 
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1.5">Password</label>
             <div className="relative">
               <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
-              <input
+              <Input
                 type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                {...register('password')}
                 placeholder="••••••••"
-                className="w-full pl-10 pr-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-100 placeholder-slate-600 focus:outline-none focus:border-amber-500 transition-colors"
+                className="pl-10 h-11 text-xs"
+                error={!!errors.password}
               />
             </div>
+            {errors.password && (
+              <p className="text-[11px] text-red-400 mt-1 font-medium">{errors.password.message}</p>
+            )}
           </div>
 
-          <button
+          <Button
             type="submit"
-            disabled={isLoading}
-            className="w-full py-3.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-extrabold text-sm rounded-xl shadow-lg shadow-amber-500/20 flex items-center justify-center space-x-2 transition-all"
+            variant="primary"
+            size="lg"
+            disabled={isSubmitting}
+            className="w-full space-x-2 text-sm font-extrabold"
           >
-            <span>{isLoading ? 'Authenticating...' : 'Sign In to POS'}</span>
+            <span>{isSubmitting ? 'Authenticating...' : 'Sign In to POS'}</span>
             <ArrowRight className="w-4 h-4" />
-          </button>
+          </Button>
         </form>
       </div>
     </div>

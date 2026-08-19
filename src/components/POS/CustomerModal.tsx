@@ -1,8 +1,24 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 import React, { useState, useEffect } from 'react';
-import { X, Search, UserPlus, Phone, Mail, MapPin, Check, User } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { X, UserPlus, AlertCircle } from 'lucide-react';
 import { CustomerItem } from '@/lib/types';
+
+const customerSchema = z.object({
+  name: z.string().min(1, 'Customer name is required'),
+  phone: z.string().min(1, 'Phone number is required').min(7, 'Please enter a valid phone number'),
+  address: z.string().optional(),
+});
+
+type CustomerFormValues = z.infer<typeof customerSchema>;
 
 interface CustomerModalProps {
   isOpen: boolean;
@@ -15,61 +31,48 @@ export default function CustomerModal({
   onClose,
   onSelectCustomer,
 }: CustomerModalProps) {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [customers, setCustomers] = useState<CustomerItem[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [showCreateForm, setShowCreateForm] = useState(false);
-
-  // New Customer Form State
-  const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [whatsapp, setWhatsapp] = useState('');
-  const [email, setEmail] = useState('');
-  const [address, setAddress] = useState('');
-  const [city, setCity] = useState('Lahore');
-  const [notes, setNotes] = useState('');
   const [formError, setFormError] = useState('');
 
-  const fetchCustomers = async (q: string = '') => {
-    setIsLoading(true);
-    try {
-      const res = await fetch(`/api/pos/customers?q=${encodeURIComponent(q)}`);
-      const data = await res.json();
-      if (data.customers) {
-        setCustomers(data.customers);
-      }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<CustomerFormValues>({
+    resolver: zodResolver(customerSchema),
+    defaultValues: {
+      name: '',
+      phone: '',
+      address: '',
+    },
+  });
 
   useEffect(() => {
     if (isOpen) {
-      fetchCustomers(searchQuery);
+      reset({
+        name: '',
+        phone: '',
+        address: '',
+      });
+      setFormError('');
     }
-  }, [isOpen, searchQuery]);
+  }, [isOpen, reset]);
 
-  const handleCreateCustomer = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const onCreateCustomer = async (values: CustomerFormValues) => {
     setFormError('');
-    if (!name || !phone) {
-      setFormError('Customer name and phone number are required');
-      return;
-    }
 
     try {
       const res = await fetch('/api/pos/customers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, phone, whatsapp, email, address, city, notes }),
+        body: JSON.stringify(values),
       });
       const data = await res.json();
       if (!res.ok) {
         setFormError(data.error || 'Failed to create customer');
         return;
       }
+      reset();
       onSelectCustomer(data.customer);
       onClose();
     } catch (error) {
@@ -77,158 +80,92 @@ export default function CustomerModal({
     }
   };
 
+  const onInvalid = () => {
+    setFormError('Please enter a valid customer name and phone number');
+  };
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn">
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in-0">
+      <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col my-8 zoom-in-95 animate-in">
         {/* Header */}
-        <div className="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/90">
+        <div className="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-950">
           <div className="flex items-center space-x-2">
-            <User className="w-5 h-5 text-amber-400" />
-            <h2 className="text-base font-bold text-slate-100">
-              {showCreateForm ? 'Create New Customer' : 'Select Customer'}
-            </h2>
+            <UserPlus className="w-5 h-5 text-amber-400" />
+            <h3 className="font-bold text-slate-100 text-sm">Customer Details</h3>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-100 hover:bg-slate-800 rounded-lg transition-colors"
+            className="p-1 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Content */}
-        {!showCreateForm ? (
-          <div className="flex-1 flex flex-col overflow-hidden p-4 space-y-4">
-            {/* Search + Add New Button */}
-            <div className="flex items-center space-x-2">
-              <div className="relative flex-1">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search by name, phone, or email..."
-                  className="w-full pl-9 pr-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-500"
-                />
-              </div>
-
-              <button
-                onClick={() => setShowCreateForm(true)}
-                className="px-3 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl flex items-center space-x-1 shrink-0 transition-colors"
-              >
-                <UserPlus className="w-4 h-4" />
-                <span>New</span>
-              </button>
+        {/* Form */}
+        <form onSubmit={handleSubmit(onCreateCustomer, onInvalid)} className="p-5 space-y-4" noValidate>
+          {formError && (
+            <div className="p-3 bg-red-500/10 border border-red-500/30 text-red-400 text-xs rounded-xl font-medium flex items-center space-x-2">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{formError}</span>
             </div>
+          )}
 
-            {/* Customers list */}
-            <div className="flex-1 overflow-y-auto space-y-2">
-              {isLoading ? (
-                <div className="py-8 text-center text-xs text-slate-500">Loading customers...</div>
-              ) : customers.length === 0 ? (
-                <div className="py-8 text-center text-xs text-slate-500">No customers found</div>
-              ) : (
-                customers.map((c) => (
-                  <div
-                    key={c.id}
-                    onClick={() => {
-                      onSelectCustomer(c);
-                      onClose();
-                    }}
-                    className="p-3 bg-slate-950 border border-slate-800/80 hover:border-amber-500/50 rounded-xl cursor-pointer flex items-center justify-between group transition-all"
-                  >
-                    <div>
-                      <h4 className="text-sm font-bold text-slate-100 group-hover:text-amber-400">
-                        {c.name}
-                      </h4>
-                      <div className="flex items-center space-x-3 text-xs text-slate-400 mt-0.5">
-                        <span className="flex items-center space-x-1 font-mono">
-                          <Phone className="w-3 h-3 text-slate-500" />
-                          <span>{c.phone}</span>
-                        </span>
-                        {c.address && (
-                          <span className="flex items-center space-x-1 truncate max-w-[200px]">
-                            <MapPin className="w-3 h-3 text-slate-500 shrink-0" />
-                            <span className="truncate">{c.address}</span>
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    <button className="px-3 py-1 bg-amber-500/10 text-amber-400 font-bold text-xs rounded-lg group-hover:bg-amber-500 group-hover:text-slate-950 transition-colors">
-                      Select
-                    </button>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        ) : (
-          /* Create Customer Form */
-          <form onSubmit={handleCreateCustomer} className="flex-1 overflow-y-auto p-5 space-y-4">
-            {formError && (
-              <div className="p-3 bg-red-500/10 border border-red-500/30 text-red-400 text-xs rounded-xl font-medium">
-                {formError}
-              </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">Customer Name *</label>
+            <Input
+              type="text"
+              {...register('name')}
+              placeholder="e.g. Usama Khan"
+              error={!!errors.name}
+            />
+            {errors.name && (
+              <p className="text-[11px] text-red-400 mt-1 font-medium">{errors.name.message}</p>
             )}
+          </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Customer Name *</label>
-                <input
-                  type="text"
-                  required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Usama Khan"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-100 focus:outline-none focus:border-amber-500"
-                />
-              </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">Contact Phone *</label>
+            <Input
+              type="text"
+              {...register('phone')}
+              placeholder="e.g. 03001234567"
+              className="font-mono"
+              error={!!errors.phone}
+            />
+            {errors.phone && (
+              <p className="text-[11px] text-red-400 mt-1 font-medium">{errors.phone.message}</p>
+            )}
+          </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Contact Number *</label>
-                <input
-                  type="text"
-                  required
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="e.g. 03001234567"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-100 font-mono focus:outline-none focus:border-amber-500"
-                />
-              </div>
-            </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">Delivery Address</label>
+            <Textarea
+              rows={2}
+              {...register('address')}
+              placeholder="House #, Street, Area / Sector..."
+            />
+          </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Delivery Address</label>
-              <textarea
-                rows={2}
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                placeholder="Full street address, house #, block..."
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-100 focus:outline-none focus:border-amber-500 resize-none"
-              />
-            </div>
+          <div className="flex items-center justify-end space-x-2 pt-3 border-t border-slate-800">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+            >
+              Cancel
+            </Button>
 
-            <div className="flex items-center justify-between pt-3 border-t border-slate-800">
-              <button
-                type="button"
-                onClick={() => setShowCreateForm(false)}
-                className="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-slate-200"
-              >
-                Back to Search
-              </button>
-
-              <button
-                type="submit"
-                className="px-5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow transition-colors"
-              >
-                Save & Select
-              </button>
-            </div>
-          </form>
-        )}
+            <Button
+              type="submit"
+              variant="default"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? 'Saving...' : 'Select Customer'}
+            </Button>
+          </div>
+        </form>
       </div>
     </div>
   );

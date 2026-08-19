@@ -43,6 +43,8 @@ interface CartSidebarProps {
   taxRate: number;
   onTaxRateChange?: (r: number) => void;
   onCheckout: () => void;
+  isMobileOpen?: boolean;
+  onCloseMobile?: () => void;
 }
 
 export default function CartSidebar({
@@ -69,22 +71,26 @@ export default function CartSidebar({
   taxRate,
   onTaxRateChange,
   onCheckout,
+  isMobileOpen = false,
+  onCloseMobile,
 }: CartSidebarProps) {
   const [showDiscountInput, setShowDiscountInput] = useState(false);
   const [showTaxInput, setShowTaxInput] = useState(false);
+  const [showTaxBreakdown, setShowTaxBreakdown] = useState(false);
 
   // Subtotal Calculation
   const subtotal = cart.reduce((sum, item) => sum + item.totalPrice, 0);
 
-  // Discount Amount
-  const discountAmount = discountType === 'PERCENTAGE'
-    ? (subtotal * discount) / 100
-    : discount;
+  // Discount Calculation
+  const discountAmount =
+    discountType === 'PERCENTAGE'
+      ? Math.round((subtotal * discount) / 100)
+      : Math.min(discount, subtotal);
 
   const afterDiscount = Math.max(0, subtotal - discountAmount);
 
-  // Tax Calculation
-  const taxAmount = (afterDiscount * taxRate) / 100;
+  // GST Tax Calculation
+  const taxAmount = Math.round((afterDiscount * taxRate) / 100);
 
   // Delivery Fee
   const activeDeliveryFee = orderType === 'DELIVERY' ? deliveryFee : 0;
@@ -92,24 +98,40 @@ export default function CartSidebar({
   // Grand Total
   const grandTotal = Math.round(afterDiscount + taxAmount + activeDeliveryFee);
 
-  return (
-    <div className="w-96 bg-slate-900 border-l border-slate-800 flex flex-col h-full select-none z-20 shadow-2xl">
+  const cartContent = (
+    <div className="w-full h-full bg-slate-900 flex flex-col select-none">
       {/* 1. Header & Order Type Selector */}
       <div className="p-4 border-b border-slate-800 space-y-3 bg-slate-900/90">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <ShoppingBag className="w-5 h-5 text-amber-400" />
             <h2 className="font-bold text-base text-slate-100">Current Order</h2>
+            {cart.length > 0 && (
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-amber-500/20 text-amber-400 font-bold border border-amber-500/30">
+                {cart.reduce((s, i) => s + i.quantity, 0)} items
+              </span>
+            )}
           </div>
-          {cart.length > 0 && (
-            <button
-              onClick={onClearCart}
-              className="text-xs text-red-400 hover:text-red-300 hover:underline flex items-center space-x-1"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              <span>Clear</span>
-            </button>
-          )}
+          <div className="flex items-center space-x-2">
+            {cart.length > 0 && (
+              <button
+                onClick={onClearCart}
+                className="text-xs text-red-400 hover:text-red-300 hover:underline flex items-center space-x-1"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Clear</span>
+              </button>
+            )}
+            {onCloseMobile && (
+              <button
+                onClick={onCloseMobile}
+                className="lg:hidden p-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800"
+                title="Close Cart"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Order Type Tabs */}
@@ -219,7 +241,7 @@ export default function CartSidebar({
               className="w-full py-1.5 flex items-center justify-center space-x-2 text-xs font-semibold text-amber-400 hover:text-amber-300 transition-colors"
             >
               <UserPlus className="w-4 h-4" />
-              <span>Select or Add Customer</span>
+              <span>Add Customer</span>
             </button>
           )}
         </div>
@@ -420,7 +442,7 @@ export default function CartSidebar({
           </div>
         </div>
 
-        {/* Checkout Button */}
+          {/* Checkout Button */}
         <button
           disabled={cart.length === 0}
           onClick={onCheckout}
@@ -431,5 +453,30 @@ export default function CartSidebar({
         </button>
       </div>
     </div>
+  );
+
+  return (
+    <>
+      {/* Desktop Persistent Sidebar */}
+      <aside className="hidden lg:flex w-80 xl:w-96 border-l border-slate-800 h-full shrink-0 z-20 shadow-2xl">
+        {cartContent}
+      </aside>
+
+      {/* Mobile / Tablet Drawer */}
+      {isMobileOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden flex justify-end">
+          {/* Backdrop */}
+          <div
+            onClick={onCloseMobile}
+            className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm animate-in fade-in-0"
+          />
+
+          {/* Drawer Sheet */}
+          <aside className="relative w-full sm:w-96 max-w-full h-full z-10 shadow-2xl animate-in slide-in-from-right duration-200">
+            {cartContent}
+          </aside>
+        </div>
+      )}
+    </>
   );
 }

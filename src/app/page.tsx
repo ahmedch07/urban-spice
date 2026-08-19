@@ -11,11 +11,7 @@ export default function Home() {
       .then((res) => res.json())
       .then((data) => {
         if (data.user) {
-          if (data.user.role === 'ADMIN' || data.user.role === 'MANAGER') {
-            router.replace('/dashboard');
-          } else {
-            router.replace('/pos');
-          }
+          router.replace('/pos');
         } else {
           router.replace('/login');
         }
@@ -27,7 +23,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-400 text-xs font-mono">
-      Authenticating & Loading Dashboard...
+      Authenticating & Loading POS...
     </div>
   );
 }

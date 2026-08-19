@@ -30,7 +30,7 @@ export async function POST(request: Request) {
 
     // Safely attempt audit log
     try {
-      if (session.userId) {
+      if (session?.userId) {
         await prisma.auditLog.create({
           data: {
             userId: session.userId,

@@ -8,7 +8,7 @@ interface ThermalReceiptModalProps {
   isOpen: boolean;
   onClose: () => void;
   order: any;
-  onNewOrder: () => void;
+  onNewOrder?: () => void;
 }
 
 export default function ThermalReceiptModal({
@@ -213,11 +213,11 @@ export default function ThermalReceiptModal({
         {/* Action Buttons */}
         <div className="p-4 border-t border-slate-800 bg-slate-950/80 flex items-center justify-between no-print">
           <button
-            onClick={onNewOrder}
+            onClick={onNewOrder || onClose}
             className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-xl flex items-center space-x-1.5 transition-colors"
           >
             <Plus className="w-4 h-4 text-amber-400" />
-            <span>New Order (F4)</span>
+            <span>{onNewOrder ? 'New Order (F4)' : 'Close Preview'}</span>
           </button>
 
           <div className="flex items-center space-x-2">

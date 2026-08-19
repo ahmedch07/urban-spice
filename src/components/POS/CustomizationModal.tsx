@@ -205,44 +205,48 @@ export default function CustomizationModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-fadeIn select-none">
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/85 backdrop-blur-md animate-fadeIn select-none overflow-y-auto">
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl sm:rounded-3xl w-full max-w-3xl max-h-[94vh] flex flex-col shadow-2xl overflow-hidden my-auto">
         {/* Header */}
-        <div className="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/95">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center border border-amber-500/30">
-              <PizzaIcon className="w-6 h-6" />
+        <div className="p-3.5 sm:p-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/95 shrink-0">
+          <div className="flex items-center space-x-2.5 sm:space-x-3 min-w-0 pr-2">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center border border-amber-500/30 shrink-0">
+              <PizzaIcon className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
-            <div>
-              <h2 className="text-base font-extrabold text-slate-100">Pizza Configuration Panel</h2>
-              <p className="text-xs text-amber-400 font-semibold">Select Pizza Category ➔ Flavor ➔ Size ➔ Extras</p>
+            <div className="min-w-0">
+              <h2 className="text-sm sm:text-base font-extrabold text-slate-100 truncate">
+                Pizza Configuration Panel
+              </h2>
+              <p className="text-[10px] sm:text-xs text-amber-400 font-semibold truncate">
+                Category ➔ Flavor ➔ Size ➔ Extras
+              </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 text-slate-400 hover:text-slate-100 hover:bg-slate-800 rounded-xl transition-colors"
+            className="p-1.5 sm:p-2 text-slate-400 hover:text-slate-100 hover:bg-slate-800 rounded-xl transition-colors shrink-0"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Scrollable Body */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-5">
+        <div className="flex-1 overflow-y-auto p-3.5 sm:p-5 space-y-4 sm:space-y-5">
           {/* STEP 1: PIZZA CATEGORY SELECTOR */}
           <div>
             <label className="block text-xs font-black text-amber-400 uppercase tracking-wider mb-2">
               1. Select Pizza Category / Type
             </label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-2">
               {pizzaCategories.map((catName) => {
                 const isSelected = activeCategory === catName;
                 return (
                   <button
                     key={catName}
                     onClick={() => setActiveCategory(catName)}
-                    className={`py-2.5 px-3 rounded-xl border text-xs font-extrabold transition-all text-center ${
+                    className={`py-2 sm:py-2.5 px-2 sm:px-3 rounded-xl border text-xs font-extrabold transition-all text-center truncate ${
                       isSelected
-                        ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md shadow-amber-500/20 scale-105'
+                        ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md shadow-amber-500/20 scale-[1.02]'
                         : 'bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800'
                     }`}
                   >
@@ -258,7 +262,7 @@ export default function CustomizationModal({
             <label className="block text-xs font-black text-amber-400 uppercase tracking-wider mb-2">
               2. Select {activeCategory} Flavor
             </label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-2.5">
               {availableFlavors.map((flavor) => {
                 const isSelected = selectedFlavor.id === flavor.id;
                 const priceObj = flavor.flavorPrices?.find(
@@ -269,7 +273,7 @@ export default function CustomizationModal({
                   <button
                     key={flavor.id}
                     onClick={() => setSelectedFlavor(flavor)}
-                    className={`p-3 rounded-xl border text-left flex items-start space-x-3 transition-all ${
+                    className={`p-2.5 sm:p-3 rounded-xl border text-left flex items-start space-x-2.5 sm:space-x-3 transition-all ${
                       isSelected
                         ? 'bg-amber-500/15 border-amber-500 text-amber-300 shadow-md shadow-amber-500/10 ring-1 ring-amber-500'
                         : 'bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800/80'
@@ -283,10 +287,10 @@ export default function CustomizationModal({
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between gap-1">
                         <span className="font-extrabold text-xs text-slate-100 truncate">{flavor.name}</span>
                         {price > 0 && (
-                          <span className="text-xs font-mono font-bold text-amber-400">{formatCurrency(price)}</span>
+                          <span className="text-xs font-mono font-bold text-amber-400 shrink-0">{formatCurrency(price)}</span>
                         )}
                       </div>
                       {flavor.description && (
@@ -304,9 +308,9 @@ export default function CustomizationModal({
           {/* STEP 3: SIZE SELECTION */}
           <div>
             <label className="block text-xs font-black text-amber-400 uppercase tracking-wider mb-2">
-              3. Select Size (Price updates automatically)
+              3. Select Size
             </label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-2.5">
               {sizes.map((size) => {
                 const isSelected = selectedSize.id === size.id;
                 const priceObj = selectedFlavor?.flavorPrices?.find(
@@ -323,14 +327,14 @@ export default function CustomizationModal({
                   <button
                     key={size.id}
                     onClick={() => setSelectedSize(size)}
-                    className={`p-3 rounded-xl border text-left transition-all ${
+                    className={`p-2.5 sm:p-3 rounded-xl border text-left transition-all ${
                       isSelected
                         ? 'bg-amber-500/15 border-amber-500 text-amber-300 shadow-md shadow-amber-500/10 ring-1 ring-amber-500'
                         : 'bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800'
                     }`}
                   >
                     <div className="font-extrabold text-xs text-slate-100">{size.name}</div>
-                    <div className="text-xs font-mono font-bold text-amber-400 mt-1">
+                    <div className="text-xs font-mono font-bold text-amber-400 mt-0.5">
                       {price > 0 ? formatCurrency(price) : 'N/A'}
                     </div>
                   </button>
@@ -344,7 +348,7 @@ export default function CustomizationModal({
             <label className="block text-xs font-black text-amber-400 uppercase tracking-wider mb-2">
               4. Select Crust Type
             </label>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+            <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-2.5">
               {crusts.map((crust) => {
                 const isSelected = selectedCrust.id === crust.id;
                 return (
@@ -367,18 +371,18 @@ export default function CustomizationModal({
             </div>
           </div>
 
-          {/* STEP 5: EXTRA TOPPINGS (Size-Dependent Pricing) */}
+          {/* STEP 5: EXTRA TOPPINGS */}
           <div>
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2 gap-1">
               <label className="block text-xs font-black text-amber-400 uppercase tracking-wider">
-                5. Extra Toppings (Size: {selectedSize.name})
+                5. Extra Toppings ({selectedSize.name})
               </label>
-              <span className="text-[11px] text-slate-400 font-mono">
-                Topping Rate: +{formatCurrency(getToppingPriceForSize('Extra Topping', selectedSize?.code))}
+              <span className="text-[10px] sm:text-[11px] text-slate-400 font-mono">
+                Rate: +{formatCurrency(getToppingPriceForSize('Extra Topping', selectedSize?.code))}
               </span>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 gap-2">
               {toppings.map((topping) => {
                 const isSelected = selectedToppings.some((t) => t.toppingId === topping.id);
                 const toppingPrice = getToppingPriceForSize(topping.name, selectedSize?.code);
@@ -392,7 +396,7 @@ export default function CustomizationModal({
                         : 'bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800'
                     }`}
                   >
-                    <div className="flex items-center space-x-2 truncate">
+                    <div className="flex items-center space-x-2 truncate min-w-0 pr-1">
                       <div className={`w-4 h-4 rounded flex items-center justify-center border shrink-0 ${
                         isSelected ? 'bg-emerald-500 border-emerald-500 text-slate-950' : 'border-slate-700'
                       }`}>
@@ -400,7 +404,7 @@ export default function CustomizationModal({
                       </div>
                       <span className="text-xs font-semibold truncate">{topping.name}</span>
                     </div>
-                    <span className="text-[11px] font-mono font-bold text-amber-400 shrink-0 ml-1">
+                    <span className="text-[11px] font-mono font-bold text-amber-400 shrink-0">
                       +{formatCurrency(toppingPrice)}
                     </span>
                   </button>
@@ -425,35 +429,42 @@ export default function CustomizationModal({
         </div>
 
         {/* Footer Actions */}
-        <div className="p-4 border-t border-slate-800 bg-slate-950 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <span className="text-xs font-bold text-slate-400">Qty:</span>
-            <div className="flex items-center space-x-2 bg-slate-900 border border-slate-800 rounded-xl p-1">
-              <button
-                onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                className="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-200 font-bold transition-colors text-xs"
-              >
-                <Minus className="w-3.5 h-3.5" />
-              </button>
-              <span className="w-6 text-center font-bold text-xs font-mono text-slate-100">{quantity}</span>
-              <button
-                onClick={() => setQuantity(quantity + 1)}
-                className="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-200 font-bold transition-colors text-xs"
-              >
-                <Plus className="w-3.5 h-3.5" />
-              </button>
+        <div className="p-3 sm:p-4 border-t border-slate-800 bg-slate-950 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shrink-0">
+          <div className="flex items-center justify-between sm:justify-start space-x-3">
+            <div className="flex items-center space-x-2">
+              <span className="text-xs font-bold text-slate-400">Qty:</span>
+              <div className="flex items-center space-x-2 bg-slate-900 border border-slate-800 rounded-xl p-1">
+                <button
+                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                  className="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-200 font-bold transition-colors text-xs"
+                >
+                  <Minus className="w-3.5 h-3.5" />
+                </button>
+                <span className="w-6 text-center font-bold text-xs font-mono text-slate-100">{quantity}</span>
+                <button
+                  onClick={() => setQuantity(quantity + 1)}
+                  className="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-200 font-bold transition-colors text-xs"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+
+            <div className="text-right sm:hidden">
+              <div className="text-[10px] text-slate-400 uppercase font-semibold">Total Price</div>
+              <div className="text-sm font-extrabold text-amber-400 font-mono">{formatCurrency(totalPrice)}</div>
             </div>
           </div>
 
           <div className="flex items-center space-x-4">
-            <div className="text-right">
+            <div className="text-right hidden sm:block">
               <div className="text-[10px] text-slate-400 uppercase font-semibold">Configured Price</div>
               <div className="text-base font-extrabold text-amber-400 font-mono">{formatCurrency(totalPrice)}</div>
             </div>
 
             <button
               onClick={handleAdd}
-              className="px-6 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-extrabold text-xs rounded-xl shadow-lg shadow-amber-500/20 flex items-center space-x-2 transition-all"
+              className="w-full sm:w-auto px-6 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-extrabold text-xs sm:text-sm rounded-xl shadow-lg shadow-amber-500/20 flex items-center justify-center space-x-2 transition-all"
             >
               <Sparkles className="w-4 h-4" />
               <span>Add to Cart</span>

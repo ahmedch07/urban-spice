@@ -13,6 +13,7 @@ import PaymentModal from '@/components/POS/PaymentModal';
 import ThermalReceiptModal from '@/components/POS/ThermalReceiptModal';
 import { CartItem, CategoryItem, CustomerItem, OrderType, ProductItem, RiderItem } from '@/lib/types';
 import { mergeRiderOverrides } from '@/lib/rider-overrides';
+import { formatCurrency } from '@/lib/utils';
 
 export default function POSPage() {
   // Session User
@@ -198,8 +199,19 @@ export default function POSPage() {
     setIsReceiptModalOpen(true);
   };
 
-  // Subtotal for modal
+  const [isMobileCartOpen, setIsMobileCartOpen] = useState<boolean>(false);
+
+  // Subtotal for modal & calculations
   const subtotal = cart.reduce((sum, item) => sum + item.totalPrice, 0);
+  const totalCartItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+  const discountAmount =
+    discountType === 'PERCENTAGE'
+      ? Math.round((subtotal * discount) / 100)
+      : Math.min(discount, subtotal);
+  const afterDiscount = Math.max(0, subtotal - discountAmount);
+  const taxAmount = Math.round((afterDiscount * taxRate) / 100);
+  const activeDeliveryFee = orderType === 'DELIVERY' ? deliveryFee : 0;
+  const grandTotal = Math.round(afterDiscount + taxAmount + activeDeliveryFee);
 
   return (
     <div className="flex h-screen bg-slate-950 text-slate-100 overflow-hidden font-sans">
@@ -212,7 +224,7 @@ export default function POSPage() {
         <Navbar title="Point of Sale (POS) & Billing" />
 
         {/* POS Workstation split */}
-        <div className="flex-1 flex overflow-hidden">
+        <div className="flex-1 flex overflow-hidden relative">
           {/* Left: Products & Categories */}
           <ProductGrid
             categories={categories}
@@ -225,7 +237,7 @@ export default function POSPage() {
             onOpenPizzaModalWithCategory={handleOpenPizzaModalWithCategory}
           />
 
-          {/* Right: Cart & Calculation Sidebar */}
+          {/* Right: Cart & Calculation Sidebar (Desktop & Mobile Drawer) */}
           <CartSidebar
             cart={cart}
             onUpdateQuantity={handleUpdateQuantity}
@@ -249,9 +261,38 @@ export default function POSPage() {
             onDeliveryFeeChange={setDeliveryFee}
             taxRate={taxRate}
             onTaxRateChange={setTaxRate}
-            onCheckout={() => setIsPaymentModalOpen(true)}
+            onCheckout={() => {
+              setIsMobileCartOpen(false);
+              setIsPaymentModalOpen(true);
+            }}
+            isMobileOpen={isMobileCartOpen}
+            onCloseMobile={() => setIsMobileCartOpen(false)}
           />
         </div>
+
+        {/* Mobile Floating Cart Summary Bar */}
+        {cart.length > 0 && (
+          <div className="lg:hidden p-3 bg-slate-900 border-t border-slate-800 shadow-2xl flex items-center justify-between gap-3 shrink-0 z-30 animate-in slide-in-from-bottom-2">
+            <div className="flex items-center space-x-2.5">
+              <div className="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-500/30 text-amber-400 flex items-center justify-center font-bold font-mono text-xs shadow-inner">
+                {totalCartItems}
+              </div>
+              <div>
+                <p className="text-[10px] text-slate-400 font-medium">Cart Total</p>
+                <p className="text-sm font-extrabold text-amber-400 font-mono leading-none">
+                  {formatCurrency(grandTotal)}
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setIsMobileCartOpen(true)}
+              className="px-3.5 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-xs rounded-xl shadow-lg shadow-amber-500/20 flex items-center space-x-1.5 transition-all"
+            >
+              <span>View Cart & Pay</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Modals */}

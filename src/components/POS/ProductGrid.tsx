@@ -211,7 +211,7 @@ export default function ProductGrid({
       {/* Main View Mode 1: High Level Category Cards Overview (Default Clean POS Main Screen) */}
       {isMainOverview ? (
         <div className="flex-1 overflow-y-auto pr-1">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-1 xl:grid-cols-3 gap-4">
             {categoryCards.map((card) => (
               <div
                 key={card.id}

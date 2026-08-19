@@ -33,17 +33,17 @@ function getDatabaseUrl(): string {
     }
   }
 
-  if (envUrl) {
-    return envUrl;
+  // Resolve local sqlite path to absolute path
+  const candidatePrisma = path.join(process.cwd(), 'prisma', 'dev.db');
+  const candidateRoot = path.join(process.cwd(), 'dev.db');
+  if (fs.existsSync(candidatePrisma)) {
+    return `file:${candidatePrisma.replace(/\\/g, '/')}`;
+  }
+  if (fs.existsSync(candidateRoot)) {
+    return `file:${candidateRoot.replace(/\\/g, '/')}`;
   }
 
-  const defaultDbPath = path.join(process.cwd(), 'prisma', 'dev.db');
-  if (fs.existsSync(defaultDbPath)) {
-    const normalized = defaultDbPath.replace(/\\/g, '/');
-    return `file:${normalized}`;
-  }
-
-  return 'file:./prisma/dev.db';
+  return `file:${candidatePrisma.replace(/\\/g, '/')}`;
 }
 
 const globalForPrisma = globalThis as unknown as {

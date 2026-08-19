@@ -2,12 +2,51 @@
 
 export const dynamic = 'force-dynamic';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
 import Sidebar from '@/components/Sidebar';
 import Navbar from '@/components/Navbar';
 import ImageUploadInput from '@/components/ImageUploadInput';
-import { Pizza, Plus, Edit2, Trash2, Layers, CheckCircle, Search, SlidersHorizontal, DollarSign } from 'lucide-react';
-import { formatCurrency } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import { DataTable } from '@/components/ui/data-table';
+import { DeleteConfirmModal } from '@/components/ui/delete-confirm-modal';
+import {
+  getFlavorColumns,
+  getSizeColumns,
+  getCrustColumns,
+  getToppingColumns,
+} from '@/columns';
+import { Pizza, Plus, Edit2, Trash2, X, AlertCircle } from 'lucide-react';
+
+const flavorSchema = z.object({
+  name: z.string().min(1, 'Flavor name is required'),
+  description: z.string().optional(),
+  image: z.string().optional(),
+  prices: z.record(z.string(), z.coerce.number().min(0, 'Price must be non-negative')),
+});
+
+type FlavorFormValues = z.infer<typeof flavorSchema>;
+
+const sizeSchema = z.object({
+  name: z.string().min(1, 'Size name is required'),
+  code: z.string().min(1, 'Size code is required'),
+  sortOrder: z.coerce.number().min(0, 'Sort order must be non-negative'),
+});
+
+type SizeFormValues = z.infer<typeof sizeSchema>;
+
+const genericItemSchema = z.object({
+  name: z.string().min(1, 'Name is required'),
+  additionalPrice: z.coerce.number().min(0, 'Price must be non-negative'),
+  stock: z.coerce.number().min(0, 'Stock must be non-negative'),
+});
+
+type GenericItemFormValues = z.infer<typeof genericItemSchema>;
 
 export default function PizzaManagementPage() {
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -17,34 +56,29 @@ export default function PizzaManagementPage() {
   const [sizes, setSizes] = useState<any[]>([]);
   const [crusts, setCrusts] = useState<any[]>([]);
   const [toppings, setToppings] = useState<any[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
   // Modal State for Flavor
   const [isFlavorModalOpen, setIsFlavorModalOpen] = useState(false);
   const [editFlavor, setEditFlavor] = useState<any>(null);
-  const [flavorName, setFlavorName] = useState('');
-  const [flavorDesc, setFlavorDesc] = useState('');
-  const [flavorImg, setFlavorImg] = useState('');
-  const [sizePricesMap, setSizePricesMap] = useState<Record<string, string>>({});
-  const [flavorError, setFlavorError] = useState('');
 
   // Modal State for Size
   const [isSizeModalOpen, setIsSizeModalOpen] = useState(false);
   const [editSizeItem, setEditSizeItem] = useState<any>(null);
-  const [sizeName, setSizeName] = useState('');
-  const [sizeCode, setSizeCode] = useState('');
-  const [sizeSortOrder, setSizeSortOrder] = useState('0');
-  const [sizeError, setSizeError] = useState('');
 
   // Modal state for Crust/Topping
   const [isGenericModalOpen, setIsGenericModalOpen] = useState(false);
   const [genericType, setGenericType] = useState<'crust' | 'topping'>('crust');
   const [genericItem, setGenericItem] = useState<any>(null);
-  const [genericName, setGenericName] = useState('');
-  const [genericPrice, setGenericPrice] = useState('');
-  const [genericStock, setGenericStock] = useState('500');
-  const [genericError, setGenericError] = useState('');
+
+  // Delete Confirmation State
+  const [deleteTarget, setDeleteTarget] = useState<{
+    type: 'flavor' | 'size' | 'crust' | 'topping';
+    id: string;
+    name?: string;
+  } | null>(null);
+  const [deleteErrorMsg, setDeleteErrorMsg] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     fetch('/api/auth/me')
@@ -85,183 +119,103 @@ export default function PizzaManagementPage() {
 
   // Flavor Handlers
   const handleOpenFlavorModal = (flavor: any = null) => {
-    setFlavorError('');
-    if (flavor) {
-      setEditFlavor(flavor);
-      setFlavorName(flavor.name);
-      setFlavorDesc(flavor.description || '');
-      setFlavorImg(flavor.image || '');
-
-      const map: Record<string, string> = {};
-      flavor.flavorPrices?.forEach((fp: any) => {
-        map[fp.sizeId] = String(fp.price);
-      });
-      setSizePricesMap(map);
-    } else {
-      setEditFlavor(null);
-      setFlavorName('');
-      setFlavorDesc('');
-      setFlavorImg('');
-      const defaultMap: Record<string, string> = {};
-      sizes.forEach((s, idx) => {
-        defaultMap[s.id] = String(700 + idx * 300);
-      });
-      setSizePricesMap(defaultMap);
-    }
+    setEditFlavor(flavor);
     setIsFlavorModalOpen(true);
   };
 
-  const handleSaveFlavor = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setFlavorError('');
-
-    const pricesArray = Object.entries(sizePricesMap).map(([sizeId, price]) => ({
-      sizeId,
-      price: parseFloat(price) || 0,
-    }));
-
-    const url = '/api/pizza-management/flavors';
-    const method = editFlavor ? 'PUT' : 'POST';
-
-    try {
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: editFlavor?.id,
-          name: flavorName,
-          description: flavorDesc,
-          image: flavorImg,
-          prices: pricesArray,
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        setFlavorError(data.error || 'Failed to save flavor');
-        return;
-      }
-
-      setIsFlavorModalOpen(false);
-      fetchAllData();
-    } catch (e) {
-      setFlavorError('Network error');
-    }
-  };
-
-  const handleDeleteFlavor = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this pizza flavor?')) return;
-    await fetch(`/api/pizza-management/flavors?id=${id}`, { method: 'DELETE' });
-    fetchAllData();
+  const handleOpenDeleteFlavor = (id: string) => {
+    const f = flavors.find((item) => item.id === id);
+    setDeleteErrorMsg('');
+    setDeleteTarget({ type: 'flavor', id, name: f?.name });
   };
 
   // Size Handlers
-  const handleOpenSizeModal = (sizeItem: any = null) => {
-    setSizeError('');
-    if (sizeItem) {
-      setEditSizeItem(sizeItem);
-      setSizeName(sizeItem.name);
-      setSizeCode(sizeItem.code);
-      setSizeSortOrder(String(sizeItem.sortOrder || 0));
-    } else {
-      setEditSizeItem(null);
-      setSizeName('');
-      setSizeCode('');
-      setSizeSortOrder(String(sizes.length + 1));
-    }
+  const handleOpenSizeModal = (size: any = null) => {
+    setEditSizeItem(size);
     setIsSizeModalOpen(true);
   };
 
-  const handleSaveSize = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSizeError('');
-
-    const url = '/api/pizza-management/sizes';
-    const method = editSizeItem ? 'PUT' : 'POST';
-
-    try {
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: editSizeItem?.id,
-          name: sizeName,
-          code: sizeCode,
-          sortOrder: sizeSortOrder,
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        setSizeError(data.error || 'Failed to save size');
-        return;
-      }
-
-      setIsSizeModalOpen(false);
-      fetchAllData();
-    } catch (e) {
-      setSizeError('Network error');
-    }
+  const handleOpenDeleteSize = (id: string) => {
+    const s = sizes.find((item) => item.id === id);
+    setDeleteErrorMsg('');
+    setDeleteTarget({ type: 'size', id, name: s?.name });
   };
 
-  const handleDeleteSize = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this size option?')) return;
-    try {
-      const res = await fetch(`/api/pizza-management/sizes?id=${id}`, { method: 'DELETE' });
-      if (res.ok) fetchAllData();
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  // Crust / Topping Handlers
+  // Generic Crust/Topping Handlers
   const handleOpenGenericModal = (type: 'crust' | 'topping', item: any = null) => {
-    setGenericError('');
     setGenericType(type);
     setGenericItem(item);
-    if (item) {
-      setGenericName(item.name);
-      setGenericPrice(String(item.additionalPrice));
-      setGenericStock(String(item.stock || 500));
-    } else {
-      setGenericName('');
-      setGenericPrice('150');
-      setGenericStock('500');
-    }
     setIsGenericModalOpen(true);
   };
 
-  const handleSaveGeneric = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setGenericError('');
-    const endpoint = genericType === 'crust' ? '/api/pizza-management/crusts' : '/api/pizza-management/toppings';
-    const method = genericItem ? 'PUT' : 'POST';
+  const handleOpenDeleteGeneric = (type: 'crust' | 'topping', id: string) => {
+    const item = (type === 'crust' ? crusts : toppings).find((it) => it.id === id);
+    setDeleteErrorMsg('');
+    setDeleteTarget({ type, id, name: item?.name });
+  };
 
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
+    setDeleteErrorMsg('');
     try {
-      const res = await fetch(endpoint, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: genericItem?.id,
-          name: genericName,
-          additionalPrice: genericPrice,
-          stock: genericStock,
-        }),
-      });
+      let endpoint = '';
+      if (deleteTarget.type === 'flavor') endpoint = `/api/pizza-management/flavors?id=${deleteTarget.id}`;
+      else if (deleteTarget.type === 'size') endpoint = `/api/pizza-management/sizes?id=${deleteTarget.id}`;
+      else if (deleteTarget.type === 'crust') endpoint = `/api/pizza-management/crusts?id=${deleteTarget.id}`;
+      else if (deleteTarget.type === 'topping') endpoint = `/api/pizza-management/toppings?id=${deleteTarget.id}`;
+
+      const res = await fetch(endpoint, { method: 'DELETE' });
       const data = await res.json();
       if (!res.ok) {
-        setGenericError(data.error || `Failed to save ${genericType}`);
+        setDeleteErrorMsg(data.error || `Failed to delete ${deleteTarget.type}`);
+        setIsDeleting(false);
         return;
       }
-      setIsGenericModalOpen(false);
+      setDeleteTarget(null);
       fetchAllData();
     } catch (e) {
-      setGenericError('Network error');
+      setDeleteErrorMsg('Network error deleting item');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
-  const filteredFlavors = flavors.filter((f) =>
-    f.name.toLowerCase().includes(searchQuery.toLowerCase())
+  const flavorColumns = useMemo(
+    () =>
+      getFlavorColumns({
+        sizes,
+        onEdit: handleOpenFlavorModal,
+        onDelete: handleOpenDeleteFlavor,
+      }),
+    [sizes, flavors]
+  );
+
+  const sizeColumns = useMemo(
+    () =>
+      getSizeColumns({
+        onEdit: handleOpenSizeModal,
+        onDelete: handleOpenDeleteSize,
+      }),
+    [sizes]
+  );
+
+  const crustColumns = useMemo(
+    () =>
+      getCrustColumns({
+        onEdit: (c) => handleOpenGenericModal('crust', c),
+        onDelete: (id) => handleOpenDeleteGeneric('crust', id),
+      }),
+    [crusts]
+  );
+
+  const toppingColumns = useMemo(
+    () =>
+      getToppingColumns({
+        onEdit: (t) => handleOpenGenericModal('topping', t),
+        onDelete: (id) => handleOpenDeleteGeneric('topping', id),
+      }),
+    [toppings]
   );
 
   return (
@@ -269,469 +223,671 @@ export default function PizzaManagementPage() {
       <Sidebar userRole={currentUser?.role} userName={currentUser?.name} userEmail={currentUser?.email} />
 
       <div className="flex-1 flex flex-col h-full overflow-hidden">
-        <Navbar title="Dedicated Pizza Configurator & Pricing Engine" />
+        <Navbar title="Pizza Flavors, Multi-Sizes, Crusts & Toppings Config" />
 
-        <main className="flex-1 overflow-y-auto p-6 space-y-6">
-          {/* Top Bar with Search & Configurator Tabs */}
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-lg">
-            <div className="flex items-center space-x-1.5 bg-slate-950 border border-slate-800 p-1.5 rounded-xl w-full md:w-auto">
-              {[
-                { id: 'flavors', label: 'Pizza Flavors' },
-                { id: 'sizes', label: 'Sizes & Codes' },
-                { id: 'crusts', label: 'Crust Options' },
-                { id: 'toppings', label: 'Toppings' },
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id as any)}
-                  className={`px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
-                    activeTab === tab.id
-                      ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
+        <main className="flex-1 overflow-y-auto p-3 sm:p-6 space-y-4 sm:space-y-6">
+          {/* Top Banner */}
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-lg">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold shrink-0">
+                <Pizza className="w-5 h-5 sm:w-6 sm:h-6" />
+              </div>
+              <div>
+                <h2 className="text-sm sm:text-base font-extrabold text-slate-100">Pizza Engine Configuration</h2>
+                <p className="text-[11px] sm:text-xs text-slate-400">
+                  Configure size-wise pricing matrix, flavors, gourmet crusts, and extra toppings.
+                </p>
+              </div>
             </div>
 
-            {activeTab === 'flavors' && (
-              <div className="relative flex-1 max-w-xs w-full">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search pizza flavors..."
-                  className="w-full pl-9 pr-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-500"
-                />
-              </div>
-            )}
-
-            <div className="flex items-center space-x-2 w-full md:w-auto justify-end">
+            <div className="flex items-center space-x-2 w-full sm:w-auto">
               {activeTab === 'flavors' && (
-                <button
+                <Button
+                  variant="default"
                   onClick={() => handleOpenFlavorModal()}
-                  className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl flex items-center space-x-1.5 shadow"
+                  className="space-x-1.5 w-full sm:w-auto justify-center"
                 >
                   <Plus className="w-4 h-4" />
                   <span>Add Pizza Flavor</span>
-                </button>
+                </Button>
               )}
-
               {activeTab === 'sizes' && (
-                <button
+                <Button
+                  variant="default"
                   onClick={() => handleOpenSizeModal()}
-                  className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl flex items-center space-x-1.5 shadow"
+                  className="space-x-1.5 w-full sm:w-auto justify-center"
                 >
                   <Plus className="w-4 h-4" />
                   <span>Add Pizza Size</span>
-                </button>
+                </Button>
               )}
-
-              {(activeTab === 'crusts' || activeTab === 'toppings') && (
-                <button
-                  onClick={() => handleOpenGenericModal(activeTab === 'crusts' ? 'crust' : 'topping')}
-                  className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl flex items-center space-x-1.5 shadow"
+              {activeTab === 'crusts' && (
+                <Button
+                  variant="default"
+                  onClick={() => handleOpenGenericModal('crust')}
+                  className="space-x-1.5 w-full sm:w-auto justify-center"
                 >
                   <Plus className="w-4 h-4" />
-                  <span>Add {activeTab === 'crusts' ? 'Crust' : 'Topping'}</span>
-                </button>
+                  <span>Add Crust Type</span>
+                </Button>
+              )}
+              {activeTab === 'toppings' && (
+                <Button
+                  variant="default"
+                  onClick={() => handleOpenGenericModal('topping')}
+                  className="space-x-1.5 w-full sm:w-auto justify-center"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Add Topping</span>
+                </Button>
               )}
             </div>
           </div>
 
-          {/* Tab 1: Flavors */}
-          {activeTab === 'flavors' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {isLoading ? (
-                <div className="col-span-full py-12 text-center text-slate-500">
-                  Loading pizza flavors configuration...
-                </div>
-              ) : filteredFlavors.length === 0 ? (
-                <div className="col-span-full py-12 text-center text-slate-500">
-                  No pizza flavors found. Click "Add Pizza Flavor" to create one.
-                </div>
-              ) : (
-                filteredFlavors.map((f) => (
-                  <div key={f.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3 shadow-lg hover:border-slate-700 transition-all flex flex-col justify-between">
-                    <div className="space-y-3">
-                      <div className="flex items-start space-x-3">
-                        <div className="w-14 h-14 rounded-xl bg-slate-950 overflow-hidden shrink-0 border border-slate-800">
-                          {f.image ? (
-                            <img src={f.image} alt={f.name} className="w-full h-full object-cover" />
-                          ) : (
-                            <Pizza className="w-full h-full p-3 text-amber-500" />
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-bold text-sm text-slate-100 truncate">{f.name}</h4>
-                          <p className="text-xs text-slate-400 line-clamp-2 mt-0.5">{f.description || 'No description'}</p>
-                        </div>
-                      </div>
-
-                      {/* Size prices list */}
-                      <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800/80 space-y-1.5 text-xs">
-                        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-800 pb-1">
-                          Configured Prices per Size
-                        </div>
-                        <div className="grid grid-cols-2 gap-2">
-                          {sizes.map((s) => {
-                            const priceObj = f.flavorPrices?.find((fp: any) => fp.sizeId === s.id);
-                            return (
-                              <div key={s.id} className="flex justify-between items-center bg-slate-900/60 px-2 py-1 rounded-lg border border-slate-800/40">
-                                <span className="text-slate-400 font-semibold text-[11px]">{s.name}:</span>
-                                <span className="font-mono font-bold text-amber-400 text-[11px]">
-                                  {formatCurrency(priceObj?.price || 0)}
-                                </span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between pt-2 border-t border-slate-800/60">
-                      <span className="text-[11px] text-slate-500">ID: {f.id.slice(0, 8)}...</span>
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() => handleOpenFlavorModal(f)}
-                          className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold flex items-center space-x-1 border border-slate-700"
-                        >
-                          <Edit2 className="w-3.5 h-3.5 text-amber-400" />
-                          <span>Edit</span>
-                        </button>
-                        <button
-                          onClick={() => handleDeleteFlavor(f.id)}
-                          className="p-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-xl text-xs font-semibold border border-rose-500/20"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          )}
-
-          {/* Tab 2: Sizes */}
-          {activeTab === 'sizes' && (
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                <div>
-                  <h3 className="font-bold text-sm text-slate-100">Pizza Size Options & Codes</h3>
-                  <p className="text-xs text-slate-400">Configure size names, codes (S, M, L, XL), and sorting order for your pizza menu.</p>
-                </div>
-                <button
-                  onClick={() => handleOpenSizeModal()}
-                  className="px-3.5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl flex items-center space-x-1 shadow"
+          {/* Navigation Tabs (Responsive) */}
+          <div className="flex items-center gap-2 border-b border-slate-800 pb-3 overflow-x-auto scrollbar-none">
+            {[
+              { key: 'flavors', fullLabel: 'Pizza Flavors & Size Matrix', shortLabel: 'Flavors & Sizes', count: flavors.length },
+              { key: 'sizes', fullLabel: 'Pizza Sizes', shortLabel: 'Sizes', count: sizes.length },
+              { key: 'crusts', fullLabel: 'Crust Types', shortLabel: 'Crusts', count: crusts.length },
+              { key: 'toppings', fullLabel: 'Extra Toppings', shortLabel: 'Toppings', count: toppings.length },
+            ].map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key as any)}
+                className={`px-3 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 sm:space-x-2 shrink-0 whitespace-nowrap ${
+                  activeTab === tab.key
+                    ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+                    : 'bg-slate-900 text-slate-400 hover:text-slate-100 hover:bg-slate-800'
+                }`}
+              >
+                <span className="hidden sm:inline">{tab.fullLabel}</span>
+                <span className="sm:hidden">{tab.shortLabel}</span>
+                <span
+                  className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${
+                    activeTab === tab.key ? 'bg-slate-950 text-amber-400 font-bold' : 'bg-slate-800 text-slate-400'
+                  }`}
                 >
-                  <Plus className="w-4 h-4" />
-                  <span>Add New Size</span>
-                </button>
-              </div>
+                  {tab.count}
+                </span>
+              </button>
+            ))}
+          </div>
 
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-950 text-slate-400 uppercase font-semibold border-b border-slate-800">
-                  <tr>
-                    <th className="p-3">Size Name</th>
-                    <th className="p-3">Code / Abbr</th>
-                    <th className="p-3">Sort Order</th>
-                    <th className="p-3 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/60">
-                  {sizes.map((s) => (
-                    <tr key={s.id} className="hover:bg-slate-800/40 transition-colors">
-                      <td className="p-3 font-bold text-slate-100">{s.name}</td>
-                      <td className="p-3 font-mono font-bold text-amber-400">
-                        <span className="px-2 py-0.5 bg-amber-500/10 border border-amber-500/30 rounded-md">
-                          {s.code}
-                        </span>
-                      </td>
-                      <td className="p-3 font-mono text-slate-300">{s.sortOrder}</td>
-                      <td className="p-3 text-right space-x-2">
-                        <button
-                          onClick={() => handleOpenSizeModal(s)}
-                          className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-semibold border border-slate-700"
-                        >
-                          Edit Size
-                        </button>
-                        <button
-                          onClick={() => handleDeleteSize(s.id)}
-                          className="p-1 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-lg transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          {/* TAB 1: FLAVORS */}
+          {activeTab === 'flavors' && (
+            <DataTable
+              columns={flavorColumns}
+              data={flavors}
+              isLoading={isLoading}
+              loadingMessage="Loading flavors..."
+              emptyMessage="No pizza flavors found."
+            />
           )}
 
-          {/* Tab 3 & 4: Crusts & Toppings */}
-          {(activeTab === 'crusts' || activeTab === 'toppings') && (
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-950 text-slate-400 uppercase font-semibold border-b border-slate-800">
-                  <tr>
-                    <th className="p-3">Name</th>
-                    <th className="p-3">Additional Price (Rs.)</th>
-                    {activeTab === 'toppings' && <th className="p-3">Stock Quantity</th>}
-                    <th className="p-3 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/60">
-                  {(activeTab === 'crusts' ? crusts : toppings).map((item) => (
-                    <tr key={item.id} className="hover:bg-slate-800/40 transition-colors">
-                      <td className="p-3 font-bold text-slate-100">{item.name}</td>
-                      <td className="p-3 font-mono font-bold text-amber-400">
-                        +{formatCurrency(item.additionalPrice)}
-                      </td>
-                      {activeTab === 'toppings' && <td className="p-3 font-mono text-slate-300">{item.stock}</td>}
-                      <td className="p-3 text-right">
-                        <button
-                          onClick={() => handleOpenGenericModal(activeTab === 'crusts' ? 'crust' : 'topping', item)}
-                          className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-semibold border border-slate-700"
-                        >
-                          Edit
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          {/* TAB 2: SIZES */}
+          {activeTab === 'sizes' && (
+            <DataTable
+              columns={sizeColumns}
+              data={sizes}
+              isLoading={isLoading}
+              loadingMessage="Loading pizza sizes..."
+              emptyMessage="No pizza sizes configured."
+            />
+          )}
+
+          {/* TAB 3: CRUSTS */}
+          {activeTab === 'crusts' && (
+            <DataTable
+              columns={crustColumns}
+              data={crusts}
+              isLoading={isLoading}
+              loadingMessage="Loading crusts..."
+              emptyMessage="No crust types found."
+            />
+          )}
+
+          {/* TAB 4: TOPPINGS */}
+          {activeTab === 'toppings' && (
+            <DataTable
+              columns={toppingColumns}
+              data={toppings}
+              isLoading={isLoading}
+              loadingMessage="Loading toppings..."
+              emptyMessage="No toppings found."
+            />
           )}
         </main>
       </div>
 
       {/* Add/Edit Flavor Modal */}
       {isFlavorModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm overflow-y-auto">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg p-6 space-y-4 shadow-2xl my-8">
-            <h3 className="text-base font-bold text-slate-100 border-b border-slate-800 pb-2">
-              {editFlavor ? 'Edit Pizza Flavor & Size Prices' : 'Add New Pizza Flavor'}
-            </h3>
-
-            {flavorError && (
-              <div className="bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs p-3 rounded-xl">
-                {flavorError}
-              </div>
-            )}
-
-            <form onSubmit={handleSaveFlavor} className="space-y-4">
-              <div>
-                <label className="block text-xs text-slate-300 font-semibold mb-1">Pizza Flavor Name *</label>
-                <input
-                  type="text"
-                  required
-                  value={flavorName}
-                  onChange={(e) => setFlavorName(e.target.value)}
-                  placeholder="e.g. Chicken Tikka Special"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-100 focus:border-amber-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs text-slate-300 font-semibold mb-1">Flavor Description</label>
-                <textarea
-                  rows={2}
-                  value={flavorDesc}
-                  onChange={(e) => setFlavorDesc(e.target.value)}
-                  placeholder="Ingredients, toppings, spicy level..."
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-100 focus:border-amber-500"
-                />
-              </div>
-
-              <div>
-                <ImageUploadInput
-                  label="Pizza Flavor Image"
-                  value={flavorImg}
-                  onChange={setFlavorImg}
-                  placeholder="https://images.unsplash.com/..."
-                  helpText="Upload a flavor photo from device or paste an image URL."
-                />
-              </div>
-
-              {/* Set Size Prices */}
-              <div className="space-y-2 pt-2 border-t border-slate-800">
-                <div className="flex items-center justify-between">
-                  <label className="block text-xs text-amber-400 font-bold uppercase">Configure Price per Size (Rs.)</label>
-                  <span className="text-[11px] text-slate-500">Edit values below</span>
-                </div>
-                <div className="grid grid-cols-2 gap-2.5">
-                  {sizes.map((s) => (
-                    <div key={s.id} className="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
-                      <span className="text-[11px] text-slate-400 font-bold block mb-1">
-                        {s.name} ({s.code})
-                      </span>
-                      <input
-                        type="number"
-                        step="0.01"
-                        required
-                        value={sizePricesMap[s.id] || ''}
-                        onChange={(e) => setSizePricesMap({ ...sizePricesMap, [s.id]: e.target.value })}
-                        className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-slate-100 font-mono focus:border-amber-500"
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex justify-end space-x-2 pt-4 border-t border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setIsFlavorModalOpen(false)}
-                  className="px-4 py-2 text-xs text-slate-400 hover:text-slate-200"
-                >
-                  Cancel
-                </button>
-                <button type="submit" className="px-5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow">
-                  Save Flavor
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <FlavorModal
+          flavor={editFlavor}
+          sizes={sizes}
+          onClose={() => setIsFlavorModalOpen(false)}
+          onSuccess={() => {
+            setIsFlavorModalOpen(false);
+            fetchAllData();
+          }}
+        />
       )}
 
       {/* Add/Edit Size Modal */}
       {isSizeModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 space-y-4 shadow-2xl">
-            <h3 className="text-base font-bold text-slate-100 border-b border-slate-800 pb-2">
-              {editSizeItem ? 'Edit Pizza Size' : 'Add New Pizza Size'}
-            </h3>
-
-            {sizeError && (
-              <div className="bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs p-3 rounded-xl">
-                {sizeError}
-              </div>
-            )}
-
-            <form onSubmit={handleSaveSize} className="space-y-4">
-              <div>
-                <label className="block text-xs text-slate-300 font-semibold mb-1">Size Name *</label>
-                <input
-                  type="text"
-                  required
-                  value={sizeName}
-                  onChange={(e) => setSizeName(e.target.value)}
-                  placeholder="e.g. Small, Medium, Large, Jumbo, Party"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-100 focus:border-amber-500"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs text-slate-300 font-semibold mb-1">Code / Abbr *</label>
-                  <input
-                    type="text"
-                    required
-                    value={sizeCode}
-                    onChange={(e) => setSizeCode(e.target.value)}
-                    placeholder="e.g. S, M, L, XL, XXL"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-100 font-mono focus:border-amber-500 uppercase"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-slate-300 font-semibold mb-1">Sort Order</label>
-                  <input
-                    type="number"
-                    value={sizeSortOrder}
-                    onChange={(e) => setSizeSortOrder(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-100 font-mono focus:border-amber-500"
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-end space-x-2 pt-4 border-t border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setIsSizeModalOpen(false)}
-                  className="px-4 py-2 text-xs text-slate-400 hover:text-slate-200"
-                >
-                  Cancel
-                </button>
-                <button type="submit" className="px-5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow">
-                  Save Size
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <SizeModal
+          sizeItem={editSizeItem}
+          onClose={() => setIsSizeModalOpen(false)}
+          onSuccess={() => {
+            setIsSizeModalOpen(false);
+            fetchAllData();
+          }}
+        />
       )}
 
       {/* Generic Crust/Topping Modal */}
       {isGenericModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-sm p-6 space-y-4 shadow-2xl">
-            <h3 className="text-base font-bold text-slate-100 capitalize border-b border-slate-800 pb-2">
-              {genericItem ? 'Edit' : 'Add'} {genericType}
-            </h3>
+        <GenericCrustToppingModal
+          type={genericType}
+          item={genericItem}
+          onClose={() => setIsGenericModalOpen(false)}
+          onSuccess={() => {
+            setIsGenericModalOpen(false);
+            fetchAllData();
+          }}
+        />
+      )}
 
-            {genericError && (
-              <div className="bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs p-3 rounded-xl">
-                {genericError}
-              </div>
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleConfirmDelete}
+        isLoading={isDeleting}
+        errorMsg={deleteErrorMsg}
+        title={`Delete Pizza ${deleteTarget?.type ? deleteTarget.type.charAt(0).toUpperCase() + deleteTarget.type.slice(1) : ''}?`}
+        description={
+          deleteTarget ? (
+            <>
+              Are you sure you want to delete this {deleteTarget.type}
+              {deleteTarget.name ? <> (<strong className="text-slate-200">{deleteTarget.name}</strong>)</> : ''}? This action cannot be undone.
+            </>
+          ) : undefined
+        }
+        confirmText="Delete"
+      />
+    </div>
+  );
+}
+
+function FlavorModal({
+  flavor,
+  sizes,
+  onClose,
+  onSuccess,
+}: {
+  flavor: any;
+  sizes: any[];
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [flavorError, setFlavorError] = useState('');
+
+  const defaultPrices: Record<string, number> = {};
+  sizes.forEach((s, idx) => {
+    const existing = flavor?.flavorPrices?.find((fp: any) => fp.sizeId === s.id);
+    defaultPrices[s.id] = existing ? existing.price : 700 + idx * 300;
+  });
+
+  const {
+    register,
+    handleSubmit,
+    control,
+    formState: { errors, isSubmitting },
+  } = useForm<FlavorFormValues>({
+    resolver: zodResolver(flavorSchema),
+    defaultValues: {
+      name: flavor?.name || '',
+      description: flavor?.description || '',
+      image: flavor?.image || '',
+      prices: defaultPrices,
+    },
+  });
+
+  const onSave = async (values: FlavorFormValues) => {
+    setFlavorError('');
+    const pricesArray = Object.entries(values.prices).map(([sizeId, price]) => ({
+      sizeId,
+      price: Number(price) || 0,
+    }));
+
+    try {
+      let res;
+      if (flavor) {
+        res = await fetch('/api/pizza-management/flavors', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: flavor.id,
+            name: values.name,
+            description: values.description,
+            image: values.image,
+            prices: pricesArray,
+          }),
+        });
+      } else {
+        res = await fetch('/api/pizza-management/flavors', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: values.name,
+            description: values.description,
+            image: values.image,
+            prices: pricesArray,
+          }),
+        });
+      }
+
+      const data = await res.json();
+      if (!res.ok) {
+        setFlavorError(data.error || 'Failed to save pizza flavor');
+        return;
+      }
+      onSuccess();
+    } catch (e) {
+      setFlavorError('Network error saving flavor');
+    }
+  };
+
+  const onInvalid = () => {
+    setFlavorError('Please enter a valid flavor name and prices');
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm overflow-y-auto">
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl p-6 space-y-4 shadow-2xl my-8">
+        <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+          <h3 className="text-base font-bold text-slate-100">
+            {flavor ? 'Edit Pizza Flavor & Size Prices' : 'Add New Pizza Flavor'}
+          </h3>
+          <button onClick={onClose} className="p-1 text-slate-400 hover:text-slate-200">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {flavorError && (
+          <div className="bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs p-3 rounded-xl flex items-center space-x-2">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span>{flavorError}</span>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit(onSave, onInvalid)} className="space-y-4" noValidate>
+          <div>
+            <label className="block text-xs text-slate-300 font-semibold mb-1">Pizza Flavor Name *</label>
+            <Input
+              type="text"
+              {...register('name')}
+              placeholder="e.g. Chicken Tikka Special"
+              error={!!errors.name}
+            />
+            {errors.name && (
+              <p className="text-[11px] text-red-400 mt-1 font-medium">{errors.name.message}</p>
             )}
+          </div>
 
-            <form onSubmit={handleSaveGeneric} className="space-y-3">
-              <div>
-                <label className="block text-xs text-slate-300 font-semibold mb-1">Name *</label>
-                <input
-                  type="text"
-                  required
-                  value={genericName}
-                  onChange={(e) => setGenericName(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-100 focus:border-amber-500"
+          <div>
+            <label className="block text-xs text-slate-300 font-semibold mb-1">Flavor Description</label>
+            <Textarea
+              rows={2}
+              {...register('description')}
+              placeholder="Ingredients, toppings, spicy level..."
+            />
+          </div>
+
+          <div>
+            <Controller
+              name="image"
+              control={control}
+              render={({ field }) => (
+                <ImageUploadInput
+                  label="Pizza Flavor Image"
+                  value={field.value || ''}
+                  onChange={field.onChange}
+                  placeholder="https://images.unsplash.com/..."
+                  helpText="Upload a flavor photo from device or paste an image URL."
                 />
-              </div>
+              )}
+            />
+          </div>
 
-              <div>
-                <label className="block text-xs text-slate-300 font-semibold mb-1">Additional Price (Rs.)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  required
-                  value={genericPrice}
-                  onChange={(e) => setGenericPrice(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-100 font-mono focus:border-amber-500"
-                />
-              </div>
-
-              {genericType === 'topping' && (
-                <div>
-                  <label className="block text-xs text-slate-300 font-semibold mb-1">Stock Quantity</label>
-                  <input
+          {/* Set Size Prices */}
+          <div className="space-y-2 pt-2 border-t border-slate-800">
+            <div className="flex items-center justify-between">
+              <label className="block text-xs text-amber-400 font-bold uppercase">Configure Price per Size (Rs.)</label>
+              <span className="text-[11px] text-slate-500">Edit values below</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {sizes.map((s) => (
+                <div key={s.id} className="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                  <span className="text-[11px] text-slate-400 font-bold block mb-1">
+                    {s.name} ({s.code})
+                  </span>
+                  <Input
                     type="number"
-                    value={genericStock}
-                    onChange={(e) => setGenericStock(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-100 font-mono focus:border-amber-500"
+                    step="0.01"
+                    {...register(`prices.${s.id}` as any)}
+                    className="font-mono"
                   />
                 </div>
-              )}
-
-              <div className="flex justify-end space-x-2 pt-4 border-t border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setIsGenericModalOpen(false)}
-                  className="px-4 py-2 text-xs text-slate-400 hover:text-slate-200"
-                >
-                  Cancel
-                </button>
-                <button type="submit" className="px-5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow">
-                  Save Item
-                </button>
-              </div>
-            </form>
+              ))}
+            </div>
           </div>
+
+          <div className="flex justify-end space-x-2 pt-4 border-t border-slate-800">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="default"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? 'Saving...' : 'Save Flavor'}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function SizeModal({
+  sizeItem,
+  onClose,
+  onSuccess,
+}: {
+  sizeItem: any;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [sizeError, setSizeError] = useState('');
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<SizeFormValues>({
+    resolver: zodResolver(sizeSchema),
+    defaultValues: {
+      name: sizeItem?.name || '',
+      code: sizeItem?.code || '',
+      sortOrder: sizeItem?.sortOrder ?? 0,
+    },
+  });
+
+  const onSave = async (values: SizeFormValues) => {
+    setSizeError('');
+    try {
+      let res;
+      if (sizeItem) {
+        res = await fetch('/api/pizza-management/sizes', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: sizeItem.id,
+            name: values.name,
+            code: values.code.toUpperCase(),
+            sortOrder: values.sortOrder,
+          }),
+        });
+      } else {
+        res = await fetch('/api/pizza-management/sizes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: values.name,
+            code: values.code.toUpperCase(),
+            sortOrder: values.sortOrder,
+          }),
+        });
+      }
+
+      const data = await res.json();
+      if (!res.ok) {
+        setSizeError(data.error || 'Failed to save size');
+        return;
+      }
+      onSuccess();
+    } catch (e) {
+      setSizeError('Network error saving size');
+    }
+  };
+
+  const onInvalid = () => {
+    setSizeError('Please enter size name and abbreviation code');
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 space-y-4 shadow-2xl">
+        <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+          <h3 className="text-base font-bold text-slate-100">
+            {sizeItem ? 'Edit Pizza Size' : 'Add New Pizza Size'}
+          </h3>
+          <button onClick={onClose} className="p-1 text-slate-400 hover:text-slate-200">
+            <X className="w-4 h-4" />
+          </button>
         </div>
-      )}
+
+        {sizeError && (
+          <div className="bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs p-3 rounded-xl flex items-center space-x-2">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span>{sizeError}</span>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit(onSave, onInvalid)} className="space-y-4" noValidate>
+          <div>
+            <label className="block text-xs text-slate-300 font-semibold mb-1">Size Name *</label>
+            <Input
+              type="text"
+              {...register('name')}
+              placeholder="e.g. Small, Medium, Large, Jumbo, Party"
+              error={!!errors.name}
+            />
+            {errors.name && (
+              <p className="text-[11px] text-red-400 mt-1 font-medium">{errors.name.message}</p>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs text-slate-300 font-semibold mb-1">Code / Abbr *</label>
+              <Input
+                type="text"
+                {...register('code')}
+                placeholder="e.g. S, M, L, XL, XXL"
+                className="font-mono uppercase"
+                error={!!errors.code}
+              />
+              {errors.code && (
+                <p className="text-[11px] text-red-400 mt-1 font-medium">{errors.code.message}</p>
+              )}
+            </div>
+            <div>
+              <label className="block text-xs text-slate-300 font-semibold mb-1">Sort Order</label>
+              <Input
+                type="number"
+                {...register('sortOrder')}
+                className="font-mono"
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end space-x-2 pt-4 border-t border-slate-800">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="default"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? 'Saving...' : 'Save Size'}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function GenericCrustToppingModal({
+  type,
+  item,
+  onClose,
+  onSuccess,
+}: {
+  type: 'crust' | 'topping';
+  item: any;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [genericError, setGenericError] = useState('');
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<GenericItemFormValues>({
+    resolver: zodResolver(genericItemSchema),
+    defaultValues: {
+      name: item?.name || '',
+      additionalPrice: item?.additionalPrice ?? 0,
+      stock: item?.stock ?? 500,
+    },
+  });
+
+  const onSave = async (values: GenericItemFormValues) => {
+    setGenericError('');
+    try {
+      const endpoint = type === 'crust' ? '/api/pizza-management/crusts' : '/api/pizza-management/toppings';
+      const payload = {
+        name: values.name,
+        additionalPrice: values.additionalPrice,
+        ...(type === 'topping' ? { stock: values.stock } : {}),
+      };
+
+      let res;
+      if (item) {
+        res = await fetch(endpoint, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: item.id, ...payload }),
+        });
+      } else {
+        res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      }
+
+      const data = await res.json();
+      if (!res.ok) {
+        setGenericError(data.error || `Failed to save ${type}`);
+        return;
+      }
+      onSuccess();
+    } catch (e) {
+      setGenericError(`Network error saving ${type}`);
+    }
+  };
+
+  const onInvalid = () => {
+    setGenericError(`Please enter a valid ${type} name and price`);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-sm p-6 space-y-4 shadow-2xl">
+        <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+          <h3 className="text-base font-bold text-slate-100 capitalize">
+            {item ? 'Edit' : 'Add'} {type}
+          </h3>
+          <button onClick={onClose} className="p-1 text-slate-400 hover:text-slate-200">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {genericError && (
+          <div className="bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs p-3 rounded-xl flex items-center space-x-2">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span>{genericError}</span>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit(onSave, onInvalid)} className="space-y-3" noValidate>
+          <div>
+            <label className="block text-xs text-slate-300 font-semibold mb-1">Name *</label>
+            <Input
+              type="text"
+              {...register('name')}
+              error={!!errors.name}
+            />
+            {errors.name && (
+              <p className="text-[11px] text-red-400 mt-1 font-medium">{errors.name.message}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-xs text-slate-300 font-semibold mb-1">Additional Price (Rs.)</label>
+            <Input
+              type="number"
+              step="0.01"
+              {...register('additionalPrice')}
+              className="font-mono"
+            />
+          </div>
+
+          {type === 'topping' && (
+            <div>
+              <label className="block text-xs text-slate-300 font-semibold mb-1">Stock Quantity</label>
+              <Input
+                type="number"
+                {...register('stock')}
+                className="font-mono"
+              />
+            </div>
+          )}
+
+          <div className="flex justify-end space-x-2 pt-4 border-t border-slate-800">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="default"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? 'Saving...' : 'Save Item'}
+            </Button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

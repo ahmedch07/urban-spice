@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Clock, Percent, Keyboard } from 'lucide-react';
+import { Clock, Percent, Keyboard, Menu } from 'lucide-react';
 import ThemeToggle from '@/components/ThemeToggle';
 
 interface NavbarProps {
@@ -28,37 +28,52 @@ export default function Navbar({ title }: NavbarProps) {
     return () => clearInterval(interval);
   }, []);
 
+  const toggleSidebar = () => {
+    window.dispatchEvent(new Event('toggle-sidebar'));
+  };
+
   return (
-    <header className="h-16 bg-slate-900/80 backdrop-blur border-b border-slate-800 px-6 flex items-center justify-between sticky top-0 z-30">
-      {/* Title */}
-      <div className="flex items-center space-x-3">
-        <h1 className="text-xl font-bold text-slate-100 tracking-tight">{title}</h1>
+    <header className="h-16 bg-slate-900/90 backdrop-blur border-b border-slate-800 px-3 sm:px-6 flex items-center justify-between sticky top-0 z-30 shrink-0 select-none">
+      {/* Left: Mobile Menu Toggle & Page Title */}
+      <div className="flex items-center space-x-2 sm:space-x-3 min-w-0 pr-2">
+        <button
+          onClick={toggleSidebar}
+          className="lg:hidden p-2 rounded-xl text-slate-400 hover:text-slate-100 hover:bg-slate-800 border border-slate-800 transition shrink-0"
+          title="Toggle Navigation Menu"
+          aria-label="Toggle Navigation Menu"
+        >
+          <Menu className="w-5 h-5 text-amber-400" />
+        </button>
+
+        <h1 className="text-sm sm:text-base md:text-lg lg:text-xl font-extrabold text-slate-100 tracking-tight truncate max-w-[140px] xs:max-w-[200px] sm:max-w-xs md:max-w-md lg:max-w-none">
+          {title}
+        </h1>
       </div>
 
-      {/* POS Shortcuts & Clock */}
-      <div className="flex items-center space-x-4 text-sm">
-        {/* Keyboard Shortcuts guide */}
-        <div className="hidden lg:flex items-center space-x-2 bg-slate-800/60 px-3 py-1.5 rounded-lg border border-slate-700/50 text-xs text-slate-300">
+      {/* Right: POS Shortcuts, Tax Badge, Theme, Clock */}
+      <div className="flex items-center space-x-1.5 sm:space-x-3 shrink-0">
+        {/* Keyboard Shortcuts Guide */}
+        <div className="hidden xl:flex items-center space-x-2 bg-slate-800/60 px-3 py-1.5 rounded-lg border border-slate-700/50 text-xs text-slate-300">
           <Keyboard className="w-4 h-4 text-amber-400" />
           <span>Shortcuts:</span>
-          <kbd className="px-1.5 py-0.5 bg-slate-900 border border-slate-700 rounded font-mono text-amber-300">F2</kbd> Search
-          <kbd className="px-1.5 py-0.5 bg-slate-900 border border-slate-700 rounded font-mono text-amber-300">F4</kbd> New Order
-          <kbd className="px-1.5 py-0.5 bg-slate-900 border border-slate-700 rounded font-mono text-amber-300">F8</kbd> Checkout
+          <kbd className="px-1.5 py-0.5 bg-slate-950 border border-slate-700 rounded font-mono text-amber-300 text-[10px]">F2</kbd> Search
+          <kbd className="px-1.5 py-0.5 bg-slate-950 border border-slate-700 rounded font-mono text-amber-300 text-[10px]">F4</kbd> New Order
+          <kbd className="px-1.5 py-0.5 bg-slate-950 border border-slate-700 rounded font-mono text-amber-300 text-[10px]">F8</kbd> Checkout
         </div>
 
         {/* Live Tax Indicator */}
-        <div className="hidden md:flex items-center space-x-1.5 text-xs text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-md border border-emerald-500/20">
+        <div className="hidden md:flex items-center space-x-1.5 text-xs text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20 font-medium">
           <Percent className="w-3.5 h-3.5" />
-          <span>GST Tax: 5% Active</span>
+          <span>GST: 5%</span>
         </div>
 
         {/* Theme Switcher Button */}
         <ThemeToggle variant="navbar" />
 
         {/* Real-time Clock */}
-        <div className="flex items-center space-x-2 font-mono font-medium text-amber-400 bg-slate-950 px-3.5 py-1.5 rounded-lg border border-slate-800 shadow-inner">
-          <Clock className="w-4 h-4" />
-          <span>{time || '00:00:00 AM'}</span>
+        <div className="flex items-center space-x-1.5 font-mono font-bold text-xs sm:text-sm text-amber-400 bg-slate-950 px-2.5 sm:px-3 py-1.5 rounded-xl border border-slate-800 shadow-inner shrink-0">
+          <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400 shrink-0" />
+          <span className="tabular-nums">{time || '00:00:00 AM'}</span>
         </div>
       </div>
     </header>

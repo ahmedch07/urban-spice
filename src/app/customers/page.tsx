@@ -2,11 +2,32 @@
 
 export const dynamic = 'force-dynamic';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
 import Sidebar from '@/components/Sidebar';
 import Navbar from '@/components/Navbar';
-import { Users, Search, Phone, Mail, MapPin, ShoppingBag, DollarSign, Clock, Eye, X, Pizza } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { DataTable } from '@/components/ui/data-table';
+import { DeleteConfirmModal } from '@/components/ui/delete-confirm-modal';
+import { getCustomerColumns } from '@/columns';
+import { Users, Search, Eye, X, Pizza, AlertCircle } from 'lucide-react';
 import { formatCurrency, formatDate } from '@/lib/utils';
+
+const editCustomerSchema = z.object({
+  name: z.string().min(1, 'Customer name is required'),
+  phone: z.string().min(1, 'Phone number is required').min(7, 'Please enter a valid phone number'),
+  whatsapp: z.string().optional(),
+  email: z.string().email('Invalid email').optional().or(z.literal('')),
+  address: z.string().optional(),
+  city: z.string().optional(),
+  notes: z.string().optional(),
+});
+
+type EditCustomerFormValues = z.infer<typeof editCustomerSchema>;
 
 export default function CustomersPage() {
   const [currentUser, setCurrentUser] = useState<any>({ name: 'User', role: '' });
@@ -23,14 +44,6 @@ export default function CustomersPage() {
   // Edit Customer Modal State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<any>(null);
-  const [editName, setEditName] = useState('');
-  const [editPhone, setEditPhone] = useState('');
-  const [editWhatsapp, setEditWhatsapp] = useState('');
-  const [editEmail, setEditEmail] = useState('');
-  const [editAddress, setEditAddress] = useState('');
-  const [editCity, setEditCity] = useState('');
-  const [editNotes, setEditNotes] = useState('');
-  const [editErrorMsg, setEditErrorMsg] = useState('');
 
   // Delete Customer Modal State
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -91,46 +104,7 @@ export default function CustomersPage() {
 
   const openEditModal = (c: any) => {
     setEditingCustomer(c);
-    setEditName(c.name || '');
-    setEditPhone(c.phone || '');
-    setEditWhatsapp(c.whatsapp || '');
-    setEditEmail(c.email || '');
-    setEditAddress(c.address || '');
-    setEditCity(c.city || 'Lahore');
-    setEditNotes(c.notes || '');
-    setEditErrorMsg('');
     setIsEditModalOpen(true);
-  };
-
-  const handleUpdateCustomer = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingCustomer) return;
-    setEditErrorMsg('');
-    try {
-      const res = await fetch('/api/pos/customers', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: editingCustomer.id,
-          name: editName,
-          phone: editPhone,
-          whatsapp: editWhatsapp,
-          email: editEmail,
-          address: editAddress,
-          city: editCity,
-          notes: editNotes,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setEditErrorMsg(data.error || 'Failed to update customer');
-        return;
-      }
-      setIsEditModalOpen(false);
-      fetchCustomers();
-    } catch (e) {
-      setEditErrorMsg('Network error updating customer');
-    }
   };
 
   const openDeleteModal = (c: any) => {
@@ -149,25 +123,35 @@ export default function CustomersPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setDeleteErrorMsg(data.error || 'Failed to delete customer profile');
+        setDeleteErrorMsg(data.error || 'Failed to delete customer');
         setIsDeleting(false);
         return;
       }
       setIsDeleteModalOpen(false);
-      setIsDeleting(false);
       fetchCustomers();
     } catch (e) {
       setDeleteErrorMsg('Network error deleting customer');
+    } finally {
       setIsDeleting(false);
     }
   };
+
+  const columns = useMemo(
+    () =>
+      getCustomerColumns({
+        onOpenProfile: handleOpenProfile,
+        onEdit: openEditModal,
+        onDelete: openDeleteModal,
+      }),
+    []
+  );
 
   return (
     <div className="flex h-screen bg-slate-950 text-slate-100 overflow-hidden font-sans">
       <Sidebar userRole={currentUser?.role} userName={currentUser?.name} userEmail={currentUser?.email} />
 
       <div className="flex-1 flex flex-col h-full overflow-hidden">
-        <Navbar title="Customer Relationship Management (CRM)" />
+        <Navbar title="Customer Relationship & Order Intelligence Management" />
 
         <main className="flex-1 overflow-y-auto p-6 space-y-6">
           <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-lg">
@@ -178,174 +162,116 @@ export default function CustomersPage() {
 
             <div className="relative w-full sm:w-80">
               <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-              <input
+              <Input
                 type="text"
                 placeholder="Search by name, phone or email..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-500"
+                className="pl-10"
               />
             </div>
           </div>
 
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-950 text-slate-400 uppercase font-semibold border-b border-slate-800">
-                  <tr>
-                    <th className="p-4">Customer Name</th>
-                    <th className="p-4">Phone & WhatsApp</th>
-                    <th className="p-4">Delivery Address</th>
-                    <th className="p-4">Total Orders</th>
-                    <th className="p-4">Total Amount Spent</th>
-                    <th className="p-4">Last Order Date</th>
-                    <th className="p-4 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/60">
-                  {isLoading ? (
-                    <tr>
-                      <td colSpan={7} className="py-12 text-center text-slate-500">
-                        Loading customers...
-                      </td>
-                    </tr>
-                  ) : customers.length === 0 ? (
-                    <tr>
-                      <td colSpan={7} className="py-12 text-center text-slate-500">
-                        No customer records found
-                      </td>
-                    </tr>
-                  ) : (
-                    customers.map((c) => (
-                      <tr key={c.id} className="hover:bg-slate-800/40 transition-colors">
-                        <td className="p-4 font-bold text-slate-100">{c.name}</td>
-                        <td className="p-4 font-mono text-slate-300">{c.phone}</td>
-                        <td className="p-4 text-slate-400 max-w-xs truncate">{c.address || '-'}</td>
-                        <td className="p-4 font-mono font-bold text-amber-400">{c.totalOrders || 0}</td>
-                        <td className="p-4 font-mono font-bold text-emerald-400">{formatCurrency(c.totalSpent || 0)}</td>
-                        <td className="p-4 font-mono text-slate-400">{c.lastOrder ? formatDate(c.lastOrder) : 'No orders'}</td>
-                        <td className="p-4 text-right">
-                          <div className="flex items-center justify-end space-x-1.5">
-                            <button
-                              onClick={() => handleOpenProfile(c)}
-                              className="p-1.5 bg-amber-500/10 text-amber-400 font-bold rounded-lg hover:bg-amber-500 hover:text-slate-950 transition-colors flex items-center space-x-1"
-                              title="View Profile"
-                            >
-                              <Eye className="w-3.5 h-3.5" />
-                              <span className="text-[11px]">View</span>
-                            </button>
-                            <button
-                              onClick={() => openEditModal(c)}
-                              className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-lg border border-slate-700 transition flex items-center space-x-1"
-                              title="Edit Customer"
-                            >
-                              <span className="text-[11px]">Edit</span>
-                            </button>
-                            <button
-                              onClick={() => openDeleteModal(c)}
-                              className="p-1.5 bg-slate-800 hover:bg-red-500/20 text-red-400 hover:border-red-500/30 font-bold rounded-lg border border-slate-700 transition flex items-center space-x-1"
-                              title="Delete Customer"
-                            >
-                              <span className="text-[11px]">Delete</span>
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          <DataTable
+            columns={columns}
+            data={customers}
+            isLoading={isLoading}
+            loadingMessage="Loading customers..."
+            emptyMessage="No customer records found"
+          />
         </main>
       </div>
 
-      {/* Customer Profile Drawer / Modal */}
+      {/* View Customer Profile Modal */}
       {isProfileOpen && selectedCustomer && (
-        <div className="fixed inset-0 z-50 flex items-center justify-end bg-slate-950/80 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-slate-900 border-l border-slate-800 w-full max-w-xl h-full flex flex-col shadow-2xl overflow-hidden">
-            {/* Profile Header */}
-            <div className="p-5 border-b border-slate-800 flex items-center justify-between bg-slate-950">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+            <div className="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-950">
               <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center font-bold text-base">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 font-bold flex items-center justify-center">
                   {selectedCustomer.name.substring(0, 2).toUpperCase()}
                 </div>
                 <div>
-                  <h2 className="text-base font-bold text-slate-100">{selectedCustomer.name}</h2>
+                  <h3 className="font-bold text-slate-100 text-base">{selectedCustomer.name}</h3>
                   <p className="text-xs text-slate-400 font-mono">{selectedCustomer.phone}</p>
                 </div>
               </div>
-              <button
-                onClick={() => setIsProfileOpen(false)}
-                className="p-1.5 text-slate-400 hover:text-slate-100 hover:bg-slate-800 rounded-lg"
-              >
+              <button onClick={() => setIsProfileOpen(false)} className="p-1 text-slate-400 hover:text-slate-200">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Profile Body */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-6">
-              {/* Lifetime Stats */}
+            <div className="flex-1 overflow-y-auto p-5 space-y-6">
+              {/* Quick Metrics */}
               <div className="grid grid-cols-3 gap-3">
-                <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 text-center">
-                  <span className="text-[11px] text-slate-400 uppercase font-semibold">Total Orders</span>
-                  <div className="text-xl font-extrabold text-amber-400 font-mono mt-1">
-                    {selectedCustomer.totalOrders || customerOrders.length}
+                <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 text-center">
+                  <span className="text-[10px] text-slate-400 uppercase font-semibold">Total Orders</span>
+                  <div className="text-xl font-bold font-mono text-amber-400 mt-1">
+                    {selectedCustomer.totalOrders || 0}
                   </div>
                 </div>
-
-                <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 text-center">
-                  <span className="text-[11px] text-slate-400 uppercase font-semibold">Lifetime Spent</span>
-                  <div className="text-xl font-extrabold text-emerald-400 font-mono mt-1">
+                <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 text-center">
+                  <span className="text-[10px] text-slate-400 uppercase font-semibold">Total Spent</span>
+                  <div className="text-xl font-bold font-mono text-emerald-400 mt-1">
                     {formatCurrency(selectedCustomer.totalSpent || 0)}
                   </div>
                 </div>
-
-                <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 text-center">
-                  <span className="text-[11px] text-slate-400 uppercase font-semibold">City / Address</span>
-                  <div className="text-xs font-bold text-slate-200 truncate mt-1">
-                    {selectedCustomer.address || selectedCustomer.city || 'Walk-in'}
+                <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 text-center">
+                  <span className="text-[10px] text-slate-400 uppercase font-semibold">Avg Order Value</span>
+                  <div className="text-xl font-bold font-mono text-blue-400 mt-1">
+                    {formatCurrency(
+                      selectedCustomer.totalOrders > 0
+                        ? (selectedCustomer.totalSpent || 0) / selectedCustomer.totalOrders
+                        : 0
+                    )}
                   </div>
                 </div>
               </div>
 
-              {/* Favorite Products */}
+              {/* Customer Info */}
+              <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2 text-xs">
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Address:</span>
+                  <span className="text-slate-200 font-medium text-right">{selectedCustomer.address || 'Not specified'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">WhatsApp:</span>
+                  <span className="text-slate-200 font-mono">{selectedCustomer.whatsapp || selectedCustomer.phone}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Email:</span>
+                  <span className="text-slate-200">{selectedCustomer.email || 'None'}</span>
+                </div>
+              </div>
+
+              {/* Favorite Items */}
               {favoriteProducts.length > 0 && (
                 <div>
-                  <h4 className="text-xs font-bold text-amber-400 uppercase tracking-wider mb-2 flex items-center space-x-1">
-                    <Pizza className="w-4 h-4" />
-                    <span>Favorite & Most Ordered Items</span>
-                  </h4>
-                  <div className="flex flex-wrap gap-2">
+                  <h4 className="font-bold text-xs text-slate-300 uppercase tracking-wider mb-2">Most Ordered Items</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {favoriteProducts.map((fav, i) => (
-                      <span key={i} className="px-3 py-1 bg-slate-950 border border-slate-800 text-xs font-medium text-slate-200 rounded-lg">
-                        {fav.name} ({fav.count}x)
-                      </span>
+                      <div key={i} className="flex items-center justify-between p-2.5 bg-slate-950 rounded-xl border border-slate-800/80">
+                        <span className="text-xs font-semibold text-slate-200">{fav.name}</span>
+                        <span className="text-xs font-mono font-bold text-amber-400">{fav.count}x</span>
+                      </div>
                     ))}
                   </div>
                 </div>
               )}
 
-              {/* Previous Orders History List */}
+              {/* Order History */}
               <div>
-                <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-3">
-                  Previous Order Invoices
-                </h4>
-
-                <div className="space-y-2.5">
+                <h4 className="font-bold text-xs text-slate-300 uppercase tracking-wider mb-2">Order History</h4>
+                <div className="space-y-2">
                   {customerOrders.length === 0 ? (
-                    <div className="py-6 text-center text-xs text-slate-500">No previous order history</div>
+                    <div className="text-xs text-slate-500 text-center py-4">No order history available</div>
                   ) : (
                     customerOrders.map((ord) => (
-                      <div key={ord.id} className="p-3.5 bg-slate-950 border border-slate-800/80 rounded-xl flex items-center justify-between text-xs">
+                      <div key={ord.id} className="p-3 bg-slate-950 rounded-xl border border-slate-800/80 flex items-center justify-between">
                         <div>
-                          <div className="font-mono font-bold text-amber-400">{ord.invoiceNo}</div>
-                          <div className="text-slate-400 mt-0.5">{formatDate(ord.createdAt)} • {ord.orderType}</div>
-                          <div className="text-slate-300 font-medium line-clamp-1 mt-1">
-                            {ord.items?.map((i: any) => `${i.quantity}x ${i.productName}`).join(', ')}
-                          </div>
+                          <div className="font-mono font-bold text-xs text-amber-400">{ord.invoiceNo}</div>
+                          <div className="text-[10px] text-slate-400">{formatDate(ord.createdAt)} • {ord.orderType}</div>
                         </div>
-
                         <div className="text-right">
                           <div className="font-mono font-bold text-emerald-400 text-sm">{formatCurrency(ord.grandTotal)}</div>
                           <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase mt-1 inline-block ${
@@ -366,106 +292,160 @@ export default function CustomersPage() {
 
       {/* Edit Customer Modal */}
       {isEditModalOpen && editingCustomer && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between">
-              <h3 className="text-base font-bold text-slate-100">Edit Customer Profile</h3>
-              <button onClick={() => setIsEditModalOpen(false)} className="p-1 text-slate-400 hover:text-slate-200">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {editErrorMsg && (
-              <div className="p-3 bg-red-500/10 border border-red-500/30 text-red-400 text-xs rounded-xl font-medium">
-                {editErrorMsg}
-              </div>
-            )}
-
-            <form onSubmit={handleUpdateCustomer} className="space-y-3">
-              <div>
-                <label className="block text-xs text-slate-300 font-semibold mb-1">Customer Name *</label>
-                <input
-                  type="text"
-                  required
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-100"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs text-slate-300 font-semibold mb-1">Contact Number *</label>
-                <input
-                  type="text"
-                  required
-                  value={editPhone}
-                  onChange={(e) => setEditPhone(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-100 font-mono"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs text-slate-300 font-semibold mb-1">Delivery Address</label>
-                <textarea
-                  rows={2}
-                  value={editAddress}
-                  onChange={(e) => setEditAddress(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-100"
-                />
-              </div>
-
-              <div className="flex justify-end space-x-2 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setIsEditModalOpen(false)}
-                  className="px-4 py-2 text-xs text-slate-400"
-                >
-                  Cancel
-                </button>
-                <button type="submit" className="px-5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl transition">
-                  Save Changes
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <EditCustomerModal
+          customer={editingCustomer}
+          onClose={() => setIsEditModalOpen(false)}
+          onSuccess={() => {
+            setIsEditModalOpen(false);
+            fetchCustomers();
+          }}
+        />
       )}
 
       {/* Delete Customer Confirmation Modal */}
-      {isDeleteModalOpen && deletingCustomer && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-sm p-6 space-y-4 shadow-2xl text-center">
-            <h3 className="text-base font-bold text-slate-100">Delete Customer Profile?</h3>
-            <p className="text-xs text-slate-400">
+      <DeleteConfirmModal
+        isOpen={isDeleteModalOpen && !!deletingCustomer}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={handleDeleteCustomer}
+        isLoading={isDeleting}
+        errorMsg={deleteErrorMsg}
+        title="Delete Customer Profile?"
+        description={
+          deletingCustomer ? (
+            <>
               Are you sure you want to delete customer <strong className="text-slate-200">{deletingCustomer.name}</strong> ({deletingCustomer.phone})?
-            </p>
+            </>
+          ) : undefined
+        }
+        confirmText="Delete Profile"
+      />
+    </div>
+  );
+}
 
-            {deleteErrorMsg && (
-              <div className="p-3 bg-red-500/10 border border-red-500/30 text-red-400 text-xs rounded-xl">
-                {deleteErrorMsg}
-              </div>
-            )}
+function EditCustomerModal({
+  customer,
+  onClose,
+  onSuccess,
+}: {
+  customer: any;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [editErrorMsg, setEditErrorMsg] = useState('');
 
-            <div className="flex items-center justify-center space-x-3 pt-2">
-              <button
-                type="button"
-                onClick={() => setIsDeleteModalOpen(false)}
-                className="px-4 py-2 text-xs text-slate-400 hover:text-slate-200"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={isDeleting}
-                onClick={handleDeleteCustomer}
-                className="px-5 py-2 bg-red-500 hover:bg-red-400 text-white font-bold text-xs rounded-xl transition disabled:opacity-50"
-              >
-                {isDeleting ? 'Deleting...' : 'Delete Customer'}
-              </button>
-            </div>
-          </div>
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<EditCustomerFormValues>({
+    resolver: zodResolver(editCustomerSchema),
+    defaultValues: {
+      name: customer.name || '',
+      phone: customer.phone || '',
+      whatsapp: customer.whatsapp || '',
+      email: customer.email || '',
+      address: customer.address || '',
+      city: customer.city || 'Lahore',
+      notes: customer.notes || '',
+    },
+  });
+
+  const onUpdate = async (values: EditCustomerFormValues) => {
+    setEditErrorMsg('');
+    try {
+      const res = await fetch('/api/pos/customers', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: customer.id,
+          ...values,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setEditErrorMsg(data.error || 'Failed to update customer');
+        return;
+      }
+      onSuccess();
+    } catch (e) {
+      setEditErrorMsg('Network error updating customer');
+    }
+  };
+
+  const onInvalid = () => {
+    setEditErrorMsg('Please fill in all required fields properly');
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn">
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 space-y-4 shadow-2xl">
+        <div className="flex items-center justify-between">
+          <h3 className="text-base font-bold text-slate-100">Edit Customer Profile</h3>
+          <button onClick={onClose} className="p-1 text-slate-400 hover:text-slate-200">
+            <X className="w-4 h-4" />
+          </button>
         </div>
-      )}
+
+        {editErrorMsg && (
+          <div className="p-3 bg-red-500/10 border border-red-500/30 text-red-400 text-xs rounded-xl font-medium flex items-center space-x-2">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span>{editErrorMsg}</span>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit(onUpdate, onInvalid)} className="space-y-3" noValidate>
+          <div>
+            <label className="block text-xs text-slate-300 font-semibold mb-1">Customer Name *</label>
+            <Input
+              type="text"
+              {...register('name')}
+              error={!!errors.name}
+            />
+            {errors.name && (
+              <p className="text-[11px] text-red-400 mt-1 font-medium">{errors.name.message}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-xs text-slate-300 font-semibold mb-1">Contact Number *</label>
+            <Input
+              type="text"
+              {...register('phone')}
+              className="font-mono"
+              error={!!errors.phone}
+            />
+            {errors.phone && (
+              <p className="text-[11px] text-red-400 mt-1 font-medium">{errors.phone.message}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-xs text-slate-300 font-semibold mb-1">Delivery Address</label>
+            <Textarea
+              rows={2}
+              {...register('address')}
+            />
+          </div>
+
+          <div className="flex justify-end space-x-2 pt-4 border-t border-slate-800">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="default"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

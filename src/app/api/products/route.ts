@@ -25,7 +25,7 @@ async function syncPizzaFlavorAndPrices(
   sizePrices: { small?: number; medium?: number; large?: number; xlarge?: number }
 ) {
   try {
-    let sizes = await prisma.pizzaSize.findMany({ orderBy: { sortOrder: 'asc' } });
+    const sizes = await prisma.pizzaSize.findMany({ orderBy: { sortOrder: 'asc' } });
 
     let smallSize = sizes.find((s) => s.code === 'S');
     let mediumSize = sizes.find((s) => s.code === 'M');
