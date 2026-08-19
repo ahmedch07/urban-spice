@@ -66,14 +66,23 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: 'Rider ID required' }, { status: 400 });
     }
 
-    const updated = await prisma.rider.update({
-      where: { id },
-      data: {
-        name: name !== undefined ? name.trim() : undefined,
-        phone: phone !== undefined ? phone.trim() : undefined,
-        vehicleNo: vehicleNo !== undefined ? vehicleNo.trim() : undefined,
-        active: active !== undefined ? Boolean(active) : undefined,
-      },
+    const updated = await prisma.$transaction(async (transaction) => {
+      const rider = await transaction.rider.update({
+        where: { id },
+        data: {
+          name: name !== undefined ? name.trim() : undefined,
+          phone: phone !== undefined ? phone.trim() : undefined,
+          vehicleNo: vehicleNo !== undefined ? vehicleNo.trim() : undefined,
+          active: active !== undefined ? Boolean(active) : undefined,
+        },
+      });
+
+      await transaction.order.updateMany({
+        where: { riderId: id },
+        data: { riderName: rider.name, riderPhone: rider.phone },
+      });
+
+      return rider;
     });
 
     return NextResponse.json({ success: true, rider: updated });
@@ -97,7 +106,13 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'Rider ID required' }, { status: 400 });
     }
 
-    await prisma.rider.delete({ where: { id } });
+    await prisma.$transaction(async (transaction) => {
+      await transaction.order.updateMany({
+        where: { riderId: id },
+        data: { riderId: null, riderName: null, riderPhone: null },
+      });
+      await transaction.rider.delete({ where: { id } });
+    });
 
     return NextResponse.json({ success: true, message: 'Rider deleted' });
   } catch (error: any) {

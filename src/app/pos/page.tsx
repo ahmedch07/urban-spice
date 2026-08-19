@@ -12,6 +12,7 @@ import CustomerModal from '@/components/POS/CustomerModal';
 import PaymentModal from '@/components/POS/PaymentModal';
 import ThermalReceiptModal from '@/components/POS/ThermalReceiptModal';
 import { CartItem, CategoryItem, CustomerItem, OrderType, ProductItem, RiderItem } from '@/lib/types';
+import { mergeRiderOverrides } from '@/lib/rider-overrides';
 
 export default function POSPage() {
   // Session User
@@ -74,12 +75,16 @@ export default function POSPage() {
       })
       .catch(console.error);
 
-    fetch('/api/riders')
+    const fetchRiders = () => fetch('/api/riders?all=true', { cache: 'no-store' })
       .then((res) => res.json())
       .then((data) => {
-        if (data.riders) setRiders(data.riders);
+        if (data.riders) setRiders(mergeRiderOverrides(data.riders));
       })
       .catch(console.error);
+
+    fetchRiders();
+    window.addEventListener('riders-updated', fetchRiders);
+    return () => window.removeEventListener('riders-updated', fetchRiders);
   }, []);
 
   // Fetch Products based on category/search
