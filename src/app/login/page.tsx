@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Pizza, Lock, Mail, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Pizza, Lock, Mail, ArrowRight } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -42,11 +42,6 @@ export default function LoginPage() {
     }
   };
 
-  const handleFillDemo = (demoEmail: string, demoPass: string) => {
-    setEmail(demoEmail);
-    setPassword(demoPass);
-  };
-
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 selection:bg-amber-500 selection:text-slate-950 font-sans">
       <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl space-y-8 relative overflow-hidden">
@@ -59,7 +54,7 @@ export default function LoginPage() {
             <Pizza className="w-9 h-9 text-slate-950" />
           </div>
           <div>
-            <h1 className="text-2xl font-extrabold text-slate-100 tracking-tight">Slice & Spice Pizza</h1>
+            <h1 className="text-2xl font-extrabold text-slate-100 tracking-tight">Urban Spice Pizza</h1>
             <p className="text-xs text-amber-400 font-semibold mt-1">POS & Management System</p>
           </div>
         </div>
@@ -82,7 +77,7 @@ export default function LoginPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@pizzastore.com"
+                placeholder="Enter registered email"
                 className="w-full pl-10 pr-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-100 placeholder-slate-600 focus:outline-none focus:border-amber-500 transition-colors"
               />
             </div>
@@ -112,34 +107,6 @@ export default function LoginPage() {
             <ArrowRight className="w-4 h-4" />
           </button>
         </form>
-
-        {/* Demo Accounts Quick-Click Bar */}
-        <div className="pt-4 border-t border-slate-800 space-y-3">
-          <div className="flex items-center justify-center space-x-1.5 text-[11px] text-slate-400">
-            <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
-            <span>Quick Demo Credentials (Click to auto-fill):</span>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => handleFillDemo('admin@urbanspice.com', 'admin123')}
-              className="p-2.5 bg-slate-950 border border-slate-800 hover:border-amber-500/50 rounded-xl text-left transition-colors group"
-            >
-              <div className="text-xs font-bold text-slate-200 group-hover:text-amber-400">Admin Role</div>
-              <div className="text-[10px] text-slate-500 font-mono">admin@urbanspice.com</div>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleFillDemo('cashier@urbanspice.com', 'cashier123')}
-              className="p-2.5 bg-slate-950 border border-slate-800 hover:border-amber-500/50 rounded-xl text-left transition-colors group"
-            >
-              <div className="text-xs font-bold text-slate-200 group-hover:text-amber-400">Cashier Role</div>
-              <div className="text-[10px] text-slate-500 font-mono">cashier@urbanspice.com</div>
-            </button>
-          </div>
-        </div>
       </div>
     </div>
   );
