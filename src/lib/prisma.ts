@@ -13,18 +13,15 @@ function getDatabaseUrl(): string {
   if (process.env.VERCEL) {
     try {
       const tmpDbPath = '/tmp/dev.db';
+      const candidate1 = path.join(process.cwd(), 'prisma', 'dev.db');
+      const candidate2 = path.join(process.cwd(), 'dev.db');
+      const srcPath = fs.existsSync(candidate1) ? candidate1 : (fs.existsSync(candidate2) ? candidate2 : null);
 
-      if (!fs.existsSync(tmpDbPath)) {
-        const candidate1 = path.join(process.cwd(), 'prisma', 'dev.db');
-        const candidate2 = path.join(process.cwd(), 'dev.db');
-        const srcPath = fs.existsSync(candidate1) ? candidate1 : (fs.existsSync(candidate2) ? candidate2 : null);
-
-        if (srcPath) {
-          try {
-            fs.copyFileSync(srcPath, tmpDbPath);
-          } catch (copyErr) {
-            // Ignore race condition if another worker copied it simultaneously
-          }
+      if (srcPath) {
+        try {
+          fs.copyFileSync(srcPath, tmpDbPath);
+        } catch (copyErr) {
+          // Ignore race condition if another worker copied it simultaneously
         }
       }
 
