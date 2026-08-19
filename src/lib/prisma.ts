@@ -17,7 +17,7 @@ function getDatabaseUrl(): string {
       const candidate2 = path.join(process.cwd(), 'dev.db');
       const srcPath = fs.existsSync(candidate1) ? candidate1 : (fs.existsSync(candidate2) ? candidate2 : null);
 
-      if (srcPath) {
+      if (!fs.existsSync(tmpDbPath) && srcPath) {
         try {
           fs.copyFileSync(srcPath, tmpDbPath);
         } catch (copyErr) {
