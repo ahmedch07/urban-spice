@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
+import { isValidObjectId } from '@/lib/utils';
 
 export async function GET(
   _request: Request,
@@ -8,6 +9,9 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
+    if (!isValidObjectId(id)) {
+      return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+    }
     const order = await prisma.order.findUnique({
       where: { id },
       include: {
@@ -42,6 +46,9 @@ export async function PUT(
     }
 
     const { id } = await params;
+    if (!isValidObjectId(id)) {
+      return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+    }
     const body = await request.json();
     const { status, riderId, riderName, riderPhone } = body;
 
@@ -74,7 +81,7 @@ export async function PUT(
 
     if (riderName !== undefined) updateData.riderName = riderName ? riderName.trim() : null;
     if (riderPhone !== undefined) updateData.riderPhone = riderPhone ? riderPhone.trim() : null;
-    if (riderId !== undefined) updateData.riderId = riderId || null;
+    if (riderId !== undefined) updateData.riderId = isValidObjectId(riderId) ? riderId : null;
 
     const updated = await prisma.order.update({
       where: { id },
@@ -87,7 +94,9 @@ export async function PUT(
     });
 
     try {
-      const userExists = session.userId ? await prisma.user.findUnique({ where: { id: session.userId } }) : null;
+      const userExists = isValidObjectId(session.userId)
+        ? await prisma.user.findUnique({ where: { id: session.userId } })
+        : null;
       await prisma.auditLog.create({
         data: {
           userId: userExists ? session.userId : null,

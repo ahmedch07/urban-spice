@@ -1,62 +1,13 @@
 import { PrismaClient } from '@prisma/client';
-import fs from 'fs';
-import path from 'path';
-
-function getDatabaseUrl(): string {
-  const envUrl = process.env.DATABASE_URL;
-
-  // If external non-sqlite DATABASE_URL is set (e.g. Postgres / Supabase)
-  if (envUrl && !envUrl.startsWith('file:')) {
-    return envUrl;
-  }
-
-  if (process.env.VERCEL) {
-    try {
-      const tmpDbPath = '/tmp/dev.db';
-      const candidate1 = path.join(process.cwd(), 'prisma', 'dev.db');
-      const candidate2 = path.join(process.cwd(), 'dev.db');
-      const srcPath = fs.existsSync(candidate1) ? candidate1 : (fs.existsSync(candidate2) ? candidate2 : null);
-
-      if (!fs.existsSync(tmpDbPath) && srcPath) {
-        try {
-          fs.copyFileSync(srcPath, tmpDbPath);
-        } catch (copyErr) {
-          // Ignore race condition if another worker copied it simultaneously
-        }
-      }
-
-      if (fs.existsSync(tmpDbPath)) {
-        return 'file:/tmp/dev.db';
-      }
-    } catch (e) {
-      console.error('SQLite Vercel setup notice:', e);
-    }
-  }
-
-  // Resolve local sqlite path to absolute path
-  const candidatePrisma = path.join(process.cwd(), 'prisma', 'dev.db');
-  const candidateRoot = path.join(process.cwd(), 'dev.db');
-  if (fs.existsSync(candidatePrisma)) {
-    return `file:${candidatePrisma.replace(/\\/g, '/')}`;
-  }
-  if (fs.existsSync(candidateRoot)) {
-    return `file:${candidateRoot.replace(/\\/g, '/')}`;
-  }
-
-  return `file:${candidatePrisma.replace(/\\/g, '/')}`;
-}
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
-const dbUrl = getDatabaseUrl();
-
 export const prisma =
   globalForPrisma.prisma ??
   new PrismaClient({
-    datasources: dbUrl ? { db: { url: dbUrl } } : undefined,
-    log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+    log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
   });
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;

@@ -37,3 +37,9 @@ export function generateInvoiceNumber(prefix: string = "INV-2026", count: number
   const pad = String(count).padStart(6, "0");
   return `${prefix}-${pad}`;
 }
+
+export function isValidObjectId(id?: string | null): boolean {
+  if (!id || typeof id !== 'string') return false;
+  return /^[0-9a-fA-F]{24}$/.test(id);
+}
+

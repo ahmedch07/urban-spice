@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { isValidObjectId } from '@/lib/utils';
 
 export async function POST() {
   try {
@@ -9,7 +10,7 @@ export async function POST() {
       try {
         await prisma.auditLog.create({
           data: {
-            userId: user.userId,
+            userId: isValidObjectId(user.userId) ? user.userId : null,
             userName: user.name,
             action: 'USER_LOGOUT',
             details: `User ${user.name} logged out.`,

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
-import { generateInvoiceNumber } from '@/lib/utils';
+import { generateInvoiceNumber, isValidObjectId } from '@/lib/utils';
 
 function getLocalDateKey(date = new Date()) {
   const year = date.getFullYear();
@@ -31,7 +31,7 @@ export async function GET(request: Request) {
       const endOfYesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       whereClause.createdAt = { gte: startOfYesterday, lt: endOfYesterday };
     } else if (dateRange === 'week') {
-      const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
+      const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
       startOfWeek.setHours(0, 0, 0, 0);
       whereClause.createdAt = { gte: startOfWeek };
     } else if (dateRange === 'month') {
@@ -43,12 +43,12 @@ export async function GET(request: Request) {
       whereClause.status = status;
     }
 
-    if (search) {
+    if (search && search.trim()) {
+      const query = search.trim();
       whereClause.OR = [
-        { invoiceNo: { contains: search } },
-        { customer: { name: { contains: search } } },
-        { customer: { phone: { contains: search } } },
-        { user: { name: { contains: search } } },
+        { invoiceNo: { contains: query, mode: 'insensitive' } },
+        { riderName: { contains: query, mode: 'insensitive' } },
+        { riderPhone: { contains: query, mode: 'insensitive' } },
       ];
     }
 
@@ -107,25 +107,30 @@ export async function POST(request: Request) {
     }
 
     // Get Invoice prefix and settings
-    const prefixSetting = await prisma.storeSetting.findUnique({ where: { key: 'invoicePrefix' } });
-    const prefix = prefixSetting?.value || 'INV-2026';
+    let prefix = 'INV-2026';
+    try {
+      const prefixSetting = await prisma.storeSetting.findUnique({ where: { key: 'invoicePrefix' } });
+      if (prefixSetting?.value) prefix = prefixSetting.value;
+    } catch {
+      // Use fallback prefix if storeSetting query fails
+    }
 
     const orderCount = await prisma.order.count();
     const invoiceNo = generateInvoiceNumber(prefix, orderCount + 1);
 
     // Validate customer ID if provided
-    let validCustomerId = null;
-    if (customerId) {
+    let validCustomerId: string | null = null;
+    if (isValidObjectId(customerId)) {
       const existingCustomer = await prisma.customer.findUnique({ where: { id: customerId } });
       if (existingCustomer) validCustomerId = customerId;
     }
 
     // Validate rider ID if provided
-    let validRiderId = null;
+    let validRiderId: string | null = null;
     let finalRiderName = riderName ? riderName.trim() : null;
     let finalRiderPhone = riderPhone ? riderPhone.trim() : null;
 
-    if (riderId) {
+    if (isValidObjectId(riderId)) {
       const existingRider = await prisma.rider.findUnique({ where: { id: riderId } });
       if (existingRider) {
         validRiderId = existingRider.id;
@@ -134,25 +139,28 @@ export async function POST(request: Request) {
       }
     }
 
-    // Validate User ID in DB to prevent foreign key errors if session token is stale
-    let validUserId = session.userId;
-    const existingUser = await prisma.user.findUnique({ where: { id: session.userId } });
-    if (!existingUser) {
-      const fallbackUser = await prisma.user.findFirst();
-      if (fallbackUser) {
-        validUserId = fallbackUser.id;
+    // Validate User ID in DB to prevent foreign key errors
+    let validUserId: string = session.userId;
+    if (isValidObjectId(session.userId)) {
+      const existingUser = await prisma.user.findUnique({ where: { id: session.userId } });
+      if (!existingUser) {
+        const fallbackUser = await prisma.user.findFirst();
+        if (fallbackUser) validUserId = fallbackUser.id;
       }
+    } else {
+      const fallbackUser = await prisma.user.findFirst();
+      if (fallbackUser) validUserId = fallbackUser.id;
     }
 
     // Lookup base custom pizza product ID if needed
     const customPizzaProduct = await prisma.product.findFirst({ where: { isPizza: true } });
 
     // Pre-fetch DB valid IDs to prevent foreign key errors
-    const validProductIds = new Set((await prisma.product.findMany({ select: { id: true } })).map((p) => p.id));
-    const validFlavorIds = new Set((await prisma.pizzaFlavor.findMany({ select: { id: true } })).map((f) => f.id));
-    const validSizeIds = new Set((await prisma.pizzaSize.findMany({ select: { id: true } })).map((s) => s.id));
-    const validCrustIds = new Set((await prisma.crust.findMany({ select: { id: true } })).map((c) => c.id));
-    const validToppingIds = new Set((await prisma.topping.findMany({ select: { id: true } })).map((t) => t.id));
+    const validProductIds = new Set((await prisma.product.findMany({ select: { id: true } })).map((p: { id: string }) => p.id));
+    const validFlavorIds = new Set((await prisma.pizzaFlavor.findMany({ select: { id: true } })).map((f: { id: string }) => f.id));
+    const validSizeIds = new Set((await prisma.pizzaSize.findMany({ select: { id: true } })).map((s: { id: string }) => s.id));
+    const validCrustIds = new Set((await prisma.crust.findMany({ select: { id: true } })).map((c: { id: string }) => c.id));
+    const validToppingIds = new Set((await prisma.topping.findMany({ select: { id: true } })).map((t: { id: string }) => t.id));
 
     // Calculate Totals server-side
     let calculatedSubtotal = 0;
@@ -172,10 +180,9 @@ export async function POST(request: Request) {
     const afterDiscount = Math.max(0, calculatedSubtotal - discountAmount);
     const taxAmount = (afterDiscount * (tax || 0)) / 100;
     const grandTotal = Math.round(afterDiscount + taxAmount + (deliveryFee || 0));
-    const change = Math.max(0, (amountPaid || 0) - grandTotal);
-
+    const finalAmountPaid = isPendingPayment ? (amountPaid || 0) : (amountPaid ?? grandTotal);
+    const change = Math.max(0, finalAmountPaid - grandTotal);
     const orderStatus = isPendingPayment ? 'PENDING' : 'COMPLETED';
-    const finalAmountPaid = isPendingPayment ? (amountPaid || 0) : amountPaid;
 
     const salesDay = await prisma.salesDay.upsert({
       where: { dateKey: getLocalDateKey() },
@@ -190,104 +197,139 @@ export async function POST(request: Request) {
       );
     }
 
-    // Execute Relational Transaction
-    const newOrder = await prisma.$transaction(async (tx) => {
-      const createdOrder = await tx.order.create({
-        data: {
-          invoiceNo,
-          customerId: validCustomerId,
-          riderId: validRiderId,
-          riderName: orderType === 'DELIVERY' ? finalRiderName : null,
-          riderPhone: orderType === 'DELIVERY' ? finalRiderPhone : null,
-          userId: validUserId,
-          salesDayId: salesDay.id,
-          orderType: orderType || 'DINE_IN',
-          tableNo: tableNo || null,
-          status: orderStatus,
-          subtotal: calculatedSubtotal,
-          discount: discountAmount,
-          discountType: discountType || 'FIXED',
-          tax: taxAmount,
-          deliveryFee: deliveryFee || 0,
-          grandTotal,
-          paymentMethod: paymentMethod || 'CASH',
-          amountPaid: finalAmountPaid,
-          change: isPendingPayment ? 0 : change,
-          notes: notes || null,
-          items: {
-            create: items.map((item: any) => {
-              // Resolve safe Product ID
-              let pId = item.productId && validProductIds.has(item.productId) ? item.productId : null;
-              if (!pId && item.isPizza && customPizzaProduct) {
-                pId = customPizzaProduct.id;
-              }
+    const orderData = {
+      invoiceNo,
+      customerId: validCustomerId,
+      riderId: validRiderId,
+      riderName: orderType === 'DELIVERY' ? finalRiderName : null,
+      riderPhone: orderType === 'DELIVERY' ? finalRiderPhone : null,
+      userId: validUserId,
+      salesDayId: salesDay.id,
+      orderType: orderType || 'DINE_IN',
+      tableNo: tableNo || null,
+      status: orderStatus,
+      subtotal: calculatedSubtotal,
+      discount: discountAmount,
+      discountType: discountType || 'FIXED',
+      tax: taxAmount,
+      deliveryFee: deliveryFee || 0,
+      grandTotal,
+      paymentMethod: paymentMethod || 'CASH',
+      amountPaid: finalAmountPaid,
+      change: isPendingPayment ? 0 : change,
+      notes: notes || null,
+      items: {
+        create: items.map((item: any) => {
+          let pId = item.productId && isValidObjectId(item.productId) && validProductIds.has(item.productId)
+            ? item.productId
+            : null;
+          if (!pId && item.isPizza && customPizzaProduct) {
+            pId = customPizzaProduct.id;
+          }
 
-              const fId = item.flavorId && validFlavorIds.has(item.flavorId) ? item.flavorId : null;
-              const sId = item.sizeId && validSizeIds.has(item.sizeId) ? item.sizeId : null;
-              const cId = item.crustId && validCrustIds.has(item.crustId) ? item.crustId : null;
+          const fId = item.flavorId && isValidObjectId(item.flavorId) && validFlavorIds.has(item.flavorId)
+            ? item.flavorId
+            : null;
+          const sId = item.sizeId && isValidObjectId(item.sizeId) && validSizeIds.has(item.sizeId)
+            ? item.sizeId
+            : null;
+          const cId = item.crustId && isValidObjectId(item.crustId) && validCrustIds.has(item.crustId)
+            ? item.crustId
+            : null;
 
-              return {
-                productId: pId,
-                flavorId: fId,
-                sizeId: sId,
-                crustId: cId,
-                productName: item.productName,
-                flavorName: item.flavorName || null,
-                sizeName: item.sizeName || null,
-                crustName: item.crustName || null,
-                quantity: item.quantity,
-                unitPrice: item.unitPrice,
-                discount: item.itemDiscount || 0,
-                total: item.totalPrice,
-                specialInstructions: item.specialInstructions || null,
-                toppings: {
-                  create: (item.toppings || []).map((t: any) => ({
-                    toppingId: t.toppingId && validToppingIds.has(t.toppingId) ? t.toppingId : null,
-                    toppingName: t.name || t.toppingName,
-                    price: t.price,
-                  })),
-                },
-              };
-            }),
-          },
-        },
-        include: {
-          customer: true,
-          user: { select: { name: true, email: true } },
-          items: {
-            include: { toppings: true },
-          },
-        },
+          return {
+            productId: pId,
+            flavorId: fId,
+            sizeId: sId,
+            crustId: cId,
+            productName: item.productName || 'Custom Item',
+            flavorName: item.flavorName || null,
+            sizeName: item.sizeName || null,
+            crustName: item.crustName || null,
+            quantity: Number(item.quantity) || 1,
+            unitPrice: Number(item.unitPrice) || 0,
+            discount: Number(item.itemDiscount) || 0,
+            total: Number(item.totalPrice) || (Number(item.unitPrice) * Number(item.quantity)),
+            specialInstructions: item.specialInstructions || null,
+            toppings: {
+              create: (item.toppings || []).map((t: any) => ({
+                toppingId: t.toppingId && isValidObjectId(t.toppingId) && validToppingIds.has(t.toppingId)
+                  ? t.toppingId
+                  : null,
+                toppingName: t.name || t.toppingName || 'Extra Topping',
+                price: Number(t.price) || 0,
+              })),
+            },
+          };
+        }),
+      },
+    };
+
+    const includeOptions = {
+      customer: true,
+      user: { select: { name: true, email: true } },
+      items: {
+        include: { toppings: true },
+      },
+    };
+
+    // Create Order with Fallback for non-replica-set / replica-set MongoDB
+    let createdOrder;
+    try {
+      createdOrder = await prisma.$transaction(async (tx: any) => {
+        const ord = await tx.order.create({
+          data: orderData,
+          include: includeOptions,
+        });
+
+        // Deduct stock for non-pizza products
+        for (const item of items) {
+          if (item.productId && !item.isPizza && isValidObjectId(item.productId) && validProductIds.has(item.productId)) {
+            await tx.product.update({
+              where: { id: item.productId },
+              data: { stock: { decrement: item.quantity } },
+            });
+          }
+        }
+
+        return ord;
+      });
+    } catch {
+      // Fallback for standalone MongoDB where $transaction is not enabled
+      createdOrder = await prisma.order.create({
+        data: orderData,
+        include: includeOptions,
       });
 
-      // Deduct stock for non-pizza products
       for (const item of items) {
-        if (item.productId && !item.isPizza && validProductIds.has(item.productId)) {
-          await tx.product.update({
-            where: { id: item.productId },
-            data: { stock: { decrement: item.quantity } },
-          });
+        if (item.productId && !item.isPizza && isValidObjectId(item.productId) && validProductIds.has(item.productId)) {
+          try {
+            await prisma.product.update({
+              where: { id: item.productId },
+              data: { stock: { decrement: item.quantity } },
+            });
+          } catch (stockErr) {
+            console.warn('Stock update skipped:', stockErr);
+          }
         }
       }
+    }
 
-      // Log Audit (Safely)
-      try {
-        await tx.auditLog.create({
-          data: {
-            userId: validUserId,
-            userName: session.name || 'Staff',
-            action: 'CREATE_ORDER',
-            details: `Created Order ${createdOrder.invoiceNo} for ${grandTotal} PKR via ${paymentMethod}`,
-          },
-        });
-      } catch (auditErr) {
-        console.warn('Audit log write skipped:', auditErr);
-      }
+    // Log Audit Log safely
+    try {
+      await prisma.auditLog.create({
+        data: {
+          userId: isValidObjectId(validUserId) ? validUserId : null,
+          userName: session.name || 'Staff',
+          action: 'CREATE_ORDER',
+          details: `Created Order ${createdOrder.invoiceNo} for ${grandTotal} PKR via ${paymentMethod}`,
+        },
+      });
+    } catch (auditErr) {
+      console.warn('Audit log write skipped:', auditErr);
+    }
 
-      return createdOrder;
-    });
-
-    return NextResponse.json({ success: true, order: newOrder });
+    return NextResponse.json({ success: true, order: createdOrder });
   } catch (error: any) {
     console.error('Create order error details:', error);
     return NextResponse.json(
@@ -296,3 +338,4 @@ export async function POST(request: Request) {
     );
   }
 }
+

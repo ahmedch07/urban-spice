@@ -1,16 +1,16 @@
-// Prisma Schema for Pizza Store POS & Admin System
+// Prisma Schema for Pizza Store POS & Admin System (MongoDB)
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
 }
 
 model User {
-  id        String   @id @default(uuid())
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
   name      String
   email     String   @unique
   phone     String?
@@ -25,7 +25,7 @@ model User {
 }
 
 model Customer {
-  id        String   @id @default(uuid())
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
   name      String
   phone     String   @unique
   whatsapp  String?
@@ -40,7 +40,7 @@ model Customer {
 }
 
 model Category {
-  id          String    @id @default(uuid())
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
   name        String    @unique
   slug        String    @unique
   description String?
@@ -53,12 +53,12 @@ model Category {
 }
 
 model Product {
-  id          String   @id @default(uuid())
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
   name        String
   SKU         String   @unique
   description String?
   image       String?
-  categoryId  String
+  categoryId  String   @db.ObjectId
   category    Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   basePrice   Float
   costPrice   Float    @default(0.0)
@@ -74,7 +74,7 @@ model Product {
 }
 
 model PizzaFlavor {
-  id          String   @id @default(uuid())
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
   name        String   @unique
   description String?
   image       String?
@@ -88,7 +88,7 @@ model PizzaFlavor {
 }
 
 model PizzaSize {
-  id        String   @id @default(uuid())
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
   name      String   @unique // Small, Medium, Large, Family
   code      String   // S, M, L, XL
   sortOrder Int      @default(0)
@@ -101,10 +101,10 @@ model PizzaSize {
 }
 
 model PizzaFlavorPrice {
-  id       String      @id @default(uuid())
-  flavorId String
+  id       String      @id @default(auto()) @map("_id") @db.ObjectId
+  flavorId String      @db.ObjectId
   flavor   PizzaFlavor @relation(fields: [flavorId], references: [id], onDelete: Cascade)
-  sizeId   String
+  sizeId   String      @db.ObjectId
   size     PizzaSize   @relation(fields: [sizeId], references: [id], onDelete: Cascade)
   price    Float
 
@@ -112,7 +112,7 @@ model PizzaFlavorPrice {
 }
 
 model Crust {
-  id              String   @id @default(uuid())
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
   name            String   @unique
   additionalPrice Float    @default(0.0)
   active          Boolean  @default(true)
@@ -123,7 +123,7 @@ model Crust {
 }
 
 model Topping {
-  id              String   @id @default(uuid())
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
   name            String   @unique
   additionalPrice Float    @default(0.0)
   stock           Int      @default(500)
@@ -135,7 +135,7 @@ model Topping {
 }
 
 model Rider {
-  id        String   @id @default(uuid())
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
   name      String
   phone     String   @unique
   vehicleNo String?
@@ -147,7 +147,7 @@ model Rider {
 }
 
 model SalesDay {
-  id        String   @id @default(uuid())
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
   dateKey   String   @unique
   createdAt DateTime @default(now())
 
@@ -155,17 +155,17 @@ model SalesDay {
 }
 
 model Order {
-  id            String    @id @default(uuid())
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
   invoiceNo     String    @unique
-  customerId    String?
+  customerId    String?   @db.ObjectId
   customer      Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  riderId       String?
+  riderId       String?   @db.ObjectId
   rider         Rider?    @relation(fields: [riderId], references: [id], onDelete: SetNull)
   riderName     String?
   riderPhone    String?
-  userId        String
+  userId        String    @db.ObjectId
   user          User      @relation(fields: [userId], references: [id])
-  salesDayId    String?
+  salesDayId    String?   @db.ObjectId
   salesDay      SalesDay? @relation(fields: [salesDayId], references: [id], onDelete: SetNull)
   orderType     String    @default("DINE_IN") // DINE_IN, TAKEAWAY, DELIVERY
   tableNo       String?
@@ -188,16 +188,16 @@ model Order {
 }
 
 model OrderItem {
-  id                  String       @id @default(uuid())
-  orderId             String
+  id                  String       @id @default(auto()) @map("_id") @db.ObjectId
+  orderId             String       @db.ObjectId
   order               Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  productId           String?
+  productId           String?      @db.ObjectId
   product             Product?     @relation(fields: [productId], references: [id], onDelete: SetNull)
-  flavorId            String?
+  flavorId            String?      @db.ObjectId
   flavor              PizzaFlavor? @relation(fields: [flavorId], references: [id], onDelete: SetNull)
-  sizeId              String?
+  sizeId              String?      @db.ObjectId
   size                PizzaSize?   @relation(fields: [sizeId], references: [id], onDelete: SetNull)
-  crustId             String?
+  crustId             String?      @db.ObjectId
   crust               Crust?       @relation(fields: [crustId], references: [id], onDelete: SetNull)
   productName         String
   flavorName          String?
@@ -213,17 +213,17 @@ model OrderItem {
 }
 
 model OrderItemTopping {
-  id          String    @id @default(uuid())
-  orderItemId String
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  orderItemId String    @db.ObjectId
   orderItem   OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
-  toppingId   String?
+  toppingId   String?   @db.ObjectId
   topping     Topping?  @relation(fields: [toppingId], references: [id], onDelete: SetNull)
   toppingName String
   price       Float
 }
 
 model InventoryItem {
-  id           String   @id @default(uuid())
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
   name         String   @unique
   SKU          String   @unique
   unit         String   // g, kg, ml, l, pcs
@@ -239,8 +239,8 @@ model InventoryItem {
 }
 
 model InventoryTransaction {
-  id              String        @id @default(uuid())
-  inventoryItemId String
+  id              String        @id @default(auto()) @map("_id") @db.ObjectId
+  inventoryItemId String        @db.ObjectId
   inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
   type            String        // ADD, REMOVE, ADJUSTMENT, PURCHASE, WASTE, SALE_DEDUCTION
   quantity        Float
@@ -250,10 +250,10 @@ model InventoryTransaction {
 }
 
 model Recipe {
-  id        String     @id @default(uuid())
-  productId String
+  id        String     @id @default(auto()) @map("_id") @db.ObjectId
+  productId String     @db.ObjectId
   product   Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
-  sizeId    String?
+  sizeId    String?    @db.ObjectId
   size      PizzaSize? @relation(fields: [sizeId], references: [id], onDelete: SetNull)
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
@@ -262,16 +262,16 @@ model Recipe {
 }
 
 model RecipeIngredient {
-  id              String        @id @default(uuid())
-  recipeId        String
+  id              String        @id @default(auto()) @map("_id") @db.ObjectId
+  recipeId        String        @db.ObjectId
   recipe          Recipe        @relation(fields: [recipeId], references: [id], onDelete: Cascade)
-  inventoryItemId String
+  inventoryItemId String        @db.ObjectId
   inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
   quantityNeeded  Float
 }
 
 model StoreSetting {
-  id        String   @id @default(uuid())
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
   key       String   @unique
   value     String
   createdAt DateTime @default(now())
@@ -279,8 +279,8 @@ model StoreSetting {
 }
 
 model AuditLog {
-  id        String   @id @default(uuid())
-  userId    String?
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String?  @db.ObjectId
   user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
   userName  String
   action    String
