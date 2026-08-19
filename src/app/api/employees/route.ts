@@ -119,8 +119,21 @@ export async function PUT(request: Request) {
       dataToUpdate.password = await hashPassword(password);
     }
 
+    if (!id) {
+      return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
+    }
+
+    let existingUser = await prisma.user.findUnique({ where: { id } });
+    if (!existingUser && email) {
+      existingUser = await prisma.user.findUnique({ where: { email: email.toLowerCase().trim() } });
+    }
+
+    if (!existingUser) {
+      return NextResponse.json({ error: 'Employee account not found. Please refresh the page.' }, { status: 404 });
+    }
+
     const updated = await prisma.user.update({
-      where: { id },
+      where: { id: existingUser.id },
       data: dataToUpdate,
       select: { id: true, name: true, email: true, role: true, active: true },
     });
@@ -136,6 +149,9 @@ export async function PUT(request: Request) {
   } catch (error: any) {
     if (error.code === 'P2002') {
       return NextResponse.json({ error: 'This email is already taken by another account' }, { status: 400 });
+    }
+    if (error.code === 'P2025') {
+      return NextResponse.json({ error: 'Employee account not found. Please refresh the page.' }, { status: 404 });
     }
     return NextResponse.json({ error: error?.message || 'Failed to update employee' }, { status: 500 });
   }
