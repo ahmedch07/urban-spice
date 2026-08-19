@@ -50,7 +50,7 @@ export default function RidersPage() {
   const fetchRiders = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch('/api/riders?all=true');
+      const res = await fetch('/api/riders?all=true', { cache: 'no-store' });
       const data = await res.json();
       if (data.riders) setRiders(data.riders);
     } catch (e) {
@@ -83,7 +83,9 @@ export default function RidersPage() {
       setName('');
       setPhone('');
       setVehicleNo('');
-      fetchRiders();
+      setRiders((currentRiders) =>
+        [...currentRiders, data.rider].sort((first, second) => first.name.localeCompare(second.name))
+      );
     } catch (e) {
       setAddErrorMsg('Network error creating rider');
     }
@@ -122,7 +124,11 @@ export default function RidersPage() {
         return;
       }
       setIsEditModalOpen(false);
-      fetchRiders();
+      setRiders((currentRiders) =>
+        currentRiders
+          .map((rider) => (rider.id === data.rider.id ? data.rider : rider))
+          .sort((first, second) => first.name.localeCompare(second.name))
+      );
     } catch (e) {
       setEditErrorMsg('Network error updating rider');
     }
@@ -151,7 +157,7 @@ export default function RidersPage() {
       }
       setIsDeleteModalOpen(false);
       setIsDeleting(false);
-      fetchRiders();
+      setRiders((currentRiders) => currentRiders.filter((rider) => rider.id !== deletingRider.id));
     } catch (e) {
       setDeleteErrorMsg('Network error deleting rider');
       setIsDeleting(false);

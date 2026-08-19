@@ -10,7 +10,7 @@ export async function GET(request: Request) {
       where: all ? undefined : { active: true },
       orderBy: { name: 'asc' },
     });
-    return NextResponse.json({ riders });
+    return NextResponse.json({ riders }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     console.error('Fetch riders error:', error);
     return NextResponse.json({ error: 'Failed to fetch riders' }, { status: 500 });
