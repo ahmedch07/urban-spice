@@ -27,18 +27,18 @@ export default function ImageUploadInput({
   const [imageError, setImageError] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  const processFile = async (file: File) => {
     // Reset feedback
     setErrorMsg('');
     setSuccessMsg('');
     setImageError(false);
 
-    // Frontend validation
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-    if (!allowedTypes.includes(file.type.toLowerCase())) {
+    // Frontend validation: MIME type or extension
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/svg+xml', 'image/gif'];
+    const fileType = file.type.toLowerCase();
+    const hasAllowedExt = /\.(jpg|jpeg|png|webp|svg|gif)$/i.test(file.name);
+
+    if (!allowedTypes.includes(fileType) && !hasAllowedExt) {
       setErrorMsg('Please select a valid JPG, PNG, or WEBP image.');
       if (fileInputRef.current) fileInputRef.current.value = '';
       return;
@@ -46,7 +46,7 @@ export default function ImageUploadInput({
 
     const MAX_SIZE = 5 * 1024 * 1024; // 5MB
     if (file.size > MAX_SIZE) {
-      setErrorMsg('Image size must be less than 5MB.');
+      setErrorMsg('Image file size must be less than 5MB.');
       if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
@@ -78,6 +78,18 @@ export default function ImageUploadInput({
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) processFile(file);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const file = e.dataTransfer.files?.[0];
+    if (file) processFile(file);
   };
 
   const handleRemove = () => {
@@ -143,7 +155,11 @@ export default function ImageUploadInput({
 
         {/* Tab Contents */}
         {activeTab === 'upload' ? (
-          <div className="flex flex-col sm:flex-row items-center gap-3">
+          <div
+            onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+            onDrop={handleDrop}
+            className="flex flex-col sm:flex-row items-center gap-3 p-3 rounded-xl border border-dashed border-slate-800 hover:border-amber-500/40 bg-slate-900/40 transition-colors"
+          >
             <button
               type="button"
               onClick={triggerFileInput}
@@ -167,7 +183,7 @@ export default function ImageUploadInput({
                 </>
               )}
             </button>
-            <span className="text-[11px] text-slate-500">Supported: JPG, PNG, WEBP (Max 5MB)</span>
+            <span className="text-[11px] text-slate-500">Drag & drop or choose JPG, PNG, WEBP (Max 5MB)</span>
           </div>
         ) : (
           <div>

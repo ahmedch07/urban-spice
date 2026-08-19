@@ -17,11 +17,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'No file provided.' }, { status: 400 });
     }
 
-    // Supported file types: JPG/JPEG, PNG, WEBP
-    const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    // Supported file types: JPG/JPEG, PNG, WEBP, SVG, GIF
+    const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/svg+xml', 'image/gif'];
     const fileType = file.type.toLowerCase();
+    const hasAllowedExtension = /\.(jpg|jpeg|png|webp|svg|gif)$/i.test(file.name);
 
-    if (!allowedMimeTypes.includes(fileType)) {
+    if (!allowedMimeTypes.includes(fileType) && !hasAllowedExtension) {
       return NextResponse.json(
         { error: 'Please select a valid JPG, PNG, or WEBP image.' },
         { status: 400 }
