@@ -4,7 +4,7 @@ import { AppProvider } from "@/context/AppContext";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Slice & Spice Pizza POS System",
+  title: "Urban Spice POS System",
   description: "Production Pizza Store Point of Sale, Billing, Sales & Admin Management System",
 };
 
