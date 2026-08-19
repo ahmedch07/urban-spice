@@ -2,6 +2,22 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
 
+async function createSafeAuditLog(userId: string | undefined, userName: string | undefined, action: string, details: string) {
+  try {
+    const userExists = userId ? await prisma.user.findUnique({ where: { id: userId } }) : null;
+    await prisma.auditLog.create({
+      data: {
+        userId: userExists ? userId : null,
+        userName: userName || 'Admin',
+        action,
+        details,
+      },
+    });
+  } catch (err) {
+    console.warn('Audit log skipped:', err);
+  }
+}
+
 export async function GET() {
   try {
     const flavors = await prisma.pizzaFlavor.findMany({
@@ -26,7 +42,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { name, description, image, prices } = body; // prices = [{ sizeId: '...', price: 1000 }]
+    const { name, description, image, prices } = body;
 
     if (!name) {
       return NextResponse.json({ error: 'Flavor name is required' }, { status: 400 });
@@ -54,19 +70,17 @@ export async function POST(request: Request) {
       }
     }
 
-    await prisma.auditLog.create({
-      data: {
-        userId: session.userId,
-        userName: session.name,
-        action: 'CREATE_PIZZA_FLAVOR',
-        details: `Created pizza flavor ${newFlavor.name}`,
-      },
-    });
+    await createSafeAuditLog(
+      session.userId,
+      session.name,
+      'CREATE_PIZZA_FLAVOR',
+      `Created pizza flavor ${newFlavor.name}`
+    );
 
     return NextResponse.json({ success: true, flavor: newFlavor });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Flavor create error:', error);
-    return NextResponse.json({ error: 'Failed to create pizza flavor' }, { status: 500 });
+    return NextResponse.json({ error: error?.message || 'Failed to create pizza flavor' }, { status: 500 });
   }
 }
 
@@ -117,18 +131,16 @@ export async function PUT(request: Request) {
       }
     }
 
-    await prisma.auditLog.create({
-      data: {
-        userId: session.userId,
-        userName: session.name,
-        action: 'UPDATE_PIZZA_FLAVOR',
-        details: `Updated pizza flavor ${updated.name}`,
-      },
-    });
+    await createSafeAuditLog(
+      session.userId,
+      session.name,
+      'UPDATE_PIZZA_FLAVOR',
+      `Updated pizza flavor ${updated.name}`
+    );
 
     return NextResponse.json({ success: true, flavor: updated });
-  } catch (error) {
-    return NextResponse.json({ error: 'Failed to update pizza flavor' }, { status: 500 });
+  } catch (error: any) {
+    return NextResponse.json({ error: error?.message || 'Failed to update pizza flavor' }, { status: 500 });
   }
 }
 
@@ -146,17 +158,15 @@ export async function DELETE(request: Request) {
 
     const deleted = await prisma.pizzaFlavor.delete({ where: { id } });
 
-    await prisma.auditLog.create({
-      data: {
-        userId: session.userId,
-        userName: session.name,
-        action: 'DELETE_PIZZA_FLAVOR',
-        details: `Deleted pizza flavor ${deleted.name}`,
-      },
-    });
+    await createSafeAuditLog(
+      session.userId,
+      session.name,
+      'DELETE_PIZZA_FLAVOR',
+      `Deleted pizza flavor ${deleted.name}`
+    );
 
     return NextResponse.json({ success: true });
-  } catch (error) {
-    return NextResponse.json({ error: 'Failed to delete pizza flavor' }, { status: 500 });
+  } catch (error: any) {
+    return NextResponse.json({ error: error?.message || 'Failed to delete pizza flavor' }, { status: 500 });
   }
 }

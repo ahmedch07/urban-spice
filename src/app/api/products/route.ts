@@ -2,6 +2,22 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
 
+async function createSafeAuditLog(userId: string | undefined, userName: string | undefined, action: string, details: string) {
+  try {
+    const userExists = userId ? await prisma.user.findUnique({ where: { id: userId } }) : null;
+    await prisma.auditLog.create({
+      data: {
+        userId: userExists ? userId : null,
+        userName: userName || 'Admin',
+        action,
+        details,
+      },
+    });
+  } catch (err) {
+    console.warn('Audit log skipped:', err);
+  }
+}
+
 async function syncPizzaFlavorAndPrices(
   name: string,
   description: string | null,
@@ -135,14 +151,14 @@ export async function POST(request: Request) {
       });
     }
 
-    await prisma.auditLog.create({
-      data: {
-        userId: session.userId,
-        userName: session.name,
-        action: 'CREATE_PRODUCT',
-        details: `Created product ${newProduct.name} (${newProduct.SKU})`,
-      },
-    });
+    await createSafeAuditLog(
+      session.userId,
+      session.name,
+      'CREATE_PRODUCT',
+      `Created product ${newProduct.name} (${newProduct.SKU})`
+    );
+
+    return NextResponse.json({ success: true, product: newProduct });
 
     return NextResponse.json({ success: true, product: newProduct });
   } catch (error) {
@@ -209,18 +225,17 @@ export async function PUT(request: Request) {
       });
     }
 
-    await prisma.auditLog.create({
-      data: {
-        userId: session.userId,
-        userName: session.name,
-        action: 'UPDATE_PRODUCT',
-        details: `Updated product ${updated.name} (${updated.SKU})`,
-      },
-    });
+    await createSafeAuditLog(
+      session.userId,
+      session.name,
+      'UPDATE_PRODUCT',
+      `Updated product ${updated.name} (${updated.SKU})`
+    );
 
     return NextResponse.json({ success: true, product: updated });
-  } catch (error) {
-    return NextResponse.json({ error: 'Failed to update product' }, { status: 500 });
+  } catch (error: any) {
+    console.error('Product update error:', error);
+    return NextResponse.json({ error: error?.message || 'Failed to update product' }, { status: 500 });
   }
 }
 
@@ -240,14 +255,14 @@ export async function DELETE(request: Request) {
 
     const deleted = await prisma.product.delete({ where: { id } });
 
-    await prisma.auditLog.create({
-      data: {
-        userId: session.userId,
-        userName: session.name,
-        action: 'DELETE_PRODUCT',
-        details: `Deleted product ${deleted.name} (${deleted.SKU})`,
-      },
-    });
+    await createSafeAuditLog(
+      session.userId,
+      session.name,
+      'DELETE_PRODUCT',
+      `Deleted product ${deleted.name} (${deleted.SKU})`
+    );
+
+    return NextResponse.json({ success: true, message: 'Product deleted' });
 
     return NextResponse.json({ success: true, message: 'Product deleted' });
   } catch (error) {
