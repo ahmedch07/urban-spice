@@ -12,6 +12,15 @@ export function formatCurrency(amount: number, currency: string = "Rs."): string
   })}`;
 }
 
+export function displayProductName(name: string): string {
+  return name
+    .replace(/^Urban Special Pasta/, 'Special Pasta')
+    .replace(/^Urban Special Sandwich/, 'Special Sandwich')
+    .replace(/^Malai Boti Sandwich/, 'Creamy Sandwich')
+    .replace(/^Crunchy Crunch Sandwich/, 'Crunchy Sandwich')
+    .replace(/^Urban Special Burger/, 'Special (Zinger) Burger');
+}
+
 export function formatDate(date: string | Date): string {
   const d = new Date(date);
   return d.toLocaleDateString("en-PK", {

@@ -123,11 +123,14 @@ async function main() {
   const catUrbanStufferPizza = await prisma.category.create({ data: { name: 'Urban Stuffer Pizza', slug: 'urban-stuffer-pizza', sortOrder: 3 } });
   const catUrbanSquarePizza = await prisma.category.create({ data: { name: 'Urban Square Pizza', slug: 'urban-square-pizza', sortOrder: 4 } });
   const catPlatter = await prisma.category.create({ data: { name: 'Urban Special Platter', slug: 'urban-special-platter', sortOrder: 5 } });
-  const catSandwichesBurgers = await prisma.category.create({ data: { name: 'Sandwiches & Burgers', slug: 'sandwiches-burgers', sortOrder: 6 } });
-  const catPasta = await prisma.category.create({ data: { name: 'Pasta', slug: 'pasta', sortOrder: 7 } });
-  const catAppetizers = await prisma.category.create({ data: { name: 'Appetizers', slug: 'appetizers', sortOrder: 8 } });
-  const catSpinRolls = await prisma.category.create({ data: { name: 'Spin Rolls', slug: 'spin-rolls', sortOrder: 9 } });
-  const catBeverages = await prisma.category.create({ data: { name: 'Beverages', slug: 'beverages', sortOrder: 10 } });
+  const catSandwiches = await prisma.category.create({ data: { name: 'Sandwiches', slug: 'sandwiches', sortOrder: 6 } });
+  const catBurgers = await prisma.category.create({ data: { name: 'Burgers', slug: 'burgers', sortOrder: 7 } });
+  const catWings = await prisma.category.create({ data: { name: 'Wings', slug: 'wings', sortOrder: 8 } });
+  const catNuggets = await prisma.category.create({ data: { name: 'Nuggets', slug: 'nuggets', sortOrder: 9 } });
+  const catFries = await prisma.category.create({ data: { name: 'Fries', slug: 'fries', sortOrder: 10 } });
+  const catPasta = await prisma.category.create({ data: { name: 'Pasta', slug: 'pasta', sortOrder: 11 } });
+  const catSpinRolls = await prisma.category.create({ data: { name: 'Spin Rolls', slug: 'spin-rolls', sortOrder: 12 } });
+  const catBeverages = await prisma.category.create({ data: { name: 'Beverages', slug: 'beverages', sortOrder: 13 } });
 
   // Helper to create pizza flavor and its prices
   const createPizzaFlavorWithPrices = async (
@@ -191,24 +194,40 @@ async function main() {
   await createPizzaFlavorWithPrices('Square Regular', 'Regular urban square pizza', { M: 1300, L: 1750 }, catUrbanSquarePizza.id);
   await createPizzaFlavorWithPrices('Square Urban Special', 'Urban special sauce square pizza', { M: 1350, L: 1800 }, catUrbanSquarePizza.id);
 
-  // --- SANDWICHES & BURGERS (All with Fries) ---
-  const sandwichBurgers = [
-    { name: 'Urban Special Sandwich (with Fries)', price: 800, sku: 'SAND-001' },
+  // --- SANDWICHES (All with Fries) ---
+  const sandwiches = [
+    { name: 'Special Sandwich (with Fries)', price: 800, sku: 'SAND-001' },
+    { name: 'Creamy Sandwich (with Fries)', price: 800, sku: 'SAND-003' },
+    { name: 'Crunchy Sandwich (with Fries)', price: 850, sku: 'SAND-004' },
     { name: 'Grilled Sandwich (with Fries)', price: 900, sku: 'SAND-002' },
-    { name: 'Malai Boti Sandwich (with Fries)', price: 800, sku: 'SAND-003' },
-    { name: 'Crunchy Crunch Sandwich (with Fries)', price: 850, sku: 'SAND-004' },
-    { name: 'Grilled Burger (with Fries)', price: 450, sku: 'BURG-001' },
-    { name: 'Petty Burger (with Fries)', price: 300, sku: 'BURG-002' },
-    { name: 'Urban Special Burger (with Fries)', price: 450, sku: 'BURG-003' },
-    { name: 'Double Decker Burger (with Fries)', price: 800, sku: 'BURG-004' },
   ];
 
-  for (const item of sandwichBurgers) {
+  for (const item of sandwiches) {
     await prisma.product.create({
       data: {
         name: item.name,
         SKU: item.sku,
-        categoryId: catSandwichesBurgers.id,
+        categoryId: catSandwiches.id,
+        basePrice: item.price,
+        isPizza: false,
+      },
+    });
+  }
+
+  // --- BURGERS (All with Fries) ---
+  const burgers = [
+    { name: 'Petty Burger (with Fries)', price: 300, sku: 'BURG-002' },
+    { name: 'Special (Zinger) Burger (with Fries)', price: 450, sku: 'BURG-003' },
+    { name: 'Grilled Burger (with Fries)', price: 450, sku: 'BURG-001' },
+    { name: 'Double Decker Burger (with Fries)', price: 800, sku: 'BURG-004' },
+  ];
+
+  for (const item of burgers) {
+    await prisma.product.create({
+      data: {
+        name: item.name,
+        SKU: item.sku,
+        categoryId: catBurgers.id,
         basePrice: item.price,
         isPizza: false,
       },
@@ -217,8 +236,8 @@ async function main() {
 
   // --- PASTA ---
   const pastas = [
-    { name: 'Urban Special Pasta (Half)', price: 450, sku: 'PAST-001' },
-    { name: 'Urban Special Pasta (Full)', price: 750, sku: 'PAST-002' },
+    { name: 'Special Pasta (Half)', price: 450, sku: 'PAST-001' },
+    { name: 'Special Pasta (Full)', price: 750, sku: 'PAST-002' },
     { name: 'Crunchy Pasta (Full)', price: 850, sku: 'PAST-003' },
     { name: 'Creamy Pasta (Half)', price: 450, sku: 'PAST-004' },
     { name: 'Creamy Pasta (Full)', price: 750, sku: 'PAST-005' },
@@ -236,26 +255,58 @@ async function main() {
     });
   }
 
-  // --- APPETIZERS ---
-  const appetizers = [
+  // --- WINGS ---
+  const wings = [
     { name: 'Oven Baked Wings (6 Pcs)', price: 400, sku: 'WING-001' },
     { name: 'Oven Baked Wings (12 Pcs)', price: 750, sku: 'WING-002' },
     { name: 'Hot Wings (6 Pcs)', price: 400, sku: 'WING-003' },
     { name: 'Hot Wings (12 Pcs)', price: 750, sku: 'WING-004' },
+  ];
+
+  for (const item of wings) {
+    await prisma.product.create({
+      data: {
+        name: item.name,
+        SKU: item.sku,
+        categoryId: catWings.id,
+        basePrice: item.price,
+        isPizza: false,
+      },
+    });
+  }
+
+  // --- NUGGETS ---
+  const nuggets = [
     { name: 'Nuggets (6 Pcs)', price: 350, sku: 'NUGG-001' },
     { name: 'Nuggets (12 Pcs)', price: 650, sku: 'NUGG-002' },
-    { name: 'Mayo Fries', price: 300, sku: 'FRIE-001' },
+  ];
+
+  for (const item of nuggets) {
+    await prisma.product.create({
+      data: {
+        name: item.name,
+        SKU: item.sku,
+        categoryId: catNuggets.id,
+        basePrice: item.price,
+        isPizza: false,
+      },
+    });
+  }
+
+  // --- FRIES ---
+  const fries = [
+    { name: 'Simple Fries', price: 300, sku: 'FRIE-001' },
     { name: 'Loaded Fries', price: 800, sku: 'FRIE-002' },
     { name: 'Mayo Garlic Fries', price: 350, sku: 'FRIE-003' },
   ];
 
-  for (const app of appetizers) {
+  for (const item of fries) {
     await prisma.product.create({
       data: {
-        name: app.name,
-        SKU: app.sku,
-        categoryId: catAppetizers.id,
-        basePrice: app.price,
+        name: item.name,
+        SKU: item.sku,
+        categoryId: catFries.id,
+        basePrice: item.price,
         isPizza: false,
       },
     });

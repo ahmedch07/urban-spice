@@ -274,6 +274,11 @@ export default function CartSidebar({
                       )}
                     </div>
                   )}
+                  {!item.isPizza && item.toppings && item.toppings.length > 0 && (
+                    <div className="text-[11px] text-amber-400/90 mt-0.5">
+                      Extra: {item.toppings.map((t) => t.name).join(', ')}
+                    </div>
+                  )}
                   {item.specialInstructions && (
                     <p className="text-[11px] text-slate-400 italic mt-0.5">
                       "{item.specialInstructions}"

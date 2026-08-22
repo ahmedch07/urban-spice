@@ -1,7 +1,7 @@
 'use client';
 
 import { Search, Pizza, Package, Layers } from 'lucide-react';
-import { formatCurrency } from '@/lib/utils';
+import { displayProductName, formatCurrency } from '@/lib/utils';
 import { CategoryItem, ProductItem } from '@/lib/types';
 
 interface ProductGridProps {
@@ -12,6 +12,12 @@ interface ProductGridProps {
   searchQuery: string;
   onSearchChange: (q: string) => void;
   onSelectProduct: (product: ProductItem) => void;
+  onConfigurePasta: (product: ProductItem) => void;
+  onConfigureSandwich: (product: ProductItem) => void;
+  onConfigureBurger: (product: ProductItem) => void;
+  onConfigureLoadedFries: (product: ProductItem) => void;
+  onAddDipSauce: () => void;
+  onConfigureDrinks: () => void;
   onOpenPizzaModalWithCategory: (categoryName: string, flavorName?: string) => void;
 }
 
@@ -23,65 +29,27 @@ export default function ProductGrid({
   searchQuery,
   onSearchChange,
   onSelectProduct,
+  onConfigurePasta,
+  onConfigureSandwich,
+  onConfigureBurger,
+  onConfigureLoadedFries,
+  onAddDipSauce,
+  onConfigureDrinks,
   onOpenPizzaModalWithCategory,
 }: ProductGridProps) {
 
   // Main Category Cards Configuration
   const categoryCards = [
     {
-      id: 'cat-urban-special',
-      name: 'Urban Special Pizza',
-      categoryQueryName: 'Urban Special Pizza',
+      id: 'cat-pizza',
+      name: 'Pizza',
+      categoryQueryName: 'Pizza',
       icon: '🍕',
-      badge: '4 Flavors',
-      desc: 'Urban Special, Malai Boti, Behari Kebab, Peri Peri',
+      badge: 'All Pizza Types',
+      desc: 'Urban Special, Urban, Square & Stuffer pizzas',
       fromPrice: 'Rs. 500',
       gradient: 'from-amber-600 via-amber-500 to-red-600',
       isPizza: true,
-    },
-    {
-      id: 'cat-urban-pizza',
-      name: 'Urban Pizza',
-      categoryQueryName: 'Urban Pizza',
-      icon: '🍕',
-      badge: '6 Flavors',
-      desc: 'Tikka, Fajita, Supreme, Sicilian, Cheese & Veggie Lover',
-      fromPrice: 'Rs. 500',
-      gradient: 'from-orange-600 via-amber-600 to-amber-500',
-      isPizza: true,
-    },
-    {
-      id: 'cat-urban-square',
-      name: 'Urban Square Pizza',
-      categoryQueryName: 'Urban Square Pizza',
-      icon: '🍕',
-      badge: 'Medium & Large',
-      desc: 'Square Regular (1300/1750) & Square Special (1350/1800)',
-      fromPrice: 'Rs. 1,300',
-      gradient: 'from-amber-600 via-red-600 to-red-700',
-      isPizza: true,
-    },
-    {
-      id: 'cat-urban-stuffer',
-      name: 'Urban Stuffer Pizza',
-      categoryQueryName: 'Urban Stuffer Pizza',
-      icon: '🍕',
-      badge: 'Stuffed Crust',
-      desc: 'Cheese Stuffer, Chicken Cheese Stuffer, Kabab Stuffer',
-      fromPrice: 'Rs. 1,300',
-      gradient: 'from-red-600 via-amber-600 to-orange-600',
-      isPizza: true,
-    },
-    {
-      id: 'cat-sandwiches-burgers',
-      name: 'Sandwiches & Burgers',
-      slug: 'sandwiches-burgers',
-      icon: '🥪',
-      badge: 'With Fries',
-      desc: 'Special, Grilled, Malai Boti Sandwiches & Burgers',
-      fromPrice: 'Rs. 300',
-      gradient: 'from-emerald-700 via-emerald-600 to-teal-600',
-      isPizza: false,
     },
     {
       id: 'cat-pasta',
@@ -89,20 +57,66 @@ export default function ProductGrid({
       slug: 'pasta',
       icon: '🍝',
       badge: 'Half & Full',
-      desc: 'Urban Special Pasta, Crunchy Pasta & Creamy Pasta',
+      desc: 'Special Pasta, Creamy Pasta & Crunchy Pasta',
       fromPrice: 'Rs. 450',
       gradient: 'from-purple-700 via-purple-600 to-indigo-600',
       isPizza: false,
     },
     {
-      id: 'cat-appetizers',
-      name: 'Appetizers',
-      slug: 'appetizers',
-      icon: '🍗',
-      badge: 'Wings & Fries',
-      desc: 'Baked Wings, Hot Wings, Nuggets, Mayo & Loaded Fries',
+      id: 'cat-sandwiches',
+      name: 'Sandwiches',
+      slug: 'sandwiches',
+      icon: '🥪',
+      badge: 'With Fries',
+      desc: 'Special, Creamy, Crunchy & Grilled Sandwiches',
+      fromPrice: 'Rs. 800',
+      gradient: 'from-emerald-700 via-emerald-600 to-teal-600',
+      isPizza: false,
+    },
+    {
+      id: 'cat-burgers',
+      name: 'Burgers',
+      slug: 'burgers',
+      icon: '🍔',
+      badge: 'With Fries',
+      desc: 'Petty, Special (Zinger), Grilled & Double Decker Burgers',
       fromPrice: 'Rs. 300',
+      gradient: 'from-orange-700 via-red-600 to-amber-600',
+      isPizza: false,
+    },
+    {
+      id: 'cat-platter',
+      name: 'Urban Special Platter',
+      directProductName: 'Urban Special Platter',
+      directProductSKU: 'PLAT-001',
+      slug: 'urban-special-platter',
+      icon: '🍽️',
+      badge: 'Combo Deal',
+      desc: '4Pcs Spin Roll + 6Pcs Oven Baked Wings + Fries',
+      fromPrice: 'Rs. 850',
+      gradient: 'from-yellow-600 via-amber-600 to-orange-600',
+      isPizza: false,
+    },
+    {
+      id: 'cat-wings',
+      name: 'Wings',
+      slug: 'wings',
+      icon: '🍗',
+      badge: '6 & 12 Pcs',
+      desc: 'Oven Baked Wings and Hot Wings',
+      fromPrice: 'Rs. 400',
       gradient: 'from-rose-700 via-pink-600 to-red-600',
+      isPizza: false,
+    },
+    {
+      id: 'cat-nuggets',
+      name: 'Nuggets',
+      slug: 'nuggets',
+      icon: '🍗',
+      badge: '6 & 12 Pcs',
+      desc: 'Crispy chicken nuggets',
+      fromPrice: 'Rs. 350',
+      gradient: 'from-amber-700 via-orange-600 to-red-600',
       isPizza: false,
     },
     {
@@ -117,19 +131,42 @@ export default function ProductGrid({
       isPizza: false,
     },
     {
-      id: 'cat-platter',
-      name: 'Urban Special Platter',
-      slug: 'urban-special-platter',
-      icon: '🍽️',
-      badge: 'Combo Deal',
-      desc: '4Pcs Spin Roll + 6Pcs Oven Baked Wings + Fries',
-      fromPrice: 'Rs. 850',
-      gradient: 'from-yellow-600 via-amber-600 to-orange-600',
+      id: 'cat-loaded-fries',
+      name: 'Loaded Fries',
+      directProductName: 'Loaded Fries',
+      directProductSKU: 'FRIE-002',
+      icon: '🍟',
+      badge: 'Loaded',
+      desc: 'Loaded Fries',
+      fromPrice: 'Rs. 800',
+      gradient: 'from-yellow-600 via-amber-500 to-orange-600',
+      isPizza: false,
+    },
+    {
+      id: 'cat-mayo-garlic-fries',
+      name: 'Mayo Garlic Fries',
+      directProductName: 'Mayo Garlic Fries',
+      directProductSKU: 'FRIE-003',
+      icon: '🍟',
+      badge: 'Mayo Garlic',
+      desc: 'Mayo Garlic Fries',
+      fromPrice: 'Rs. 350',
+      gradient: 'from-amber-700 via-yellow-600 to-orange-600',
+      isPizza: false,
+    },
+    {
+      id: 'cat-dip-sauce',
+      name: 'Dip Sauce',
+      icon: '🥣',
+      badge: 'Extra',
+      desc: 'Dip Sauce',
+      fromPrice: 'Rs. 50',
+      gradient: 'from-violet-700 via-purple-600 to-fuchsia-600',
       isPizza: false,
     },
     {
       id: 'cat-beverages',
-      name: 'Beverages',
+      name: 'Drinks',
       slug: 'beverages',
       icon: '🥤',
       badge: 'Drinks & Water',
@@ -139,6 +176,35 @@ export default function ProductGrid({
       isPizza: false,
     },
   ];
+
+  const getDirectProduct = (card: (typeof categoryCards)[number]) =>
+    card.directProductSKU
+      ? products.find((product) => product.SKU === card.directProductSKU) ||
+        products.find((product) => product.name === card.directProductName)
+      : undefined;
+
+  const displayCards = categoryCards.map((card) => {
+    const category = categories.find(
+      (item) => item.slug === card.slug || item.name.toLowerCase() === card.name.toLowerCase()
+    );
+    const directProduct = getDirectProduct(card);
+    const cardProducts = directProduct
+      ? [directProduct]
+      : card.isPizza
+        ? products.filter((product) => product.isPizza)
+        : products.filter((product) => product.categoryId === category?.id);
+    const lowestPrice = cardProducts.length
+      ? Math.min(...cardProducts.map((product) => product.basePrice))
+      : null;
+
+    return {
+      ...card,
+      name: directProduct ? displayProductName(directProduct.name) : category?.name || card.name,
+      desc: directProduct?.description || category?.description || card.desc,
+      fromPrice: lowestPrice === null ? card.fromPrice : formatCurrency(lowestPrice),
+      image: directProduct?.image || category?.image,
+    };
+  });
 
   // Helper to find DB category ID by slug or name
   const findCategoryId = (slugOrName: string) => {
@@ -180,17 +246,28 @@ export default function ProductGrid({
             <span>Main Categories Overview</span>
           </button>
 
-          {categories.map((cat) => {
-            const isActive = selectedCategory === cat.id;
-            const isPizzaCategory = cat.name.toLowerCase().includes('pizza');
+          {displayCards.map((card) => {
+            const categoryId = findCategoryId(card.slug || card.name);
+            const isActive = selectedCategory === categoryId;
             return (
               <button
-                key={cat.id}
+                key={card.id}
                 onClick={() => {
-                  if (isPizzaCategory) {
-                    onOpenPizzaModalWithCategory(cat.name);
+                  if (card.isPizza) {
+                    onOpenPizzaModalWithCategory(card.categoryQueryName || card.name);
+                  } else if (card.id === 'cat-dip-sauce') {
+                    onAddDipSauce();
+                  } else if (card.id === 'cat-beverages') {
+                    onConfigureDrinks();
+                  } else if (card.directProductName) {
+                    const product = getDirectProduct(card);
+                    if (product) {
+                      card.directProductName === 'Loaded Fries'
+                        ? onConfigureLoadedFries(product)
+                        : onSelectProduct(product);
+                    }
                   } else {
-                    onSelectCategory && onSelectCategory(cat.id);
+                    onSelectCategory && onSelectCategory(categoryId);
                   }
                 }}
                 className={`px-3.5 py-2 rounded-xl text-xs font-extrabold whitespace-nowrap transition-all flex items-center space-x-1.5 shrink-0 ${
@@ -199,8 +276,8 @@ export default function ProductGrid({
                     : 'bg-slate-900 border border-slate-800 text-slate-300 hover:text-amber-400 hover:bg-slate-800'
                 }`}
               >
-                {isPizzaCategory && <Pizza className="w-3.5 h-3.5" />}
-                <span>{cat.name}</span>
+                {card.isPizza && <Pizza className="w-3.5 h-3.5" />}
+                <span>{card.name}</span>
               </button>
             );
           })}
@@ -211,12 +288,23 @@ export default function ProductGrid({
       {isMainOverview ? (
         <div className="flex-1 overflow-y-auto pr-1">
           <div className="grid grid-cols-1 sm:grid-cols-1 xl:grid-cols-3 gap-4">
-            {categoryCards.map((card) => (
+            {displayCards.map((card) => (
               <div
                 key={card.id}
                 onClick={() => {
                   if (card.isPizza) {
                     onOpenPizzaModalWithCategory(card.categoryQueryName || card.name);
+                  } else if (card.id === 'cat-dip-sauce') {
+                    onAddDipSauce();
+                  } else if (card.id === 'cat-beverages') {
+                    onConfigureDrinks();
+                  } else if (card.directProductName) {
+                    const product = getDirectProduct(card);
+                    if (product) {
+                      card.directProductName === 'Loaded Fries'
+                        ? onConfigureLoadedFries(product)
+                        : onSelectProduct(product);
+                    }
                   } else {
                     const catId = findCategoryId(card.slug || card.name);
                     if (onSelectCategory) onSelectCategory(catId);
@@ -226,7 +314,11 @@ export default function ProductGrid({
               >
                 <div className="flex items-start justify-between">
                   <div className="w-12 h-12 rounded-xl bg-slate-950/40 text-white text-2xl flex items-center justify-center backdrop-blur shadow-inner">
-                    {card.icon}
+                    {card.image ? (
+                      <img src={card.image} alt={card.name} className="w-full h-full object-cover" />
+                    ) : (
+                      card.icon
+                    )}
                   </div>
                   <span className="px-2.5 py-1 rounded-lg text-[10px] font-black uppercase bg-slate-950/60 text-white backdrop-blur border border-white/20">
                     {card.badge}
@@ -248,7 +340,7 @@ export default function ProductGrid({
                     <span className="text-sm font-black text-white font-mono">{card.fromPrice}</span>
                   </div>
                   <button className="px-3 py-1.5 bg-slate-950/80 text-white font-extrabold text-xs rounded-xl shadow group-hover:bg-slate-950 group-hover:scale-105 transition-all">
-                    {card.isPizza ? 'Configure →' : 'View Items →'}
+                    {card.isPizza || card.id === 'cat-beverages' ? 'Configure →' : card.directProductName || card.id === 'cat-dip-sauce' ? '+ Add to Bill' : 'View Items →'}
                   </button>
                 </div>
               </div>
@@ -278,8 +370,16 @@ export default function ProductGrid({
                     if (product.isPizza) {
                       onOpenPizzaModalWithCategory(
                         product.category?.name || 'Urban Pizza',
-                        product.name
+                        displayProductName(product.name)
                       );
+                    } else if (product.category?.slug === 'pasta') {
+                      onConfigurePasta(product);
+                    } else if (product.category?.slug === 'sandwiches') {
+                      onConfigureSandwich(product);
+                    } else if (product.category?.slug === 'burgers') {
+                      onConfigureBurger(product);
+                    } else if (product.name === 'Loaded Fries') {
+                      onConfigureLoadedFries(product);
                     } else {
                       onSelectProduct(product);
                     }
@@ -292,7 +392,7 @@ export default function ProductGrid({
                       {product.image ? (
                         <img
                           src={product.image}
-                          alt={product.name}
+                          alt={displayProductName(product.name)}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         />
                       ) : (
@@ -321,7 +421,7 @@ export default function ProductGrid({
 
                     {/* Info */}
                     <h4 className="font-bold text-xs text-slate-100 line-clamp-1 group-hover:text-amber-400 transition-colors">
-                      {product.name}
+                      {displayProductName(product.name)}
                     </h4>
                     <p className="text-[10px] text-slate-400 line-clamp-1 mt-0.5 font-sans">
                       {product.description || `Category: ${product.category?.name}`}
@@ -336,7 +436,7 @@ export default function ProductGrid({
                       </span>
                     </div>
                     <button className="px-2.5 py-1.5 rounded-lg bg-amber-500/10 group-hover:bg-amber-500 text-amber-400 group-hover:text-slate-950 text-xs font-black transition-all flex items-center space-x-1 shadow">
-                      <span>{product.isPizza ? 'Configure' : '+ Add'}</span>
+                      <span>{product.isPizza || product.name === 'Loaded Fries' || ['pasta', 'sandwiches', 'burgers'].includes(product.category?.slug || '') ? 'Configure' : '+ Add'}</span>
                     </button>
                   </div>
                 </div>

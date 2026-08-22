@@ -9,6 +9,8 @@
     "lint": "eslint .",
     "db:push": "prisma db push",
     "db:seed": "npx tsx prisma/seed.ts",
+    "db:split-sandwiches-burgers": "npx tsx prisma/split-sandwiches-and-burgers.ts",
+    "db:split-appetizers": "npx tsx prisma/split-appetizers.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {

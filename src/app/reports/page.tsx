@@ -2,14 +2,15 @@
 
 export const dynamic = 'force-dynamic';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Sidebar from '@/components/Sidebar';
 import Navbar from '@/components/Navbar';
 import { Button } from '@/components/ui/button';
 import { DataTable } from '@/components/ui/data-table';
 import { DeleteConfirmModal } from '@/components/ui/delete-confirm-modal';
+import OrderEditModal from '@/components/OrderEditModal';
 import { toast } from '@/components/ui/sonner';
-import { topProductColumns, salesOrderColumns } from '@/columns';
+import { getSalesOrderColumns, topProductColumns } from '@/columns';
 import { Download, RotateCcw } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 
@@ -18,7 +19,7 @@ import { useApp } from '@/context/AppContext';
 
 export default function ReportsPage() {
   const router = useRouter();
-  const { currentUser, isGlobalLoading } = useApp();
+  const { currentUser, isGlobalLoading, riders, products, refreshOrders } = useApp();
   const [period, setPeriod] = useState<any>('today');
 
   useEffect(() => {
@@ -46,6 +47,10 @@ export default function ReportsPage() {
   const [isNewDayModalOpen, setIsNewDayModalOpen] = useState(false);
   const [newDayError, setNewDayError] = useState('');
   const [isStartingDay, setIsStartingDay] = useState(false);
+  const [editingOrder, setEditingOrder] = useState<any>(null);
+  const [deletingOrder, setDeletingOrder] = useState<any>(null);
+  const [orderActionError, setOrderActionError] = useState('');
+  const [isSavingOrder, setIsSavingOrder] = useState(false);
 
   useEffect(() => {
     fetchReports();
@@ -94,6 +99,58 @@ export default function ReportsPage() {
     link.click();
     document.body.removeChild(link);
   };
+
+  const handleSaveOrder = async (updates: Record<string, unknown>) => {
+    if (!editingOrder) return;
+    setIsSavingOrder(true);
+    setOrderActionError('');
+    try {
+      const res = await fetch(`/api/orders/${editingOrder.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(updates) });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to update order');
+      toast.success('Order updated successfully');
+      setEditingOrder(null);
+      await fetchReports();
+      refreshOrders();
+    } catch (error: any) {
+      setOrderActionError(error.message || 'Failed to update order');
+    } finally {
+      setIsSavingOrder(false);
+    }
+  };
+
+  const handleDeleteOrder = async () => {
+    if (!deletingOrder) return;
+    setIsSavingOrder(true);
+    setOrderActionError('');
+    try {
+      const res = await fetch(`/api/orders/${deletingOrder.id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to delete order');
+      toast.success('Order deleted successfully');
+      setDeletingOrder(null);
+      await fetchReports();
+      refreshOrders();
+    } catch (error: any) {
+      setOrderActionError(error.message || 'Failed to delete order');
+    } finally {
+      setIsSavingOrder(false);
+    }
+  };
+
+  const salesOrderColumns = useMemo(
+    () => getSalesOrderColumns({
+      onEdit: (order) => {
+        setOrderActionError('');
+        setEditingOrder(order);
+      },
+      onDelete: (order) => {
+        setOrderActionError('');
+        setDeletingOrder(order);
+      },
+    }),
+    []
+  );
 
   return (
     <div className="flex h-screen bg-slate-950 text-slate-100 overflow-hidden font-sans">
@@ -214,6 +271,27 @@ export default function ReportsPage() {
         description="Are you sure you want to initialize and start a fresh sales day? Today's transactions will be archived."
         confirmText="Start New Day"
         variant="warning"
+      />
+
+      <OrderEditModal
+        order={editingOrder}
+        riders={riders}
+        products={products}
+        isSaving={isSavingOrder}
+        errorMsg={orderActionError}
+        onClose={() => setEditingOrder(null)}
+        onSave={handleSaveOrder}
+      />
+
+      <DeleteConfirmModal
+        isOpen={!!deletingOrder}
+        onClose={() => setDeletingOrder(null)}
+        onConfirm={handleDeleteOrder}
+        isLoading={isSavingOrder}
+        errorMsg={orderActionError}
+        title="Delete Order?"
+        description={deletingOrder ? `Delete ${deletingOrder.invoiceNo}? This will remove it from sales reports as well.` : undefined}
+        confirmText="Delete Order"
       />
     </div>
   );

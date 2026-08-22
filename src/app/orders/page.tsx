@@ -6,6 +6,7 @@ import { useState, useEffect, useMemo } from 'react';
 import Sidebar from '@/components/Sidebar';
 import Navbar from '@/components/Navbar';
 import ThermalReceiptModal from '@/components/POS/ThermalReceiptModal';
+import OrderEditModal from '@/components/OrderEditModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -25,7 +26,7 @@ import { mergeRiderOverrides } from '@/lib/rider-overrides';
 import { useApp } from '@/context/AppContext';
 
 export default function OrdersPage() {
-  const { currentUser, orders: globalOrders, riders, refreshOrders } = useApp();
+  const { currentUser, orders: globalOrders, riders, products, refreshOrders } = useApp();
   const [orders, setOrders] = useState<any[]>(() => globalOrders || []);
   const [dateRange, setDateRange] = useState<string>('today');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -35,6 +36,10 @@ export default function OrdersPage() {
   // Selected Order for Receipt Modal
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [isReceiptOpen, setIsReceiptOpen] = useState<boolean>(false);
+  const [editingOrder, setEditingOrder] = useState<any>(null);
+  const [deletingOrder, setDeletingOrder] = useState<any>(null);
+  const [orderActionError, setOrderActionError] = useState('');
+  const [isSavingOrder, setIsSavingOrder] = useState(false);
 
   // Sync with global preloaded orders when available
   useEffect(() => {
@@ -132,6 +137,48 @@ export default function OrdersPage() {
     setIsReceiptOpen(true);
   };
 
+  const handleSaveOrder = async (updates: Record<string, unknown>) => {
+    if (!editingOrder) return;
+    setIsSavingOrder(true);
+    setOrderActionError('');
+    try {
+      const res = await fetch(`/api/orders/${editingOrder.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to update order');
+      toast.success('Order updated successfully');
+      setEditingOrder(null);
+      fetchOrders();
+      refreshOrders();
+    } catch (error: any) {
+      setOrderActionError(error.message || 'Failed to update order');
+    } finally {
+      setIsSavingOrder(false);
+    }
+  };
+
+  const handleDeleteOrder = async () => {
+    if (!deletingOrder) return;
+    setIsSavingOrder(true);
+    setOrderActionError('');
+    try {
+      const res = await fetch(`/api/orders/${deletingOrder.id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to delete order');
+      toast.success('Order deleted successfully');
+      setDeletingOrder(null);
+      fetchOrders();
+      refreshOrders();
+    } catch (error: any) {
+      setOrderActionError(error.message || 'Failed to delete order');
+    } finally {
+      setIsSavingOrder(false);
+    }
+  };
+
   const columns = useMemo(
     () =>
       getOrderColumns({
@@ -139,8 +186,17 @@ export default function OrdersPage() {
         onUpdateRider: handleUpdateRider,
         onUpdateStatus: handleUpdateStatus,
         onOpenReceipt: openReceipt,
+        onEdit: (order) => {
+          setOrderActionError('');
+          setEditingOrder(order);
+        },
+        onDelete: (order) => {
+          setOrderActionError('');
+          setDeletingOrder(order);
+        },
+        canManage: currentUser?.role === 'ADMIN' || currentUser?.role === 'MANAGER',
       }),
-    [riders]
+    [riders, currentUser?.role]
   );
 
   return (
@@ -233,6 +289,16 @@ export default function OrdersPage() {
         />
       )}
 
+      <OrderEditModal
+        order={editingOrder}
+        riders={riders}
+        products={products}
+        isSaving={isSavingOrder}
+        errorMsg={orderActionError}
+        onClose={() => setEditingOrder(null)}
+        onSave={handleSaveOrder}
+      />
+
       {/* Order Status Confirmation Modal */}
       <DeleteConfirmModal
         isOpen={!!statusConfirm}
@@ -254,6 +320,17 @@ export default function OrdersPage() {
         }
         confirmText={`Mark as ${statusConfirm?.newStatus || 'Updated'}`}
         variant="destructive"
+      />
+
+      <DeleteConfirmModal
+        isOpen={!!deletingOrder}
+        onClose={() => setDeletingOrder(null)}
+        onConfirm={handleDeleteOrder}
+        isLoading={isSavingOrder}
+        errorMsg={orderActionError}
+        title="Delete Order?"
+        description={deletingOrder ? `Delete ${deletingOrder.invoiceNo}? This will remove it from sales reports as well.` : undefined}
+        confirmText="Delete Order"
       />
     </div>
   );

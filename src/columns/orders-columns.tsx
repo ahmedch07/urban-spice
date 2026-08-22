@@ -1,6 +1,6 @@
 import { ColumnDef } from '@/components/ui/data-table';
 import { Button } from '@/components/ui/button';
-import { Printer } from 'lucide-react';
+import { Pencil, Printer, Trash2 } from 'lucide-react';
 import { formatCurrency, formatDate } from '@/lib/utils';
 
 interface OrderColumnsProps {
@@ -8,6 +8,9 @@ interface OrderColumnsProps {
   onUpdateRider: (orderId: string, riderId: string) => void;
   onUpdateStatus: (orderId: string, status: string) => void;
   onOpenReceipt: (order: any) => void;
+  onEdit: (order: any) => void;
+  onDelete: (order: any) => void;
+  canManage: boolean;
 }
 
 export function getOrderColumns({
@@ -15,6 +18,9 @@ export function getOrderColumns({
   onUpdateRider,
   onUpdateStatus,
   onOpenReceipt,
+  onEdit,
+  onDelete,
+  canManage,
 }: OrderColumnsProps): ColumnDef<any>[] {
   return [
     {
@@ -127,14 +133,11 @@ export function getOrderColumns({
       header: 'Actions',
       align: 'right',
       cell: (o) => (
-        <Button
-          variant="secondary"
-          size="icon"
-          onClick={() => onOpenReceipt(o)}
-          title="Print Receipt"
-        >
-          <Printer className="w-3.5 h-3.5 text-slate-300 hover:text-amber-400" />
-        </Button>
+        <div className="flex justify-end gap-1">
+          <Button variant="secondary" size="icon" onClick={() => onOpenReceipt(o)} title="Print Receipt"><Printer className="w-3.5 h-3.5" /></Button>
+          {canManage && <Button variant="secondary" size="icon" onClick={() => onEdit(o)} title="Edit Order"><Pencil className="w-3.5 h-3.5 text-amber-400" /></Button>}
+          {canManage && <Button variant="secondary" size="icon" onClick={() => onDelete(o)} title="Delete Order"><Trash2 className="w-3.5 h-3.5 text-rose-400" /></Button>}
+        </div>
       ),
     },
   ];

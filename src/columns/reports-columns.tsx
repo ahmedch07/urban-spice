@@ -1,4 +1,6 @@
 import { ColumnDef } from '@/components/ui/data-table';
+import { Button } from '@/components/ui/button';
+import { Pencil, Trash2 } from 'lucide-react';
 import { formatCurrency, formatDate } from '@/lib/utils';
 
 export const topProductColumns: ColumnDef<any>[] = [
@@ -22,7 +24,14 @@ export const topProductColumns: ColumnDef<any>[] = [
   },
 ];
 
-export const salesOrderColumns: ColumnDef<any>[] = [
+export function getSalesOrderColumns({
+  onEdit,
+  onDelete,
+}: {
+  onEdit: (order: any) => void;
+  onDelete: (order: any) => void;
+}): ColumnDef<any>[] {
+  return [
   {
     header: 'Invoice',
     accessorKey: 'invoiceNo',
@@ -63,4 +72,15 @@ export const salesOrderColumns: ColumnDef<any>[] = [
       </span>
     ),
   },
+  {
+    header: 'Actions',
+    align: 'right',
+    cell: (o) => (
+      <div className="flex justify-end gap-1">
+        <Button variant="secondary" size="icon" onClick={() => onEdit(o)} title="Edit Order"><Pencil className="w-3.5 h-3.5 text-amber-400" /></Button>
+        <Button variant="secondary" size="icon" onClick={() => onDelete(o)} title="Delete Order"><Trash2 className="w-3.5 h-3.5 text-rose-400" /></Button>
+      </div>
+    ),
+  },
 ];
+}

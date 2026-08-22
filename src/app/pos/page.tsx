@@ -8,12 +8,14 @@ import Navbar from '@/components/Navbar';
 import ProductGrid from '@/components/POS/ProductGrid';
 import CartSidebar from '@/components/POS/CartSidebar';
 import CustomizationModal from '@/components/POS/CustomizationModal';
+import PastaCustomizationModal from '@/components/POS/PastaCustomizationModal';
+import DrinkCustomizationModal from '@/components/POS/DrinkCustomizationModal';
 import CustomerModal from '@/components/POS/CustomerModal';
 import PaymentModal from '@/components/POS/PaymentModal';
 import ThermalReceiptModal from '@/components/POS/ThermalReceiptModal';
 import { CartItem, CustomerItem, OrderType, ProductItem, RiderItem } from '@/lib/types';
 import { useApp } from '@/context/AppContext';
-import { formatCurrency } from '@/lib/utils';
+import { displayProductName, formatCurrency } from '@/lib/utils';
 
 export default function POSPage() {
   const {
@@ -32,19 +34,61 @@ export default function POSPage() {
 
   // Filter products instantaneously in memory
   const products = useMemo(() => {
-    return globalProducts.filter((p) => {
-      const matchCat =
-        selectedCategory === 'all' ||
-        p.categoryId === selectedCategory ||
-        p.category?.id === selectedCategory ||
-        p.category?.name.toLowerCase() === selectedCategory.toLowerCase();
+    const productNameFilters: Record<string, string> = {
+      'fries-loaded': 'Loaded Fries',
+      'fries-mayo-garlic': 'Mayo Garlic Fries',
+    };
+
+    const filteredProducts = globalProducts.filter((p) => {
+      const productNameFilter = productNameFilters[selectedCategory];
+      const matchCat = productNameFilter
+        ? p.name === productNameFilter
+        : selectedCategory === 'all' ||
+          p.categoryId === selectedCategory ||
+          p.category?.id === selectedCategory ||
+          p.category?.name.toLowerCase() === selectedCategory.toLowerCase();
 
       const matchSearch =
         !searchQuery.trim() ||
-        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        displayProductName(p.name).toLowerCase().includes(searchQuery.toLowerCase()) ||
         p.SKU.toLowerCase().includes(searchQuery.toLowerCase());
 
-      return matchCat && matchSearch;
+      return matchCat && matchSearch && p.name.toLowerCase() !== 'simple fries';
+    });
+
+    const pastaOrder = [
+      'Special Pasta (Half)',
+      'Special Pasta (Full)',
+      'Creamy Pasta (Half)',
+      'Creamy Pasta (Full)',
+      'Crunchy Pasta (Full)',
+    ];
+    const sandwichOrder = [
+      'Special Sandwich (with Fries)',
+      'Creamy Sandwich (with Fries)',
+      'Crunchy Sandwich (with Fries)',
+      'Grilled Sandwich (with Fries)',
+    ];
+    const burgerOrder = [
+      'Petty Burger (with Fries)',
+      'Special (Zinger) Burger (with Fries)',
+      'Grilled Burger (with Fries)',
+      'Double Decker Burger (with Fries)',
+    ];
+
+    return filteredProducts.sort((a, b) => {
+      const aName = displayProductName(a.name);
+      const bName = displayProductName(b.name);
+      if (a.category?.slug === 'pasta' && b.category?.slug === 'pasta') {
+        return pastaOrder.indexOf(aName) - pastaOrder.indexOf(bName);
+      }
+      if (a.category?.slug === 'sandwiches' && b.category?.slug === 'sandwiches') {
+        return sandwichOrder.indexOf(aName) - sandwichOrder.indexOf(bName);
+      }
+      if (a.category?.slug === 'burgers' && b.category?.slug === 'burgers') {
+        return burgerOrder.indexOf(aName) - burgerOrder.indexOf(bName);
+      }
+      return 0;
     });
   }, [globalProducts, selectedCategory, searchQuery]);
 
@@ -62,6 +106,11 @@ export default function POSPage() {
   const [isPizzaModalOpen, setIsPizzaModalOpen] = useState<boolean>(false);
   const [modalCategoryName, setModalCategoryName] = useState<string>('Urban Special Pizza');
   const [modalFlavorName, setModalFlavorName] = useState<string | undefined>(undefined);
+  const [selectedPastaProduct, setSelectedPastaProduct] = useState<ProductItem | null>(null);
+  const [selectedSandwichProduct, setSelectedSandwichProduct] = useState<ProductItem | null>(null);
+  const [selectedBurgerProduct, setSelectedBurgerProduct] = useState<ProductItem | null>(null);
+  const [selectedLoadedFriesProduct, setSelectedLoadedFriesProduct] = useState<ProductItem | null>(null);
+  const [isDrinkModalOpen, setIsDrinkModalOpen] = useState(false);
 
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState<boolean>(false);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState<boolean>(false);
@@ -83,6 +132,11 @@ export default function POSPage() {
         if (cart.length > 0) setIsPaymentModalOpen(true);
       } else if (e.key === 'Escape') {
         setIsPizzaModalOpen(false);
+        setSelectedPastaProduct(null);
+        setSelectedSandwichProduct(null);
+        setSelectedBurgerProduct(null);
+        setSelectedLoadedFriesProduct(null);
+        setIsDrinkModalOpen(false);
         setIsCustomerModalOpen(false);
         setIsPaymentModalOpen(false);
         setIsReceiptModalOpen(false);
@@ -138,6 +192,25 @@ export default function POSPage() {
       };
       setCart((prev) => [...prev, newItem]);
     }
+  };
+
+  const handleAddPastaToCart = (item: CartItem) => {
+    setCart((prev) => [...prev, item]);
+  };
+
+  const handleAddDipSauceToCart = () => {
+    handleAddStandardProductToCart({
+      id: 'dip-sauce',
+      name: 'Dip Sauce',
+      SKU: 'DIP-001',
+      categoryId: 'dip-sauce',
+      basePrice: 50,
+      costPrice: 0,
+      stock: 0,
+      minStock: 0,
+      isPizza: false,
+      active: true,
+    });
   };
 
   const handleUpdateQuantity = (cartId: string, delta: number) => {
@@ -215,6 +288,12 @@ export default function POSPage() {
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
             onSelectProduct={handleAddStandardProductToCart}
+            onConfigurePasta={setSelectedPastaProduct}
+            onConfigureSandwich={setSelectedSandwichProduct}
+            onConfigureBurger={setSelectedBurgerProduct}
+            onConfigureLoadedFries={setSelectedLoadedFriesProduct}
+            onAddDipSauce={handleAddDipSauceToCart}
+            onConfigureDrinks={() => setIsDrinkModalOpen(true)}
             onOpenPizzaModalWithCategory={handleOpenPizzaModalWithCategory}
           />
 
@@ -284,6 +363,48 @@ export default function POSPage() {
         pizzaConfig={pizzaConfig || { flavors: [], sizes: [], crusts: [], toppings: [] }}
         initialCategoryName={modalCategoryName}
         initialFlavorName={modalFlavorName}
+      />
+
+      <PastaCustomizationModal
+        isOpen={selectedPastaProduct !== null}
+        product={selectedPastaProduct}
+        onClose={() => setSelectedPastaProduct(null)}
+        onAddToCart={handleAddPastaToCart}
+      />
+
+      <PastaCustomizationModal
+        isOpen={selectedSandwichProduct !== null}
+        product={selectedSandwichProduct}
+        title="Customize Sandwich"
+        extraToppingPrice={150}
+        onClose={() => setSelectedSandwichProduct(null)}
+        onAddToCart={handleAddPastaToCart}
+      />
+
+      <PastaCustomizationModal
+        isOpen={selectedBurgerProduct !== null}
+        product={selectedBurgerProduct}
+        title="Customize Burger"
+        extraToppingName="With Cheese"
+        extraToppingPrice={100}
+        onClose={() => setSelectedBurgerProduct(null)}
+        onAddToCart={handleAddPastaToCart}
+      />
+
+      <PastaCustomizationModal
+        isOpen={selectedLoadedFriesProduct !== null}
+        product={selectedLoadedFriesProduct}
+        title="Customize Loaded Fries"
+        extraToppingPrice={150}
+        onClose={() => setSelectedLoadedFriesProduct(null)}
+        onAddToCart={handleAddPastaToCart}
+      />
+
+      <DrinkCustomizationModal
+        isOpen={isDrinkModalOpen}
+        products={globalProducts}
+        onClose={() => setIsDrinkModalOpen(false)}
+        onAddToCart={handleAddPastaToCart}
       />
 
       <CustomerModal

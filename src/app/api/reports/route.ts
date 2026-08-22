@@ -45,6 +45,7 @@ export async function GET(request: Request) {
         items: {
           include: {
             product: { select: { costPrice: true } },
+            toppings: true,
           },
         },
       },
@@ -53,6 +54,7 @@ export async function GET(request: Request) {
 
     const totalOrders = orders.length;
     const totalSales = orders.reduce((sum, o) => sum + o.grandTotal, 0);
+    const averageOrderValue = totalOrders > 0 ? totalSales / totalOrders : 0;
 
     // Calculate Estimated Cost & Profit
     let estimatedCost = 0;
@@ -117,7 +119,9 @@ export async function GET(request: Request) {
     return NextResponse.json({
       metrics: {
         totalSales,
+        totalRevenue: totalSales,
         totalOrders,
+        averageOrderValue,
         estimatedProfit,
         totalCustomers,
         lowStockCount: lowStockProducts.length,
@@ -132,9 +136,14 @@ export async function GET(request: Request) {
         createdAt: order.createdAt,
         status: order.status,
         orderType: order.orderType,
+        tableNo: order.tableNo,
+        riderId: order.riderId,
+        riderName: order.riderName,
+        riderPhone: order.riderPhone,
         paymentMethod: order.paymentMethod,
         grandTotal: order.grandTotal,
         customer: order.customer,
+        items: order.items,
       })),
     });
   } catch (error) {
