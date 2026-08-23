@@ -26,7 +26,7 @@ export function getCustomerColumns({
       className: 'font-mono text-slate-300',
     },
     {
-      header: 'Delivery Address',
+      header: 'Address / Location',
       cell: (c) => (
         <span className="text-slate-400 max-w-xs truncate block">
           {c.address || '-'}

@@ -1,4 +1,4 @@
-// Prisma Schema for Pizza Store POS & Admin System (MongoDB)
+// Prisma Schema for Urban Spice Pizza Store POS & Restaurant Management System (Local MongoDB)
 
 generator client {
   provider = "prisma-client-js"
@@ -31,12 +31,37 @@ model Customer {
   whatsapp  String?
   email     String?
   address   String?
-  city      String?  @default("Lahore")
+  city      String?  @default("Faisalabad")
   notes     String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   orders Order[]
+}
+
+model Rider {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  phone     String   @unique
+  vehicleNo String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orders Order[]
+}
+
+model RestaurantTable {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String   @unique // e.g. "Table 1", "Table 2"
+  number    Int      @unique // 1, 2, 3...
+  capacity  Int      @default(4)
+  status    String   @default("AVAILABLE") // AVAILABLE, OCCUPIED, RESERVED
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orders    Order[]
 }
 
 model Category {
@@ -134,18 +159,6 @@ model Topping {
   orderItemToppings OrderItemTopping[]
 }
 
-model Rider {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  name      String
-  phone     String   @unique
-  vehicleNo String?
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  orders Order[]
-}
-
 model SalesDay {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
   dateKey   String   @unique
@@ -155,34 +168,37 @@ model SalesDay {
 }
 
 model Order {
-  id            String    @id @default(auto()) @map("_id") @db.ObjectId
-  invoiceNo     String    @unique
-  customerId    String?   @db.ObjectId
-  customer      Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  riderId       String?   @db.ObjectId
-  rider         Rider?    @relation(fields: [riderId], references: [id], onDelete: SetNull)
+  id            String           @id @default(auto()) @map("_id") @db.ObjectId
+  invoiceNo     String           @unique
+  customerId    String?          @db.ObjectId
+  customer      Customer?        @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  riderId       String?          @db.ObjectId
+  rider         Rider?           @relation(fields: [riderId], references: [id], onDelete: SetNull)
   riderName     String?
   riderPhone    String?
-  userId        String    @db.ObjectId
-  user          User      @relation(fields: [userId], references: [id])
-  salesDayId    String?   @db.ObjectId
-  salesDay      SalesDay? @relation(fields: [salesDayId], references: [id], onDelete: SetNull)
-  orderType     String    @default("DINE_IN") // DINE_IN, TAKEAWAY, DELIVERY
+  tableId       String?          @db.ObjectId
+  table         RestaurantTable? @relation(fields: [tableId], references: [id], onDelete: SetNull)
   tableNo       String?
-  status        String    @default("PENDING") // PENDING, PREPARING, READY, COMPLETED, CANCELLED, REFUNDED
+  userId        String           @db.ObjectId
+  user          User             @relation(fields: [userId], references: [id])
+  salesDayId    String?          @db.ObjectId
+  salesDay      SalesDay?        @relation(fields: [salesDayId], references: [id], onDelete: SetNull)
+  orderType     String           @default("DINE_IN") // DINE_IN, TAKEAWAY, DELIVERY
+  status        String           @default("PENDING") // PENDING, PREPARING, READY, OUT_FOR_DELIVERY, COMPLETED, CANCELLED, REFUNDED
+  paymentStatus String           @default("UNPAID") // UNPAID, PAID, PARTIAL
   subtotal      Float
-  discount      Float     @default(0.0)
-  discountType  String    @default("FIXED") // FIXED, PERCENTAGE
-  tax           Float     @default(0.0)
-  deliveryFee   Float     @default(0.0)
-  otherFee      Float     @default(0.0)
+  discount      Float            @default(0.0)
+  discountType  String           @default("FIXED") // FIXED, PERCENTAGE
+  tax           Float            @default(0.0)
+  deliveryFee   Float            @default(0.0)
+  otherFee      Float            @default(0.0)
   grandTotal    Float
-  paymentMethod String    @default("CASH") // CASH, CARD, BANK, ONLINE
-  amountPaid    Float
-  change        Float     @default(0.0)
+  paymentMethod String           @default("CASH") // CASH, CARD, BANK, ONLINE
+  amountPaid    Float            @default(0.0)
+  change        Float            @default(0.0)
   notes         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
 
   items OrderItem[]
 }

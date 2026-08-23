@@ -20,13 +20,11 @@ import { DataTable } from '@/components/ui/data-table';
 import { DeleteConfirmModal } from '@/components/ui/delete-confirm-modal';
 import { getOrderColumns } from '@/columns';
 import { toast } from '@/components/ui/sonner';
-import { Receipt, Search, Filter, RefreshCw } from 'lucide-react';
-import { mergeRiderOverrides } from '@/lib/rider-overrides';
-
+import { Search, RefreshCw } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 
 export default function OrdersPage() {
-  const { currentUser, orders: globalOrders, riders, products, refreshOrders } = useApp();
+  const { currentUser, orders: globalOrders, products, refreshOrders } = useApp();
   const [orders, setOrders] = useState<any[]>(() => globalOrders || []);
   const [dateRange, setDateRange] = useState<string>('today');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -109,29 +107,6 @@ export default function OrdersPage() {
     }
   };
 
-  const handleUpdateRider = async (orderId: string, riderId: string) => {
-    const selectedR = riders.find((r) => r.id === riderId);
-    try {
-      const res = await fetch(`/api/orders/${orderId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          riderId: selectedR ? selectedR.id : null,
-          riderName: selectedR ? selectedR.name : null,
-          riderPhone: selectedR ? selectedR.phone : null,
-        }),
-      });
-      if (res.ok) {
-        toast.success('Rider assigned successfully');
-        fetchOrders();
-      } else {
-        toast.error('Failed to assign rider');
-      }
-    } catch {
-      toast.error('Network error assigning rider');
-    }
-  };
-
   const openReceipt = (order: any) => {
     setSelectedOrder(order);
     setIsReceiptOpen(true);
@@ -182,8 +157,6 @@ export default function OrdersPage() {
   const columns = useMemo(
     () =>
       getOrderColumns({
-        riders,
-        onUpdateRider: handleUpdateRider,
         onUpdateStatus: handleUpdateStatus,
         onOpenReceipt: openReceipt,
         onEdit: (order) => {
@@ -196,7 +169,7 @@ export default function OrdersPage() {
         },
         canManage: currentUser?.role === 'ADMIN' || currentUser?.role === 'MANAGER',
       }),
-    [riders, currentUser?.role]
+    [currentUser?.role]
   );
 
   return (
@@ -214,7 +187,7 @@ export default function OrdersPage() {
                 <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
                 <Input
                   type="text"
-                  placeholder="Search invoice, customer, phone..."
+                  placeholder="Search invoice, table, customer..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10"
@@ -248,12 +221,11 @@ export default function OrdersPage() {
                   <SelectContent>
                     <SelectItem value="ALL">All Statuses</SelectItem>
                     <SelectItem value="PENDING">Pending</SelectItem>
-                    <SelectItem value="CONFIRMED">Confirmed</SelectItem>
                     <SelectItem value="PREPARING">Preparing</SelectItem>
                     <SelectItem value="READY">Ready</SelectItem>
-                    <SelectItem value="OUT_FOR_DELIVERY">Out for Delivery</SelectItem>
                     <SelectItem value="COMPLETED">Completed</SelectItem>
                     <SelectItem value="CANCELLED">Cancelled</SelectItem>
+                    <SelectItem value="REFUNDED">Refunded</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -291,7 +263,6 @@ export default function OrdersPage() {
 
       <OrderEditModal
         order={editingOrder}
-        riders={riders}
         products={products}
         isSaving={isSavingOrder}
         errorMsg={orderActionError}

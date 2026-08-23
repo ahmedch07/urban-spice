@@ -34,13 +34,15 @@ export async function GET(request: Request) {
 
     const startDate = getDateRange(period);
 
-    // 1. Total Orders & Sales
+    // 1. Total Orders & Sales (Only settled & paid orders)
     const orders = await prisma.order.findMany({
       where: {
         createdAt: { gte: startDate },
+        paymentStatus: 'PAID',
         status: { notIn: ['CANCELLED', 'REFUNDED'] },
       },
       include: {
+        table: true,
         customer: { select: { name: true, phone: true } },
         items: {
           include: {
@@ -135,11 +137,10 @@ export async function GET(request: Request) {
         invoiceNo: order.invoiceNo,
         createdAt: order.createdAt,
         status: order.status,
+        paymentStatus: order.paymentStatus,
         orderType: order.orderType,
         tableNo: order.tableNo,
-        riderId: order.riderId,
-        riderName: order.riderName,
-        riderPhone: order.riderPhone,
+        table: order.table,
         paymentMethod: order.paymentMethod,
         grandTotal: order.grandTotal,
         customer: order.customer,

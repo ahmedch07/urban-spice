@@ -11,11 +11,14 @@ import CustomizationModal from '@/components/POS/CustomizationModal';
 import PastaCustomizationModal from '@/components/POS/PastaCustomizationModal';
 import DrinkCustomizationModal from '@/components/POS/DrinkCustomizationModal';
 import CustomerModal from '@/components/POS/CustomerModal';
+import TableSelectorModal from '@/components/POS/TableSelectorModal';
 import PaymentModal from '@/components/POS/PaymentModal';
 import ThermalReceiptModal from '@/components/POS/ThermalReceiptModal';
-import { CartItem, CustomerItem, OrderType, ProductItem, RiderItem } from '@/lib/types';
+import { toast } from '@/components/ui/sonner';
+import { CartItem, CustomerItem, OrderType, ProductItem, RestaurantTableItem, RiderItem } from '@/lib/types';
 import { useApp } from '@/context/AppContext';
 import { displayProductName, formatCurrency } from '@/lib/utils';
+import { Armchair, Layers } from 'lucide-react';
 
 export default function POSPage() {
   const {
@@ -23,8 +26,10 @@ export default function POSPage() {
     categories,
     products: globalProducts,
     pizzaConfig,
-    riders,
+    tables,
     storeSettings,
+    refreshTables,
+    refreshOrders,
   } = useApp();
 
   // Filters & Cart
@@ -92,15 +97,20 @@ export default function POSPage() {
     });
   }, [globalProducts, selectedCategory, searchQuery]);
 
-  // Customer & Order Config
+  // Customer, Table, Rider & Order Config
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerItem | null>(null);
+  const [selectedTable, setSelectedTable] = useState<RestaurantTableItem | null>(null);
   const [selectedRider, setSelectedRider] = useState<RiderItem | null>(null);
+  const [deliveryFee, setDeliveryFee] = useState<number>(() => Number(storeSettings.defaultDeliveryFee) || 100);
+  const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
   const [orderType, setOrderType] = useState<OrderType>('DINE_IN');
   const [tableNo, setTableNo] = useState<string>('');
   const [discount, setDiscount] = useState<number>(0);
   const [discountType, setDiscountType] = useState<'FIXED' | 'PERCENTAGE'>('FIXED');
-  const [deliveryFee, setDeliveryFee] = useState<number>(() => Number(storeSettings.defaultDeliveryFee) || 100);
-  const [taxRate, setTaxRate] = useState<number>(() => (storeSettings.taxEnabled === 'true' ? Number(storeSettings.taxRate) || 0 : 0));
+  const [taxRate, setTaxRate] = useState<number>(() =>
+    storeSettings.taxEnabled === 'true' ? Number(storeSettings.taxRate) || 0 : 0
+  );
+  const [isSavingOpenOrder, setIsSavingOpenOrder] = useState<boolean>(false);
 
   // Modals visibility
   const [isPizzaModalOpen, setIsPizzaModalOpen] = useState<boolean>(false);
@@ -112,12 +122,13 @@ export default function POSPage() {
   const [selectedLoadedFriesProduct, setSelectedLoadedFriesProduct] = useState<ProductItem | null>(null);
   const [isDrinkModalOpen, setIsDrinkModalOpen] = useState(false);
 
+  const [isTableModalOpen, setIsTableModalOpen] = useState<boolean>(false);
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState<boolean>(false);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState<boolean>(false);
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState<boolean>(false);
   const [completedOrder, setCompletedOrder] = useState<any>(null);
 
-  // Keyboard Shortcuts Listener (F2 Search, F4 New Order, F8 Checkout, ESC Close)
+  // Keyboard Shortcuts Listener
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'F2') {
@@ -138,6 +149,7 @@ export default function POSPage() {
         setSelectedLoadedFriesProduct(null);
         setIsDrinkModalOpen(false);
         setIsCustomerModalOpen(false);
+        setIsTableModalOpen(false);
         setIsPaymentModalOpen(false);
         setIsReceiptModalOpen(false);
       }
@@ -168,49 +180,35 @@ export default function POSPage() {
 
   // Cart operations
   const handleAddToCart = (item: CartItem) => {
-    setCart((prev) => [...prev, item]);
-  };
+    setCart((prev) => {
+      const existingIdx = prev.findIndex(
+        (i) =>
+          i.productId === item.productId &&
+          i.flavorId === item.flavorId &&
+          i.sizeId === item.sizeId &&
+          i.crustId === item.crustId &&
+          JSON.stringify(i.toppings) === JSON.stringify(item.toppings) &&
+          i.specialInstructions === item.specialInstructions
+      );
 
-  const handleAddStandardProductToCart = (product: ProductItem) => {
-    const existingIndex = cart.findIndex((i) => i.productId === product.id && !i.isPizza);
-    if (existingIndex > -1) {
-      const updated = [...cart];
-      updated[existingIndex].quantity += 1;
-      updated[existingIndex].totalPrice = updated[existingIndex].quantity * updated[existingIndex].unitPrice;
-      setCart(updated);
-    } else {
-      const newItem: CartItem = {
-        cartId: `${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-        productId: product.id,
-        productName: product.name,
-        isPizza: false,
-        toppings: [],
-        unitPrice: product.basePrice,
-        quantity: 1,
-        itemDiscount: 0,
-        totalPrice: product.basePrice,
-      };
-      setCart((prev) => [...prev, newItem]);
-    }
+      if (existingIdx > -1) {
+        const updated = [...prev];
+        const current = updated[existingIdx];
+        const newQty = current.quantity + item.quantity;
+        updated[existingIdx] = {
+          ...current,
+          quantity: newQty,
+          totalPrice: newQty * current.unitPrice,
+        };
+        return updated;
+      }
+      return [...prev, item];
+    });
+    toast.success(`Added ${item.productName} to order`);
   };
 
   const handleAddPastaToCart = (item: CartItem) => {
-    setCart((prev) => [...prev, item]);
-  };
-
-  const handleAddDipSauceToCart = () => {
-    handleAddStandardProductToCart({
-      id: 'dip-sauce',
-      name: 'Dip Sauce',
-      SKU: 'DIP-001',
-      categoryId: 'dip-sauce',
-      basePrice: 50,
-      costPrice: 0,
-      stock: 0,
-      minStock: 0,
-      isPizza: false,
-      active: true,
-    });
+    handleAddToCart(item);
   };
 
   const handleUpdateQuantity = (cartId: string, delta: number) => {
@@ -233,24 +231,162 @@ export default function POSPage() {
   };
 
   const handleRemoveItem = (cartId: string) => {
-    setCart((prev) => prev.filter((item) => item.cartId !== cartId));
+    setCart((prev) => prev.filter((i) => i.cartId !== cartId));
+  };
+
+  const handleClearCart = () => {
+    setCart([]);
+    toast.info('Cart cleared');
   };
 
   const handleResetOrder = () => {
     setCart([]);
     setSelectedCustomer(null);
+    setSelectedTable(null);
     setSelectedRider(null);
-    setDiscount(0);
+    setActiveOrderId(null);
     setTableNo('');
-    setIsPaymentModalOpen(false);
-    setIsReceiptModalOpen(false);
-    setCompletedOrder(null);
+    setDiscount(0);
+    setTaxRate(storeSettings.taxEnabled === 'true' ? Number(storeSettings.taxRate) || 0 : 0);
+    setOrderType('DINE_IN');
+    toast.info('Ready for new order');
+  };
+
+  // Table selection from TableSelectorModal
+  const handleSelectTable = (table: RestaurantTableItem) => {
+    setSelectedTable(table);
+    setTableNo(table.name);
+    setOrderType('DINE_IN');
+    toast.success(`Selected ${table.name}`);
+  };
+
+  // Reopen existing unpaid table tab
+  const handleReopenOrder = (table: RestaurantTableItem, activeOrder: any) => {
+    if (!activeOrder) return;
+    setSelectedTable(table);
+    setTableNo(table.name);
+    setActiveOrderId(activeOrder.id);
+    setOrderType('DINE_IN');
+
+    if (activeOrder.customer) {
+      setSelectedCustomer(activeOrder.customer);
+    }
+
+    if (activeOrder.discount !== undefined) {
+      setDiscount(activeOrder.discount);
+      setDiscountType(activeOrder.discountType || 'FIXED');
+    }
+
+    // Convert order items to CartItem format
+    const loadedCart: CartItem[] = (activeOrder.items || []).map((item: any) => ({
+      cartId: `reopen_${item.id || Math.random()}`,
+      productId: item.productId || '',
+      productName: item.productName || 'Menu Item',
+      isPizza: !!(item.flavorName || item.sizeName),
+      flavorId: item.flavorId,
+      flavorName: item.flavorName,
+      sizeId: item.sizeId,
+      sizeName: item.sizeName,
+      crustId: item.crustId,
+      crustName: item.crustName,
+      toppings: (item.toppings || []).map((t: any) => ({
+        toppingId: t.toppingId || '',
+        name: t.toppingName || '',
+        price: Number(t.price) || 0,
+      })),
+      specialInstructions: item.specialInstructions || '',
+      unitPrice: Number(item.unitPrice) || 0,
+      quantity: Number(item.quantity) || 1,
+      itemDiscount: Number(item.discount) || 0,
+      totalPrice: Number(item.total) || 0,
+    }));
+
+    setCart(loadedCart);
+    toast.success(`Reopened Tab #${activeOrder.invoiceNo} for ${table.name}`);
+  };
+
+  // Send to Kitchen (Hold Tab)
+  const handleSendToKitchen = async () => {
+    if (cart.length === 0) {
+      toast.error('Cannot send empty cart to kitchen');
+      return;
+    }
+
+    if (orderType === 'DINE_IN' && !selectedTable && !tableNo) {
+      setIsTableModalOpen(true);
+      toast.error('Please assign a table for Dine-In order');
+      return;
+    }
+
+    setIsSavingOpenOrder(true);
+
+    try {
+      if (activeOrderId) {
+        // Update existing open table order
+        const res = await fetch(`/api/orders/${activeOrderId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            items: cart,
+            tableId: selectedTable?.id || null,
+            tableNo: selectedTable?.name || tableNo || null,
+            orderType,
+            status: 'PENDING',
+            paymentStatus: 'UNPAID',
+          }),
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          toast.error(err.error || 'Failed to update kitchen order');
+          return;
+        }
+
+        toast.success(`Updated Kitchen Order for ${selectedTable?.name || tableNo}!`);
+      } else {
+        // Create new open table order
+        const res = await fetch('/api/orders', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            customerId: selectedCustomer?.id || null,
+            tableId: selectedTable?.id || null,
+            tableNo: selectedTable?.name || tableNo || null,
+            orderType,
+            items: cart,
+            discount,
+            discountType,
+            tax: taxRate,
+            isPendingPayment: true,
+            paymentStatus: 'UNPAID',
+          }),
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          toast.error(err.error || 'Failed to create open order');
+          return;
+        }
+
+        toast.success(`Order sent to Kitchen for ${selectedTable?.name || tableNo || 'Table'}!`);
+      }
+
+      await refreshTables();
+      await refreshOrders();
+      handleResetOrder();
+    } catch {
+      toast.error('Network error sending order to kitchen');
+    } finally {
+      setIsSavingOpenOrder(false);
+    }
   };
 
   const handleOrderCompleted = (order: any) => {
     setCompletedOrder(order);
     setIsPaymentModalOpen(false);
     setIsReceiptModalOpen(true);
+    refreshTables();
+    refreshOrders();
   };
 
   const [isMobileCartOpen, setIsMobileCartOpen] = useState<boolean>(false);
@@ -264,8 +400,8 @@ export default function POSPage() {
       : Math.min(discount, subtotal);
   const afterDiscount = Math.max(0, subtotal - discountAmount);
   const taxAmount = Math.round((afterDiscount * taxRate) / 100);
-  const activeDeliveryFee = orderType === 'DELIVERY' ? deliveryFee : 0;
-  const grandTotal = Math.round(afterDiscount + taxAmount + activeDeliveryFee);
+  const effectiveDeliveryFee = orderType === 'DELIVERY' ? Number(deliveryFee || 0) : 0;
+  const grandTotal = Math.round(afterDiscount + taxAmount + effectiveDeliveryFee);
 
   return (
     <div className="flex h-screen bg-slate-950 text-slate-100 overflow-hidden font-sans">
@@ -275,7 +411,43 @@ export default function POSPage() {
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         {/* Navbar */}
-        <Navbar title="Point of Sale (POS) & Billing" />
+        <Navbar title="Point of Sale (POS) & Restaurant Billing" />
+
+        {/* Top Table Selector Quick Access Bar */}
+        <div className="bg-slate-900/90 border-b border-slate-800 px-4 py-2.5 flex items-center justify-between gap-3 shrink-0">
+          <div className="flex items-center space-x-2.5 overflow-x-auto py-0.5">
+            <button
+              onClick={() => setIsTableModalOpen(true)}
+              className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow-sm flex items-center space-x-1.5 shrink-0 transition-all"
+            >
+              <Armchair className="w-4 h-4" />
+              <span>{selectedTable ? selectedTable.name : 'Choose Table'}</span>
+            </button>
+
+            {selectedTable && (
+              <div className="flex items-center space-x-1.5 px-3 py-1 bg-slate-950 border border-slate-800 rounded-xl text-xs shrink-0">
+                <span className="text-slate-400 font-medium">Active Dining:</span>
+                <span className="font-bold text-amber-400 font-mono">{selectedTable.name}</span>
+                {activeOrderId && (
+                  <span className="px-1.5 py-0.5 bg-amber-500/20 text-amber-400 text-[10px] font-bold rounded">
+                    Open Tab
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="hidden sm:flex items-center space-x-3 text-xs text-slate-400">
+            <span className="flex items-center space-x-1">
+              <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+              <span>{tables.filter((t) => t.status === 'AVAILABLE').length} Tables Free</span>
+            </span>
+            <span className="flex items-center space-x-1">
+              <span className="w-2 h-2 rounded-full bg-amber-400"></span>
+              <span>{tables.filter((t) => t.status === 'OCCUPIED').length} Dining</span>
+            </span>
+          </div>
+        </div>
 
         {/* POS Workstation split */}
         <div className="flex-1 flex overflow-hidden relative">
@@ -287,28 +459,66 @@ export default function POSPage() {
             onSelectCategory={setSelectedCategory}
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
-            onSelectProduct={handleAddStandardProductToCart}
-            onConfigurePasta={setSelectedPastaProduct}
-            onConfigureSandwich={setSelectedSandwichProduct}
-            onConfigureBurger={setSelectedBurgerProduct}
-            onConfigureLoadedFries={setSelectedLoadedFriesProduct}
-            onAddDipSauce={handleAddDipSauceToCart}
+            onSelectProduct={(p: ProductItem) =>
+              handleAddToCart({
+                cartId: `prod_${p.id}_${Math.random().toString(36).substring(2, 7)}`,
+                productId: p.id,
+                productName: displayProductName(p.name),
+                isPizza: false,
+                toppings: [],
+                unitPrice: p.basePrice,
+                quantity: 1,
+                itemDiscount: 0,
+                totalPrice: p.basePrice,
+              })
+            }
+            onConfigurePasta={(p: ProductItem) => setSelectedPastaProduct(p)}
+            onConfigureSandwich={(p: ProductItem) => setSelectedSandwichProduct(p)}
+            onConfigureBurger={(p: ProductItem) => setSelectedBurgerProduct(p)}
+            onConfigureLoadedFries={(p: ProductItem) => setSelectedLoadedFriesProduct(p)}
+            onAddDipSauce={() => {
+              const dip = globalProducts.find((p) => p.name.toLowerCase().includes('dip') || p.SKU === 'TOP-DIP');
+              if (dip) {
+                handleAddToCart({
+                  cartId: `dip_${Math.random().toString(36).substring(2, 7)}`,
+                  productId: dip.id,
+                  productName: dip.name,
+                  isPizza: false,
+                  toppings: [],
+                  unitPrice: dip.basePrice,
+                  quantity: 1,
+                  itemDiscount: 0,
+                  totalPrice: dip.basePrice,
+                });
+              } else {
+                toast.info('Dip sauce not found in catalog');
+              }
+            }}
             onConfigureDrinks={() => setIsDrinkModalOpen(true)}
             onOpenPizzaModalWithCategory={handleOpenPizzaModalWithCategory}
           />
 
-          {/* Right: Cart & Calculation Sidebar (Desktop & Mobile Drawer) */}
+          {/* Right: Cart Sidebar */}
           <CartSidebar
             cart={cart}
             onUpdateQuantity={handleUpdateQuantity}
             onRemoveItem={handleRemoveItem}
-            onClearCart={() => setCart([])}
+            onClearCart={handleClearCart}
             selectedCustomer={selectedCustomer}
             onOpenCustomerModal={() => setIsCustomerModalOpen(true)}
             onRemoveCustomer={() => setSelectedCustomer(null)}
-            riders={riders}
+            selectedTable={selectedTable}
+            onOpenTableModal={() => setIsTableModalOpen(true)}
+            onRemoveTable={() => {
+              setSelectedTable(null);
+              setActiveOrderId(null);
+              setTableNo('');
+            }}
             selectedRider={selectedRider}
             onSelectRider={setSelectedRider}
+            deliveryFee={deliveryFee}
+            onDeliveryFeeChange={setDeliveryFee}
+            activeOrderId={activeOrderId}
             orderType={orderType}
             onOrderTypeChange={setOrderType}
             tableNo={tableNo}
@@ -317,14 +527,14 @@ export default function POSPage() {
             onDiscountChange={setDiscount}
             discountType={discountType}
             onDiscountTypeChange={setDiscountType}
-            deliveryFee={deliveryFee}
-            onDeliveryFeeChange={setDeliveryFee}
             taxRate={taxRate}
             onTaxRateChange={setTaxRate}
+            onSendToKitchen={handleSendToKitchen}
             onCheckout={() => {
               setIsMobileCartOpen(false);
               setIsPaymentModalOpen(true);
             }}
+            isSavingOpenOrder={isSavingOpenOrder}
             isMobileOpen={isMobileCartOpen}
             onCloseMobile={() => setIsMobileCartOpen(false)}
           />
@@ -356,6 +566,16 @@ export default function POSPage() {
       </div>
 
       {/* Modals */}
+      <TableSelectorModal
+        isOpen={isTableModalOpen}
+        onClose={() => setIsTableModalOpen(false)}
+        tables={tables}
+        selectedTableId={selectedTable?.id}
+        onSelectTable={handleSelectTable}
+        onReopenOrder={handleReopenOrder}
+        onRefreshTables={refreshTables}
+      />
+
       <CustomizationModal
         isOpen={isPizzaModalOpen}
         onClose={() => setIsPizzaModalOpen(false)}
@@ -418,14 +638,16 @@ export default function POSPage() {
         onClose={() => setIsPaymentModalOpen(false)}
         cart={cart}
         selectedCustomer={selectedCustomer}
+        selectedTable={selectedTable}
         selectedRider={selectedRider}
+        deliveryFee={deliveryFee}
+        activeOrderId={activeOrderId}
         orderType={orderType}
-        tableNo={tableNo}
+        tableNo={selectedTable?.name || tableNo}
         subtotal={subtotal}
         discount={discount}
         discountType={discountType}
         taxRate={taxRate}
-        deliveryFee={deliveryFee}
         onOrderCompleted={handleOrderCompleted}
       />
 

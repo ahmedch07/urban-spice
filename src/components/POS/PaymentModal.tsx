@@ -1,24 +1,26 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, CreditCard, Banknote, Building2, Globe, CheckCircle2 } from 'lucide-react';
+import { X, CreditCard, Banknote, Building2, Globe, CheckCircle2, Truck } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import { formatCurrency } from '@/lib/utils';
-import { CartItem, CustomerItem, OrderType, PaymentMethod, RiderItem } from '@/lib/types';
+import { CartItem, CustomerItem, OrderType, PaymentMethod, RestaurantTableItem, RiderItem } from '@/lib/types';
 
 interface PaymentModalProps {
   isOpen: boolean;
   onClose: () => void;
   cart: CartItem[];
   selectedCustomer: CustomerItem | null;
+  selectedTable?: RestaurantTableItem | null;
   selectedRider?: RiderItem | null;
+  deliveryFee?: number;
+  activeOrderId?: string | null;
   orderType: OrderType;
   tableNo: string;
   subtotal: number;
   discount: number;
   discountType: 'FIXED' | 'PERCENTAGE';
   taxRate: number;
-  deliveryFee: number;
   onOrderCompleted: (completedOrder: any) => void;
 }
 
@@ -27,20 +29,21 @@ export default function PaymentModal({
   onClose,
   cart,
   selectedCustomer,
+  selectedTable,
   selectedRider,
+  deliveryFee = 0,
+  activeOrderId,
   orderType,
   tableNo,
   subtotal,
   discount,
   discountType,
   taxRate,
-  deliveryFee,
   onOrderCompleted,
 }: PaymentModalProps) {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CASH');
   const [amountPaid, setAmountPaid] = useState<number>(0);
   const [notes, setNotes] = useState<string>('');
-  const [isPendingPayment, setIsPendingPayment] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string>('');
 
@@ -50,14 +53,13 @@ export default function PaymentModal({
     : discount;
   const afterDiscount = Math.max(0, subtotal - discountAmount);
   const taxAmount = (afterDiscount * taxRate) / 100;
-  const activeDeliveryFee = orderType === 'DELIVERY' ? deliveryFee : 0;
-  const grandTotal = Math.round(afterDiscount + taxAmount + activeDeliveryFee);
+  const effectiveDeliveryFee = orderType === 'DELIVERY' ? Number(deliveryFee || 0) : 0;
+  const grandTotal = Math.round(afterDiscount + taxAmount + effectiveDeliveryFee);
 
   // Reset modal states whenever modal opens or total changes
   useEffect(() => {
     if (isOpen) {
       setAmountPaid(grandTotal);
-      setIsPendingPayment(false);
       setErrorMsg('');
       setIsSubmitting(false);
     }
@@ -80,224 +82,258 @@ export default function PaymentModal({
     if (isSubmitting) return;
 
     setErrorMsg('');
-    if (!isPendingPayment && amountPaid < grandTotal) {
-      setErrorMsg(`Tendered cash (${amountPaid}) is less than total (${grandTotal})`);
+    if (amountPaid < grandTotal) {
+      setErrorMsg(`Tendered cash (${amountPaid}) is less than total bill (${grandTotal})`);
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      const res = await fetch('/api/orders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          customerId: selectedCustomer?.id || null,
-          riderId: selectedRider?.id || null,
-          riderName: selectedRider?.name || null,
-          riderPhone: selectedRider?.phone || null,
-          orderType,
-          tableNo,
-          items: cart,
-          discount,
-          discountType,
-          tax: taxRate,
-          deliveryFee: activeDeliveryFee,
-          paymentMethod,
-          amountPaid: isPendingPayment ? 0 : amountPaid,
-          notes,
-          isPendingPayment,
-        }),
-      });
+      let data: any;
 
-      const data = await res.json();
-      if (!res.ok) {
-        setErrorMsg(data.error || 'Failed to complete order');
-        setIsSubmitting(false);
-        return;
+      if (activeOrderId) {
+        // Settle / Pay an existing open table order
+        const res = await fetch(`/api/orders/${activeOrderId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            status: 'COMPLETED',
+            paymentStatus: 'PAID',
+            paymentMethod,
+            amountPaid,
+            notes,
+            items: cart,
+            riderId: selectedRider?.id || null,
+            riderName: selectedRider?.name || null,
+            riderPhone: selectedRider?.phone || null,
+            deliveryFee: effectiveDeliveryFee,
+          }),
+        });
+
+        data = await res.json();
+        if (!res.ok) {
+          setErrorMsg(data.error || 'Failed to complete payment for table order');
+          setIsSubmitting(false);
+          return;
+        }
+      } else {
+        // Create and complete new paid order
+        const res = await fetch('/api/orders', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            customerId: selectedCustomer?.id || null,
+            tableId: selectedTable?.id || null,
+            tableNo: selectedTable?.name || tableNo || null,
+            riderId: selectedRider?.id || null,
+            riderName: selectedRider?.name || null,
+            riderPhone: selectedRider?.phone || null,
+            deliveryFee: effectiveDeliveryFee,
+            orderType,
+            items: cart,
+            discount,
+            discountType,
+            tax: taxRate,
+            paymentMethod,
+            amountPaid,
+            notes,
+            paymentStatus: 'PAID',
+          }),
+        });
+
+        data = await res.json();
+        if (!res.ok) {
+          setErrorMsg(data.error || 'Failed to complete payment');
+          setIsSubmitting(false);
+          return;
+        }
       }
 
       setIsSubmitting(false);
-      toast.success('Order processed successfully!');
+      toast.success('Payment completed successfully!');
       onOrderCompleted(data.order);
     } catch {
-      toast.error('Network error submitting order');
-      setErrorMsg('Network error submitting order');
+      toast.error('Network error submitting payment');
+      setErrorMsg('Network error submitting payment');
       setIsSubmitting(false);
     }
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn">
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-xl flex flex-col shadow-2xl overflow-hidden">
+      <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-xl flex flex-col shadow-2xl overflow-hidden">
         {/* Header */}
-        <div className="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/90">
-          <div className="flex items-center space-x-2">
-            <CreditCard className="w-5 h-5 text-amber-400" />
-            <h2 className="text-base font-bold text-slate-100">Order Checkout & Payment</h2>
+        <div className="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between bg-slate-900/90">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center border border-amber-500/30">
+              <CreditCard className="w-5 h-5 text-amber-400" />
+            </div>
+            <div>
+              <h2 className="text-base sm:text-lg font-extrabold text-slate-100">
+                Payment & Bill Settlement
+              </h2>
+              <p className="text-xs text-slate-400">
+                {selectedTable
+                  ? `${selectedTable.name} • Dine-In Order`
+                  : orderType === 'DELIVERY'
+                  ? `Delivery Order ${selectedRider ? `• Rider: ${selectedRider.name}` : ''}`
+                  : 'Takeaway Counter Order'}
+              </p>
+            </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1 text-slate-400 hover:text-slate-100 hover:bg-slate-800 rounded-lg transition-colors"
+            className="p-2 text-slate-400 hover:text-slate-100 hover:bg-slate-800 rounded-xl transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Body */}
-        <div className="p-6 space-y-6 overflow-y-auto max-h-[80vh]">
+        <div className="p-4 sm:p-6 space-y-5 overflow-y-auto max-h-[75vh]">
           {errorMsg && (
-            <div className="p-3 bg-red-500/10 border border-red-500/30 text-red-400 text-xs rounded-xl font-medium">
+            <div className="p-3.5 bg-red-500/10 border border-red-500/30 text-red-400 text-xs rounded-2xl font-medium">
               {errorMsg}
             </div>
           )}
 
-          {/* Grand Total Summary Display */}
-          <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 text-center shadow-inner">
-            <span className="text-xs text-slate-400 uppercase font-semibold tracking-wider">
-              Total Amount Due
-            </span>
-            <div className="text-3xl font-black text-amber-400 font-mono mt-1">
-              {formatCurrency(grandTotal)}
-            </div>
-            <div className="text-xs text-slate-400 mt-2 flex items-center justify-center space-x-3">
-              <span>Type: <strong className="text-slate-200">{orderType}</strong></span>
-              {selectedCustomer && <span>Customer: <strong className="text-slate-200">{selectedCustomer.name}</strong></span>}
-            </div>
-          </div>
-
-          {/* Payment Status Option: Paid vs Unpaid / Credit */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 bg-slate-950 border border-slate-800 rounded-xl gap-2">
+          {/* Amount Due Banner */}
+          <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 flex items-center justify-between shadow-inner">
             <div>
-              <h4 className="text-xs font-bold text-slate-200">Order Payment Status</h4>
-              <p className="text-[11px] text-slate-400">Save as Paid or Unpaid / Credit (Pending Payment)</p>
+              <span className="text-xs text-slate-400 font-medium">Total Bill Amount</span>
+              <div className="text-2xl sm:text-3xl font-extrabold text-amber-400 font-mono">
+                {formatCurrency(grandTotal)}
+              </div>
             </div>
-            <div className="flex items-center space-x-2 shrink-0">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsPendingPayment(false);
-                  setAmountPaid(grandTotal);
-                }}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition border ${
-                  !isPendingPayment
-                    ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40 shadow-sm'
-                    : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-200'
-                }`}
-              >
-                Paid (Complete)
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setIsPendingPayment(true);
-                  setAmountPaid(0);
-                }}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition border ${
-                  isPendingPayment
-                    ? 'bg-amber-500/20 text-amber-400 border-amber-500/40 shadow-sm'
-                    : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-200'
-                }`}
-              >
-                Unpaid / Credit (Pending)
-              </button>
+
+            <div className="text-right text-xs space-y-0.5 text-slate-400">
+              <div>Subtotal: {formatCurrency(subtotal)}</div>
+              {discountAmount > 0 && <div className="text-emerald-400">Discount: -{formatCurrency(discountAmount)}</div>}
+              {taxAmount > 0 && <div>Tax: +{formatCurrency(taxAmount)}</div>}
+              {effectiveDeliveryFee > 0 && <div className="text-amber-400">Delivery: +{formatCurrency(effectiveDeliveryFee)}</div>}
             </div>
           </div>
 
           {/* Payment Method Selector */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2.5">
-              Select Payment Method
+          <div className="space-y-2">
+            <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">
+              Payment Method
             </label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-              {[
-                { id: 'CASH', label: 'Cash', icon: Banknote },
-                { id: 'CARD', label: 'Card', icon: CreditCard },
-                { id: 'BANK', label: 'Bank Transfer', icon: Building2 },
-                { id: 'ONLINE', label: 'Online / Wallet', icon: Globe },
-              ].map((m) => {
-                const Icon = m.icon;
-                const isSelected = paymentMethod === m.id;
-                return (
-                  <button
-                    key={m.id}
-                    onClick={() => {
-                      setPaymentMethod(m.id as PaymentMethod);
-                      if (m.id !== 'CASH') setAmountPaid(grandTotal);
-                    }}
-                    className={`p-3 rounded-xl border text-center transition-all flex flex-col items-center justify-center space-y-1.5 ${
-                      isSelected
-                        ? 'bg-amber-500/15 border-amber-500 text-amber-300 shadow-md'
-                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:bg-slate-800'
-                    }`}
-                  >
-                    <Icon className="w-5 h-5" />
-                    <span className="text-xs font-bold">{m.label}</span>
-                  </button>
-                );
-              })}
+            <div className="grid grid-cols-4 gap-2">
+              <button
+                type="button"
+                onClick={() => setPaymentMethod('CASH')}
+                className={`py-3 rounded-2xl border flex flex-col items-center justify-center space-y-1.5 transition-all ${
+                  paymentMethod === 'CASH'
+                    ? 'bg-amber-500 text-slate-950 border-amber-400 font-bold shadow-lg shadow-amber-500/20'
+                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Banknote className="w-5 h-5" />
+                <span className="text-xs">Cash</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setPaymentMethod('CARD')}
+                className={`py-3 rounded-2xl border flex flex-col items-center justify-center space-y-1.5 transition-all ${
+                  paymentMethod === 'CARD'
+                    ? 'bg-amber-500 text-slate-950 border-amber-400 font-bold shadow-lg shadow-amber-500/20'
+                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <CreditCard className="w-5 h-5" />
+                <span className="text-xs">Card</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setPaymentMethod('BANK')}
+                className={`py-3 rounded-2xl border flex flex-col items-center justify-center space-y-1.5 transition-all ${
+                  paymentMethod === 'BANK'
+                    ? 'bg-amber-500 text-slate-950 border-amber-400 font-bold shadow-lg shadow-amber-500/20'
+                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Building2 className="w-5 h-5" />
+                <span className="text-xs">Bank Transfer</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setPaymentMethod('ONLINE')}
+                className={`py-3 rounded-2xl border flex flex-col items-center justify-center space-y-1.5 transition-all ${
+                  paymentMethod === 'ONLINE'
+                    ? 'bg-amber-500 text-slate-950 border-amber-400 font-bold shadow-lg shadow-amber-500/20'
+                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Globe className="w-5 h-5" />
+                <span className="text-xs">Online / Easypaisa</span>
+              </button>
             </div>
           </div>
 
-          {/* Cash Tendered & Change Calculator */}
+          {/* Cash Received & Change Calculations (Only if Cash selected) */}
           {paymentMethod === 'CASH' && (
-            <div className="space-y-3 bg-slate-950/60 border border-slate-800 p-4 rounded-xl">
+            <div className="space-y-3 bg-slate-950/70 p-4 rounded-2xl border border-slate-800">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Amount Received / Tendered (Rs.)
+                <label className="block text-xs font-bold text-slate-300 mb-1.5">
+                  Tendered Cash Received (Rs.)
                 </label>
                 <input
                   type="number"
                   value={amountPaid || ''}
                   onChange={(e) => setAmountPaid(parseFloat(e.target.value) || 0)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-lg font-bold font-mono text-slate-100 focus:outline-none focus:border-amber-500"
+                  className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5 text-lg font-mono font-bold text-amber-400 focus:outline-none focus:border-amber-500"
                 />
               </div>
 
-              {/* Quick tender shortcut buttons */}
-              <div className="flex items-center space-x-2">
+              {/* Quick Cash Buttons */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[11px] text-slate-500 font-semibold">Quick Cash:</span>
                 <button
                   type="button"
                   onClick={() => handleQuickCash(0)}
-                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-lg border border-slate-700"
+                  className="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-mono font-bold border border-slate-700 transition"
                 >
-                  Exact
+                  Exact ({formatCurrency(grandTotal)})
                 </button>
                 <button
                   type="button"
                   onClick={() => handleQuickCash(500)}
-                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-lg border border-slate-700 font-mono"
+                  className="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-mono font-bold border border-slate-700 transition"
                 >
                   +500
                 </button>
                 <button
                   type="button"
                   onClick={() => handleQuickCash(1000)}
-                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-lg border border-slate-700 font-mono"
+                  className="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-mono font-bold border border-slate-700 transition"
                 >
-                  +1000
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleQuickCash(2000)}
-                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-lg border border-slate-700 font-mono"
-                >
-                  +2000
+                  +1,000
                 </button>
                 <button
                   type="button"
                   onClick={() => handleQuickCash(5000)}
-                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-lg border border-slate-700 font-mono"
+                  className="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-mono font-bold border border-slate-700 transition"
                 >
-                  +5000
+                  +5,000
                 </button>
               </div>
 
-              {/* Change Box */}
-              <div className="flex items-center justify-between p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
-                <span className="text-xs font-bold text-emerald-400 uppercase">Change to Return</span>
-                <span className="text-xl font-extrabold text-emerald-400 font-mono">
-                  {formatCurrency(changeAmount)}
+              {/* Change calculation */}
+              <div className="flex items-center justify-between pt-2 border-t border-slate-800 text-sm">
+                <span className="font-bold text-slate-300">Change Due to Customer:</span>
+                <span
+                  className={`font-mono font-extrabold text-lg ${
+                    amountPaid < grandTotal ? 'text-rose-400' : 'text-emerald-400'
+                  }`}
+                >
+                  {amountPaid < grandTotal
+                    ? `Underpaid by ${formatCurrency(grandTotal - amountPaid)}`
+                    : formatCurrency(changeAmount)}
                 </span>
               </div>
             </div>
@@ -305,33 +341,38 @@ export default function PaymentModal({
 
           {/* Notes */}
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Order Notes (Optional)</label>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">
+              Order Notes / Instructions (Optional)
+            </label>
             <input
               type="text"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="e.g. Paid via JazzCash / Delivery instructions"
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-200 focus:outline-none focus:border-amber-500"
+              placeholder="e.g. Less spicy, packing with extra sauces"
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-amber-500"
             />
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="p-4 border-t border-slate-800 bg-slate-950/80 flex items-center justify-between">
+        {/* Footer Actions */}
+        <div className="p-4 sm:p-5 border-t border-slate-800 bg-slate-900/90 flex items-center justify-end space-x-3">
           <button
+            type="button"
             onClick={onClose}
-            className="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-slate-200"
+            disabled={isSubmitting}
+            className="px-4 py-2.5 rounded-xl border border-slate-800 hover:bg-slate-800 text-slate-300 text-xs font-bold transition-colors"
           >
-            Back to Cart
+            Back to Order
           </button>
 
           <button
-            disabled={isSubmitting}
+            type="button"
             onClick={handleCompletePayment}
-            className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 disabled:opacity-50 text-slate-950 font-extrabold text-sm rounded-xl shadow-lg shadow-emerald-500/20 flex items-center space-x-2 transition-all"
+            disabled={isSubmitting || amountPaid < grandTotal}
+            className="px-6 py-2.5 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-slate-950 font-extrabold text-sm rounded-xl shadow-lg shadow-emerald-500/20 flex items-center space-x-2 transition-all"
           >
-            <CheckCircle2 className="w-5 h-5" />
-            <span>{isSubmitting ? 'Processing Order...' : 'Complete & Print Invoice'}</span>
+            <CheckCircle2 className="w-4 h-4" />
+            <span>{isSubmitting ? 'Processing...' : `Complete Payment (${formatCurrency(grandTotal)})`}</span>
           </button>
         </div>
       </div>

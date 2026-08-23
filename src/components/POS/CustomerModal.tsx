@@ -138,7 +138,7 @@ export default function CustomerModal({
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Delivery Address</label>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">Customer Address / Notes</label>
             <Textarea
               rows={2}
               {...register('address')}

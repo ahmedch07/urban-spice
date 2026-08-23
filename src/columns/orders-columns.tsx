@@ -4,8 +4,6 @@ import { Pencil, Printer, Trash2 } from 'lucide-react';
 import { formatCurrency, formatDate } from '@/lib/utils';
 
 interface OrderColumnsProps {
-  riders: any[];
-  onUpdateRider: (orderId: string, riderId: string) => void;
   onUpdateStatus: (orderId: string, status: string) => void;
   onOpenReceipt: (order: any) => void;
   onEdit: (order: any) => void;
@@ -14,8 +12,6 @@ interface OrderColumnsProps {
 }
 
 export function getOrderColumns({
-  riders,
-  onUpdateRider,
   onUpdateStatus,
   onOpenReceipt,
   onEdit,
@@ -33,54 +29,56 @@ export function getOrderColumns({
       header: 'Customer',
       cell: (o) => (
         <div>
-          <div className="font-bold text-slate-200">{o.customer?.name || 'Walk-in Customer'}</div>
+          <div className="font-bold text-slate-200">{o.customer?.name || 'Walk-in Guest'}</div>
           <div className="text-[10px] text-slate-500 font-mono">{o.customer?.phone || '-'}</div>
         </div>
       ),
     },
     {
-      header: 'Type',
+      header: 'Table / Delivery',
       cell: (o) => (
         <div>
-          <span className="font-semibold text-slate-300">{o.orderType}</span>
-          {o.tableNo && <div className="text-[10px] text-amber-400/80 font-mono">Table: {o.tableNo}</div>}
+          <span className="font-semibold text-slate-300">
+            {o.orderType === 'DINE_IN'
+              ? 'Dine In'
+              : o.orderType === 'DELIVERY'
+              ? 'Delivery'
+              : 'Takeaway'}
+          </span>
+          {o.tableNo && (
+            <div className="text-[11px] font-bold text-amber-400 font-mono">
+              {o.tableNo}
+            </div>
+          )}
+          {o.riderName && (
+            <div className="text-[10px] font-bold text-sky-400 font-mono">
+              🏍 {o.riderName}
+            </div>
+          )}
         </div>
       ),
     },
     {
-      header: 'Assigned Rider',
+      header: 'Payment Status',
       cell: (o) => {
-        if (o.orderType !== 'DELIVERY') return <span className="text-slate-500 font-mono">-</span>;
+        const isPaid = o.paymentStatus === 'PAID' || o.status === 'COMPLETED';
         return (
-          <div className="space-y-1 min-w-[140px]">
-            {o.riderName ? (
-              <div>
-                <div className="font-bold text-emerald-400 text-xs">{o.riderName}</div>
-                <div className="text-[10px] text-slate-400 font-mono">{o.riderPhone || '-'}</div>
-              </div>
-            ) : (
-              <span className="text-amber-400 font-semibold italic text-[11px]">Unassigned</span>
-            )}
-            <select
-              value={o.riderId || ''}
-              onChange={(e) => onUpdateRider(o.id, e.target.value)}
-              className="bg-slate-950 border border-slate-800 rounded px-1.5 py-0.5 text-[10px] text-slate-300 focus:outline-none focus:border-amber-500 block w-full"
-            >
-              <option value="">Select Rider...</option>
-              {riders.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.name} ({r.phone})
-                </option>
-              ))}
-            </select>
-          </div>
+          <span
+            className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase border ${
+              isPaid
+                ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+                : 'bg-amber-500/20 text-amber-400 border-amber-500/30'
+            }`}
+          >
+            {isPaid ? 'PAID' : 'UNPAID (Open)'}
+          </span>
         );
       },
     },
     {
       header: 'Items',
       cell: (o) => (
-        <div className="text-slate-300 line-clamp-1 max-w-[200px] font-medium">
+        <div className="text-slate-300 line-clamp-1 max-w-[200px] font-medium text-xs">
           {o.items?.map((i: any) => `${i.quantity}x ${i.productName}`).join(', ')}
         </div>
       ),
@@ -92,17 +90,17 @@ export function getOrderColumns({
       ),
     },
     {
-      header: 'Payment',
+      header: 'Method',
       accessorKey: 'paymentMethod',
-      className: 'font-semibold text-slate-300',
+      className: 'font-semibold text-slate-300 text-xs',
     },
     {
-      header: 'Status',
+      header: 'Kitchen Status',
       cell: (o) => (
         <select
           value={o.status}
           onChange={(e) => onUpdateStatus(o.id, e.target.value)}
-          className={`px-2 py-1 rounded text-[10px] font-extrabold uppercase border focus:outline-none bg-slate-950 ${
+          className={`px-2 py-1 rounded-xl text-[10px] font-extrabold uppercase border focus:outline-none bg-slate-950 ${
             o.status === 'COMPLETED'
               ? 'text-emerald-400 border-emerald-500/30'
               : o.status === 'CANCELLED' || o.status === 'REFUNDED'
@@ -111,10 +109,8 @@ export function getOrderColumns({
           }`}
         >
           <option value="PENDING">PENDING</option>
-          <option value="CONFIRMED">CONFIRMED</option>
           <option value="PREPARING">PREPARING</option>
           <option value="READY">READY</option>
-          <option value="OUT_FOR_DELIVERY">OUT FOR DELIVERY</option>
           <option value="COMPLETED">COMPLETED</option>
           <option value="CANCELLED">CANCELLED</option>
           <option value="REFUNDED">REFUNDED</option>
@@ -134,9 +130,19 @@ export function getOrderColumns({
       align: 'right',
       cell: (o) => (
         <div className="flex justify-end gap-1">
-          <Button variant="secondary" size="icon" onClick={() => onOpenReceipt(o)} title="Print Receipt"><Printer className="w-3.5 h-3.5" /></Button>
-          {canManage && <Button variant="secondary" size="icon" onClick={() => onEdit(o)} title="Edit Order"><Pencil className="w-3.5 h-3.5 text-amber-400" /></Button>}
-          {canManage && <Button variant="secondary" size="icon" onClick={() => onDelete(o)} title="Delete Order"><Trash2 className="w-3.5 h-3.5 text-rose-400" /></Button>}
+          <Button variant="secondary" size="icon" onClick={() => onOpenReceipt(o)} title="Print Receipt">
+            <Printer className="w-3.5 h-3.5" />
+          </Button>
+          {canManage && (
+            <Button variant="secondary" size="icon" onClick={() => onEdit(o)} title="Edit Order">
+              <Pencil className="w-3.5 h-3.5 text-amber-400" />
+            </Button>
+          )}
+          {canManage && (
+            <Button variant="secondary" size="icon" onClick={() => onDelete(o)} title="Delete Order">
+              <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+            </Button>
+          )}
         </div>
       ),
     },

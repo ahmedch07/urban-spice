@@ -416,7 +416,7 @@ function EditCustomerModal({
           </div>
 
           <div>
-            <label className="block text-xs text-slate-300 font-semibold mb-1">Delivery Address</label>
+            <label className="block text-xs text-slate-300 font-semibold mb-1">Customer Address / Notes</label>
             <Textarea
               rows={2}
               {...register('address')}

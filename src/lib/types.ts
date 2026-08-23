@@ -112,6 +112,17 @@ export interface RiderItem {
   active?: boolean;
 }
 
+export interface RestaurantTableItem {
+  id: string;
+  name: string;
+  number: number;
+  capacity: number;
+  status: 'AVAILABLE' | 'OCCUPIED' | 'RESERVED';
+  active: boolean;
+  activeOrder?: any | null;
+}
+
 export type OrderType = 'DINE_IN' | 'TAKEAWAY' | 'DELIVERY';
 export type PaymentMethod = 'CASH' | 'CARD' | 'BANK' | 'ONLINE';
-export type OrderStatus = 'PENDING' | 'PREPARING' | 'READY' | 'COMPLETED' | 'CANCELLED' | 'REFUNDED';
+export type OrderStatus = 'PENDING' | 'PREPARING' | 'READY' | 'OUT_FOR_DELIVERY' | 'COMPLETED' | 'CANCELLED' | 'REFUNDED';
+export type PaymentStatus = 'UNPAID' | 'PAID' | 'PARTIAL';

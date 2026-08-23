@@ -1,16 +1,18 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
-const prisma = new PrismaClient();
+const prisma: any = new PrismaClient();
 
 async function main() {
-  console.log('Cleaning and initializing Urban Spice database with complete menu...');
+  console.log('Cleaning and initializing Urban Spice database with complete menu and restaurant tables...');
 
   // 1. Clean data (preserving User accounts so client accounts are never wiped)
   await prisma.auditLog.deleteMany();
   await prisma.orderItemTopping.deleteMany();
   await prisma.orderItem.deleteMany();
   await prisma.order.deleteMany();
+  await prisma.restaurantTable.deleteMany();
+  await prisma.rider.deleteMany();
   await prisma.recipeIngredient.deleteMany();
   await prisma.recipe.deleteMany();
   await prisma.inventoryTransaction.deleteMany();
@@ -23,7 +25,6 @@ async function main() {
   await prisma.product.deleteMany();
   await prisma.category.deleteMany();
   await prisma.customer.deleteMany();
-  // Store settings upserted instead of wiping
   await prisma.storeSetting.deleteMany();
 
   // 2. Store Settings (Urban Spice Official Details)
@@ -41,7 +42,6 @@ async function main() {
     { key: 'invoiceFooter', value: 'Thank you for ordering from Urban Spice! Ultimate Taste In Every Bite!' },
     { key: 'openingTime', value: '11:00 AM' },
     { key: 'closingTime', value: '02:00 AM' },
-    { key: 'defaultDeliveryFee', value: '100' },
     { key: 'socialMedia', value: '@urbanspicefaisalabad' },
     { key: 'receiptSize', value: '80mm' },
   ];
@@ -79,25 +79,44 @@ async function main() {
     });
   }
 
-  // Seed default Riders if none exist
-  const riderCount = await prisma.rider.count();
-  if (riderCount === 0) {
-    await prisma.rider.createMany({
-      data: [
-        { name: 'Ali', phone: '03001234567', vehicleNo: 'FSD-1234' },
-        { name: 'Hamza', phone: '03129876543', vehicleNo: 'FSD-5678' },
-        { name: 'Usama', phone: '03215554433', vehicleNo: 'FSD-9988' },
-      ],
-    });
+  // 4. Restaurant Dine-In Tables (Standard Tables 1 to 12)
+  const defaultTables = [
+    { name: 'Table 1', number: 1, capacity: 4, status: 'AVAILABLE' },
+    { name: 'Table 2', number: 2, capacity: 4, status: 'AVAILABLE' },
+    { name: 'Table 3', number: 3, capacity: 4, status: 'AVAILABLE' },
+    { name: 'Table 4', number: 4, capacity: 4, status: 'AVAILABLE' },
+    { name: 'Table 5', number: 5, capacity: 4, status: 'AVAILABLE' },
+    { name: 'Table 6', number: 6, capacity: 4, status: 'AVAILABLE' },
+    { name: 'Table 7', number: 7, capacity: 4, status: 'AVAILABLE' },
+    { name: 'Table 8', number: 8, capacity: 4, status: 'AVAILABLE' },
+    { name: 'Table 9', number: 9, capacity: 6, status: 'AVAILABLE' },
+    { name: 'Table 10', number: 10, capacity: 6, status: 'AVAILABLE' },
+    { name: 'Table 11', number: 11, capacity: 6, status: 'AVAILABLE' },
+    { name: 'Table 12', number: 12, capacity: 6, status: 'AVAILABLE' },
+  ];
+
+  for (const table of defaultTables) {
+    await prisma.restaurantTable.create({ data: table });
   }
 
-  // 4. Pizza Sizes
+  // 4b. Delivery Fleet & Riders
+  const defaultRiders = [
+    { name: 'Ali Hassan', phone: '0300-1112233', vehicleNo: 'FSD-1234', active: true },
+    { name: 'Usman Tariq', phone: '0301-4445566', vehicleNo: 'FSD-5678', active: true },
+    { name: 'Bilal Ahmed', phone: '0302-7778899', vehicleNo: 'FSD-9900', active: true },
+  ];
+
+  for (const rider of defaultRiders) {
+    await prisma.rider.create({ data: rider });
+  }
+
+  // 5. Pizza Sizes
   const sizeSmall = await prisma.pizzaSize.create({ data: { name: 'Small (7")', code: 'S', sortOrder: 1 } });
   const sizeMedium = await prisma.pizzaSize.create({ data: { name: 'Medium (10")', code: 'M', sortOrder: 2 } });
   const sizeLarge = await prisma.pizzaSize.create({ data: { name: 'Large (13")', code: 'L', sortOrder: 3 } });
   const sizeXL = await prisma.pizzaSize.create({ data: { name: 'X.Large (17")', code: 'XL', sortOrder: 4 } });
 
-  // 5. Crusts
+  // 6. Crusts
   await prisma.crust.createMany({
     data: [
       { name: 'Regular Pan Crust', additionalPrice: 0 },
@@ -106,7 +125,7 @@ async function main() {
     ],
   });
 
-  // 6. Toppings
+  // 7. Toppings
   await prisma.topping.createMany({
     data: [
       { name: 'Extra Topping Small', additionalPrice: 70 },
@@ -117,7 +136,7 @@ async function main() {
     ],
   });
 
-  // 7. Categories
+  // 8. Categories
   const catUrbanPizza = await prisma.category.create({ data: { name: 'Urban Pizza', slug: 'urban-pizza', sortOrder: 1 } });
   const catUrbanSpecialPizza = await prisma.category.create({ data: { name: 'Urban Special Pizza', slug: 'urban-special-pizza', sortOrder: 2 } });
   const catUrbanStufferPizza = await prisma.category.create({ data: { name: 'Urban Stuffer Pizza', slug: 'urban-stuffer-pizza', sortOrder: 3 } });
@@ -151,7 +170,7 @@ async function main() {
 
     await prisma.pizzaFlavorPrice.createMany({ data: priceList });
 
-    // Also register as a product in catalog for POS product selection
+    // Register as a product in catalog for POS product selection
     const basePrice = prices.S || prices.M || prices.L || 500;
     await prisma.product.create({
       data: {
@@ -374,12 +393,12 @@ async function main() {
         userId: firstUser.id,
         userName: firstUser.name,
         action: 'SYSTEM_INITIALIZATION',
-        details: 'Populated database with official Urban Spice Menu items and multi-size pizza prices.',
+        details: 'Populated database with official Urban Spice Menu items, multi-size pizza prices, and restaurant tables.',
       },
     });
   }
 
-  console.log('Urban Spice official menu database initialization complete!');
+  console.log('Urban Spice official menu & restaurant tables database initialization complete!');
 }
 
 main()

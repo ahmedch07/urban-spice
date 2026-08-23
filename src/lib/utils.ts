@@ -52,3 +52,10 @@ export function isValidObjectId(id?: string | null): boolean {
   return /^[0-9a-fA-F]{24}$/.test(id);
 }
 
+export function getLocalDateKey(date: Date = new Date()): string {
+  const d = new Date(date);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}

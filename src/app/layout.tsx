@@ -5,7 +5,12 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Urban Spice POS System",
-  description: "Production Pizza Store Point of Sale, Billing, Sales & Admin Management System",
+  description: "Production Pizza Store Point of Sale, Table Management & Restaurant Billing System",
+  manifest: "/manifest.json",
+  icons: {
+    icon: "/logo.png",
+    apple: "/logo.png",
+  },
 };
 
 export default function RootLayout({
@@ -15,11 +20,16 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark">
+      <head>
+        <meta name="theme-color" content="#f59e0b" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+      </head>
       <body className="bg-slate-950 text-slate-100 antialiased selection:bg-amber-500 selection:text-slate-950">
         <AppProvider>
           {children}
-          <Toaster />
         </AppProvider>
+        <Toaster />
       </body>
     </html>
   );

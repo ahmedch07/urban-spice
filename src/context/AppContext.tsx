@@ -6,9 +6,9 @@ import {
   CustomerItem,
   PizzaConfig,
   ProductItem,
+  RestaurantTableItem,
   RiderItem,
 } from '@/lib/types';
-import { mergeRiderOverrides } from '@/lib/rider-overrides';
 
 export interface UserSession {
   id?: string;
@@ -29,11 +29,11 @@ export interface StoreSettings {
   currency: string;
   taxRate: string;
   taxEnabled: string;
+  defaultDeliveryFee: string;
   invoicePrefix: string;
   invoiceFooter: string;
   openingTime: string;
   closingTime: string;
-  defaultDeliveryFee: string;
   socialMedia: string;
   receiptSize: string;
   [key: string]: string;
@@ -49,11 +49,11 @@ const defaultSettings: StoreSettings = {
   currency: 'Rs.',
   taxRate: '0',
   taxEnabled: 'false',
+  defaultDeliveryFee: '100',
   invoicePrefix: 'INV',
   invoiceFooter: 'Thank you for ordering from Urban Spice! Ultimate Taste In Every Bite!',
   openingTime: '11:00 AM',
   closingTime: '02:00 AM',
-  defaultDeliveryFee: '100',
   socialMedia: '@urbanspicefaisalabad',
   receiptSize: '80mm',
 };
@@ -64,6 +64,7 @@ interface AppContextType {
   categories: CategoryItem[];
   products: ProductItem[];
   pizzaConfig: PizzaConfig | null;
+  tables: RestaurantTableItem[];
   riders: RiderItem[];
   customers: CustomerItem[];
   employees: any[];
@@ -75,6 +76,7 @@ interface AppContextType {
   refreshCategories: () => Promise<void>;
   refreshProducts: () => Promise<void>;
   refreshPizzaConfig: () => Promise<void>;
+  refreshTables: () => Promise<void>;
   refreshRiders: () => Promise<void>;
   refreshCustomers: () => Promise<void>;
   refreshEmployees: () => Promise<void>;
@@ -83,6 +85,7 @@ interface AppContextType {
   refreshAll: () => Promise<void>;
   setOrders: React.Dispatch<React.SetStateAction<any[]>>;
   setProducts: React.Dispatch<React.SetStateAction<ProductItem[]>>;
+  setTables: React.Dispatch<React.SetStateAction<RestaurantTableItem[]>>;
   setRiders: React.Dispatch<React.SetStateAction<RiderItem[]>>;
   setCustomers: React.Dispatch<React.SetStateAction<CustomerItem[]>>;
   setEmployees: React.Dispatch<React.SetStateAction<any[]>>;
@@ -113,6 +116,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [categories, setCategories] = useState<CategoryItem[]>([]);
   const [products, setProducts] = useState<ProductItem[]>([]);
   const [pizzaConfig, setPizzaConfig] = useState<PizzaConfig | null>(null);
+  const [tables, setTables] = useState<RestaurantTableItem[]>([]);
   const [riders, setRiders] = useState<RiderItem[]>([]);
   const [customers, setCustomers] = useState<CustomerItem[]>([]);
   const [employees, setEmployees] = useState<any[]>([]);
@@ -120,7 +124,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [orders, setOrders] = useState<any[]>([]);
   const [isGlobalLoading, setIsGlobalLoading] = useState<boolean>(true);
 
-  // 1. Fetch User Session (NEVER cache this)
+  // 1. Fetch User Session
   const refreshUser = useCallback(async () => {
     try {
       const res = await fetch('/api/auth/me', { cache: 'no-store' });
@@ -142,14 +146,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // 2. Fetch Store Settings
   const refreshSettings = useCallback(async () => {
     try {
-      const res = await fetch('/api/settings');
+      const res = await fetch('/api/settings', { cache: 'no-store' });
       const data = await res.json();
-      if (data.settings && Object.keys(data.settings).length > 0) {
-        const updated = { ...defaultSettings, ...data.settings };
-        setStoreSettings(updated);
-        try {
-          localStorage.setItem('urban_spice_store_settings', JSON.stringify(updated));
-        } catch {}
+      if (data.settings) {
+        setStoreSettings((prev) => {
+          const updated = { ...prev, ...data.settings };
+          try {
+            localStorage.setItem('urban_spice_store_settings', JSON.stringify(updated));
+          } catch {}
+          return updated;
+        });
       }
     } catch {}
   }, []);
@@ -157,7 +163,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // 3. Fetch Categories
   const refreshCategories = useCallback(async () => {
     try {
-      const res = await fetch('/api/categories');
+      const res = await fetch('/api/pos/categories');
       const data = await res.json();
       if (data.categories) setCategories(data.categories);
     } catch {}
@@ -166,7 +172,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // 4. Fetch Products
   const refreshProducts = useCallback(async () => {
     try {
-      const res = await fetch('/api/products');
+      const res = await fetch('/api/pos/products');
       const data = await res.json();
       if (data.products) setProducts(data.products);
     } catch {}
@@ -196,16 +202,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     } catch {}
   }, []);
 
-  // 6. Fetch Riders
-  const refreshRiders = useCallback(async () => {
+  // 6. Fetch Restaurant Tables
+  const refreshTables = useCallback(async () => {
     try {
-      const res = await fetch('/api/riders?all=true', { cache: 'no-store' });
+      const res = await fetch('/api/tables', { cache: 'no-store' });
       const data = await res.json();
-      if (data.riders) setRiders(mergeRiderOverrides(data.riders));
+      if (data.tables) setTables(data.tables);
     } catch {}
   }, []);
 
-  // 7. Fetch Customers
+  // 7. Fetch Delivery Riders
+  const refreshRiders = useCallback(async () => {
+    try {
+      const res = await fetch('/api/riders', { cache: 'no-store' });
+      const data = await res.json();
+      if (data.riders) setRiders(data.riders);
+    } catch {}
+  }, []);
+
+  // 8. Fetch Customers
   const refreshCustomers = useCallback(async () => {
     try {
       const res = await fetch('/api/pos/customers');
@@ -214,7 +229,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     } catch {}
   }, []);
 
-  // 8. Fetch Employees
+  // 9. Fetch Employees
   const refreshEmployees = useCallback(async () => {
     try {
       const res = await fetch('/api/employees');
@@ -223,7 +238,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     } catch {}
   }, []);
 
-  // 9. Fetch Inventory
+  // 10. Fetch Inventory
   const refreshInventory = useCallback(async () => {
     try {
       const res = await fetch('/api/inventory');
@@ -232,7 +247,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     } catch {}
   }, []);
 
-  // 10. Fetch Orders
+  // 11. Fetch Orders
   const refreshOrders = useCallback(async () => {
     try {
       const res = await fetch('/api/orders?range=today&limit=50');
@@ -241,17 +256,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     } catch {}
   }, []);
 
-  // Preload all critical APIs: user FIRST (for role), then everything else in parallel
+  // Preload all critical APIs
   const refreshAll = useCallback(async () => {
     setIsGlobalLoading(true);
-    // Step 1: Always fetch user first so role is confirmed before other data loads
     await refreshUser();
-    // Step 2: Load everything else in parallel
     await Promise.allSettled([
       refreshSettings(),
       refreshCategories(),
       refreshProducts(),
       refreshPizzaConfig(),
+      refreshTables(),
       refreshRiders(),
       refreshCustomers(),
       refreshEmployees(),
@@ -265,6 +279,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     refreshCategories,
     refreshProducts,
     refreshPizzaConfig,
+    refreshTables,
     refreshRiders,
     refreshCustomers,
     refreshEmployees,
@@ -274,20 +289,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     refreshAll();
-
-    const handleSettingsUpdated = (e: any) => {
-      if (e?.detail) setStoreSettings((prev) => ({ ...prev, ...e.detail }));
-    };
-    const handleRidersUpdated = () => refreshRiders();
-
-    window.addEventListener('store-settings-updated', handleSettingsUpdated);
-    window.addEventListener('riders-updated', handleRidersUpdated);
-
-    return () => {
-      window.removeEventListener('store-settings-updated', handleSettingsUpdated);
-      window.removeEventListener('riders-updated', handleRidersUpdated);
-    };
-  }, [refreshAll, refreshRiders]);
+  }, [refreshAll]);
 
   return (
     <AppContext.Provider
@@ -297,6 +299,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         categories,
         products,
         pizzaConfig,
+        tables,
         riders,
         customers,
         employees,
@@ -308,6 +311,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         refreshCategories,
         refreshProducts,
         refreshPizzaConfig,
+        refreshTables,
         refreshRiders,
         refreshCustomers,
         refreshEmployees,
@@ -316,6 +320,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         refreshAll,
         setOrders,
         setProducts,
+        setTables,
         setRiders,
         setCustomers,
         setEmployees,

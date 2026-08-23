@@ -19,7 +19,7 @@ import { useApp } from '@/context/AppContext';
 
 export default function ReportsPage() {
   const router = useRouter();
-  const { currentUser, isGlobalLoading, riders, products, refreshOrders } = useApp();
+  const { currentUser, isGlobalLoading, products, refreshOrders } = useApp();
   const [period, setPeriod] = useState<any>('today');
 
   useEffect(() => {
@@ -275,7 +275,6 @@ export default function ReportsPage() {
 
       <OrderEditModal
         order={editingOrder}
-        riders={riders}
         products={products}
         isSaving={isSavingOrder}
         errorMsg={orderActionError}

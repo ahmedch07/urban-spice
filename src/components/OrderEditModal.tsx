@@ -6,10 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { CartItemTopping, ProductItem } from '@/lib/types';
 import { formatCurrency } from '@/lib/utils';
+import { useApp } from '@/context/AppContext';
 
 interface OrderEditModalProps {
   order: any | null;
-  riders: any[];
   products: ProductItem[];
   isSaving?: boolean;
   errorMsg?: string;
@@ -19,14 +19,15 @@ interface OrderEditModalProps {
 
 export default function OrderEditModal({
   order,
-  riders,
   products,
   isSaving = false,
   errorMsg = '',
   onClose,
   onSave,
 }: OrderEditModalProps) {
+  const { riders } = useApp();
   const [status, setStatus] = useState('PENDING');
+  const [paymentStatus, setPaymentStatus] = useState('UNPAID');
   const [orderType, setOrderType] = useState('DINE_IN');
   const [paymentMethod, setPaymentMethod] = useState('CASH');
   const [tableNo, setTableNo] = useState('');
@@ -37,6 +38,7 @@ export default function OrderEditModal({
   useEffect(() => {
     if (!order) return;
     setStatus(order.status || 'PENDING');
+    setPaymentStatus(order.paymentStatus || 'UNPAID');
     setOrderType(order.orderType || 'DINE_IN');
     setPaymentMethod(order.paymentMethod || 'CASH');
     setTableNo(order.tableNo || '');
@@ -53,83 +55,159 @@ export default function OrderEditModal({
 
   if (!order) return null;
 
-  const selectedRider = riders.find((rider) => rider.id === riderId);
   const editableProducts = products.filter((product) => product.active && !product.isPizza);
   const itemsTotal = items.reduce(
-    (sum, item) => sum + (item.unitPrice + (item.toppings || []).reduce((toppingSum: number, topping: CartItemTopping) => toppingSum + (topping.price || 0), 0)) * item.quantity,
+    (sum, item) =>
+      sum +
+      (item.unitPrice +
+        (item.toppings || []).reduce(
+          (toppingSum: number, topping: CartItemTopping) =>
+            toppingSum + (topping.price || 0),
+          0
+        )) *
+        item.quantity,
     0
   );
 
   const updateQuantity = (index: number, delta: number) => {
-    setItems((currentItems) => currentItems.flatMap((item, itemIndex) => {
-      if (itemIndex !== index) return [item];
-      const quantity = item.quantity + delta;
-      return quantity > 0 ? [{ ...item, quantity }] : [];
-    }));
+    setItems((currentItems) =>
+      currentItems.flatMap((item, itemIndex) => {
+        if (itemIndex !== index) return [item];
+        const quantity = item.quantity + delta;
+        return quantity > 0 ? [{ ...item, quantity }] : [];
+      })
+    );
   };
 
   const addProduct = () => {
     const product = editableProducts.find((item) => item.id === selectedProductId);
     if (!product) return;
     setItems((currentItems) => {
-      const existingIndex = currentItems.findIndex((item) => item.productId === product.id && (!item.toppings || item.toppings.length === 0));
-      if (existingIndex < 0) return [...currentItems, { productId: product.id, productName: product.name, unitPrice: product.basePrice, quantity: 1, toppings: [] }];
-      return currentItems.map((item, index) => index === existingIndex ? { ...item, quantity: item.quantity + 1 } : item);
+      const existingIndex = currentItems.findIndex(
+        (item) => item.productId === product.id && (!item.toppings || item.toppings.length === 0)
+      );
+      if (existingIndex < 0) {
+        return [
+          ...currentItems,
+          {
+            productId: product.id,
+            productName: product.name,
+            unitPrice: product.basePrice,
+            quantity: 1,
+            toppings: [],
+          },
+        ];
+      }
+      return currentItems.map((item, index) =>
+        index === existingIndex ? { ...item, quantity: item.quantity + 1 } : item
+      );
     });
     setSelectedProductId('');
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-lg rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-2xl">
+      <div className="w-full max-w-lg rounded-3xl border border-slate-800 bg-slate-900 p-6 shadow-2xl">
         <div className="mb-5 flex items-center justify-between border-b border-slate-800 pb-3">
           <div>
             <h2 className="text-base font-extrabold text-slate-100">Edit Order</h2>
             <p className="mt-0.5 text-xs font-mono text-amber-400">{order.invoiceNo}</p>
           </div>
-          <button onClick={onClose} disabled={isSaving} className="rounded-lg p-2 text-slate-400 hover:bg-slate-800 hover:text-white">
+          <button onClick={onClose} disabled={isSaving} className="rounded-xl p-2 text-slate-400 hover:bg-slate-800 hover:text-white">
             <X className="h-5 w-5" />
           </button>
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <label className="text-xs font-semibold text-slate-300">
-            Status
-            <select value={status} onChange={(event) => setStatus(event.target.value)} className="mt-1 h-10 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 text-xs text-slate-100 focus:border-amber-500 focus:outline-none">
-              {['PENDING', 'CONFIRMED', 'PREPARING', 'READY', 'OUT_FOR_DELIVERY', 'COMPLETED', 'CANCELLED', 'REFUNDED'].map((value) => <option key={value} value={value}>{value.replaceAll('_', ' ')}</option>)}
+            Kitchen Status
+            <select
+              value={status}
+              onChange={(event) => setStatus(event.target.value)}
+              className="mt-1 h-10 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 text-xs text-slate-100 focus:border-amber-500 focus:outline-none font-bold"
+            >
+              {['PENDING', 'PREPARING', 'READY', 'OUT_FOR_DELIVERY', 'COMPLETED', 'CANCELLED', 'REFUNDED'].map((value) => (
+                <option key={value} value={value}>{value}</option>
+              ))}
             </select>
           </label>
+
           <label className="text-xs font-semibold text-slate-300">
-            Payment Method
-            <select value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value)} className="mt-1 h-10 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 text-xs text-slate-100 focus:border-amber-500 focus:outline-none">
-              {['CASH', 'CARD', 'BANK', 'ONLINE'].map((value) => <option key={value} value={value}>{value}</option>)}
+            Payment Status
+            <select
+              value={paymentStatus}
+              onChange={(event) => setPaymentStatus(event.target.value)}
+              className="mt-1 h-10 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 text-xs text-slate-100 focus:border-amber-500 focus:outline-none font-bold text-amber-400"
+            >
+              <option value="UNPAID">UNPAID (Open Tab)</option>
+              <option value="PAID">PAID (Settled)</option>
             </select>
           </label>
+
           <label className="text-xs font-semibold text-slate-300">
             Order Type
-            <select value={orderType} onChange={(event) => setOrderType(event.target.value)} className="mt-1 h-10 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 text-xs text-slate-100 focus:border-amber-500 focus:outline-none">
-              {['DINE_IN', 'TAKEAWAY', 'DELIVERY'].map((value) => <option key={value} value={value}>{value.replaceAll('_', ' ')}</option>)}
+            <select
+              value={orderType}
+              onChange={(event) => setOrderType(event.target.value)}
+              className="mt-1 h-10 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 text-xs text-slate-100 focus:border-amber-500 focus:outline-none"
+            >
+              <option value="DINE_IN">Dine In (Table)</option>
+              <option value="TAKEAWAY">Takeaway Counter</option>
+              <option value="DELIVERY">Delivery Order</option>
             </select>
           </label>
-          <label className="text-xs font-semibold text-slate-300">
-            Table No.
-            <Input value={tableNo} onChange={(event) => setTableNo(event.target.value)} className="mt-1" />
-          </label>
+
+          {orderType === 'DINE_IN' ? (
+            <label className="text-xs font-semibold text-slate-300">
+              Table Name / No.
+              <Input
+                value={tableNo}
+                onChange={(event) => setTableNo(event.target.value)}
+                placeholder="e.g. Table 1"
+                className="mt-1 font-mono font-bold text-xs"
+              />
+            </label>
+          ) : orderType === 'DELIVERY' ? (
+            <label className="text-xs font-semibold text-slate-300">
+              Assigned Delivery Rider
+              <select
+                value={riderId}
+                onChange={(e) => setRiderId(e.target.value)}
+                className="mt-1 h-10 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 text-xs text-slate-100 focus:border-amber-500 focus:outline-none font-mono"
+              >
+                <option value="">-- No Rider Assigned --</option>
+                {riders.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.name} ({r.phone})
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : (
+            <div />
+          )}
+
           <label className="text-xs font-semibold text-slate-300 sm:col-span-2">
-            Rider
-            <select value={riderId} onChange={(event) => setRiderId(event.target.value)} className="mt-1 h-10 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 text-xs text-slate-100 focus:border-amber-500 focus:outline-none">
-              <option value="">No rider assigned</option>
-              {riders.map((rider) => <option key={rider.id} value={rider.id}>{rider.name} ({rider.phone})</option>)}
+            Payment Method
+            <select
+              value={paymentMethod}
+              onChange={(event) => setPaymentMethod(event.target.value)}
+              className="mt-1 h-10 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 text-xs text-slate-100 focus:border-amber-500 focus:outline-none"
+            >
+              {['CASH', 'CARD', 'BANK', 'ONLINE'].map((value) => (
+                <option key={value} value={value}>{value}</option>
+              ))}
             </select>
           </label>
         </div>
 
+        {/* Ordered Items Editor */}
         <div className="mt-5 border-t border-slate-800 pt-4">
           <div className="mb-3 flex items-center justify-between">
             <p className="text-xs font-bold uppercase tracking-wide text-slate-300">Ordered Items</p>
             <span className="font-mono text-sm font-black text-amber-400">{formatCurrency(itemsTotal)}</span>
           </div>
-          <div className="max-h-48 space-y-2 overflow-y-auto pr-1">
+          <div className="max-h-44 space-y-2 overflow-y-auto pr-1">
             {items.map((item, index) => (
               <div key={`${item.productId || item.productName}-${index}`} className="flex items-center justify-between gap-3 rounded-xl border border-slate-800 bg-slate-950 p-2.5">
                 <div className="min-w-0">
@@ -159,8 +237,19 @@ export default function OrderEditModal({
 
         <div className="mt-6 flex justify-end gap-3 border-t border-slate-800 pt-4">
           <Button variant="outline" onClick={onClose} disabled={isSaving}>Cancel</Button>
-          <Button onClick={() => onSave({ status, paymentMethod, orderType, tableNo: tableNo || null, riderId: riderId || null, riderName: selectedRider?.name || null, riderPhone: selectedRider?.phone || null, items })} disabled={isSaving || items.length === 0}>
-            {isSaving ? 'Saving...' : 'Save Changes'}
+          <Button
+            onClick={() => onSave({
+              status,
+              paymentStatus,
+              paymentMethod,
+              orderType,
+              tableNo: orderType === 'DINE_IN' ? (tableNo || null) : null,
+              riderId: orderType === 'DELIVERY' ? (riderId || null) : null,
+              items,
+            })}
+            disabled={isSaving || items.length === 0}
+          >
+            {isSaving ? 'Saving...' : 'Save Order Changes'}
           </Button>
         </div>
       </div>

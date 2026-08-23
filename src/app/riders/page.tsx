@@ -3,120 +3,170 @@
 export const dynamic = 'force-dynamic';
 
 import { useState, useEffect, useMemo } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
 import Sidebar from '@/components/Sidebar';
 import Navbar from '@/components/Navbar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { DataTable } from '@/components/ui/data-table';
 import { DeleteConfirmModal } from '@/components/ui/delete-confirm-modal';
-import { toast } from '@/components/ui/sonner';
-import { Truck, Plus, Search,Edit2, RefreshCw, X, AlertCircle } from 'lucide-react';
-import { RiderItem } from '@/lib/types';
-import { mergeRiderOverrides, saveRiderOverride } from '@/lib/rider-overrides';
-
 import { getRiderColumns } from '@/columns';
-
-const addRiderSchema = z.object({
-  name: z.string().min(1, 'Rider name is required'),
-  phone: z.string().min(1, 'Phone number is required').min(7, 'Please enter a valid phone number'),
-  vehicleNo: z.string().optional(),
-});
-
-type AddRiderFormValues = z.infer<typeof addRiderSchema>;
-
+import { toast } from '@/components/ui/sonner';
+import { Truck, Plus, Search, RefreshCw, X } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
-
-const editRiderSchema = z.object({
-  name: z.string().min(1, 'Rider name is required'),
-  phone: z.string().min(1, 'Phone number is required').min(7, 'Please enter a valid phone number'),
-  vehicleNo: z.string().optional(),
-  active: z.boolean(),
-});
-
-type EditRiderFormValues = z.infer<typeof editRiderSchema>;
+import { RiderItem } from '@/lib/types';
 
 export default function RidersPage() {
-  const { currentUser, riders, refreshRiders, setRiders } = useApp();
+  const { currentUser, isGlobalLoading } = useApp();
+  const [riders, setRiders] = useState<RiderItem[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  // Add Rider Modal
-  const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
-
-  // Edit Rider Modal
-  const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
+  // Add / Edit Modal State
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRider, setEditingRider] = useState<RiderItem | null>(null);
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [vehicleNo, setVehicleNo] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
 
-  // Delete Rider Modal
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState<boolean>(false);
+  // Delete State
   const [deletingRider, setDeletingRider] = useState<RiderItem | null>(null);
-  const [deleteErrorMsg, setDeleteErrorMsg] = useState<string>('');
-  const [isDeleting, setIsDeleting] = useState<boolean>(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  useEffect(() => {
-    refreshRiders();
-  }, [refreshRiders]);
-
-  const openEditModal = (r: RiderItem) => {
-    setEditingRider(r);
-    setIsEditModalOpen(true);
+  const fetchRiders = async () => {
+    setIsLoading(true);
+    try {
+      const res = await fetch('/api/riders?all=true');
+      const data = await res.json();
+      if (data.riders) setRiders(data.riders);
+    } catch {
+      toast.error('Failed to load delivery riders');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const openDeleteModal = (r: RiderItem) => {
-    setDeletingRider(r);
-    setDeleteErrorMsg('');
-    setIsDeleteModalOpen(true);
+  useEffect(() => {
+    fetchRiders();
+  }, []);
+
+  const filteredRiders = useMemo(() => {
+    return riders.filter(
+      (r) =>
+        r.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        r.phone.includes(searchQuery) ||
+        (r.vehicleNo && r.vehicleNo.toLowerCase().includes(searchQuery.toLowerCase()))
+    );
+  }, [riders, searchQuery]);
+
+  const handleOpenAddModal = () => {
+    setEditingRider(null);
+    setName('');
+    setPhone('');
+    setVehicleNo('');
+    setErrorMsg('');
+    setIsModalOpen(true);
+  };
+
+  const handleOpenEditModal = (rider: RiderItem) => {
+    setEditingRider(rider);
+    setName(rider.name);
+    setPhone(rider.phone);
+    setVehicleNo(rider.vehicleNo || '');
+    setErrorMsg('');
+    setIsModalOpen(true);
+  };
+
+  const handleSaveRider = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim() || !phone.trim()) {
+      setErrorMsg('Name and phone number are required');
+      return;
+    }
+
+    setIsSaving(true);
+    setErrorMsg('');
+
+    try {
+      const url = '/api/riders';
+      const method = editingRider ? 'PUT' : 'POST';
+      const body = editingRider
+        ? { id: editingRider.id, name, phone, vehicleNo }
+        : { name, phone, vehicleNo };
+
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to save rider');
+      }
+
+      toast.success(editingRider ? 'Rider updated successfully!' : 'Rider registered successfully!');
+      setIsModalOpen(false);
+      fetchRiders();
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Failed to save rider');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleToggleActive = async (rider: RiderItem) => {
+    try {
+      const res = await fetch('/api/riders', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: rider.id, active: !rider.active }),
+      });
+
+      if (!res.ok) {
+        toast.error('Failed to update rider status');
+        return;
+      }
+
+      toast.success(`${rider.name} marked as ${!rider.active ? 'Available' : 'Offline'}`);
+      fetchRiders();
+    } catch {
+      toast.error('Network error updating rider');
+    }
   };
 
   const handleDeleteRider = async () => {
     if (!deletingRider) return;
     setIsDeleting(true);
-    setDeleteErrorMsg('');
-
     try {
-      const res = await fetch(`/api/riders?id=${encodeURIComponent(deletingRider.id)}`, {
-        method: 'DELETE',
-      });
+      const res = await fetch(`/api/riders?id=${deletingRider.id}`, { method: 'DELETE' });
       const data = await res.json();
+
       if (!res.ok) {
-        setDeleteErrorMsg(data.error || 'Failed to delete rider');
-        toast.error(data.error || 'Failed to delete rider');
-        setIsDeleting(false);
-        return;
+        throw new Error(data.error || 'Failed to delete rider');
       }
+
       toast.success('Rider deleted successfully');
-      setIsDeleteModalOpen(false);
-      setRiders((currentRiders) => currentRiders.filter((r) => r.id !== deletingRider.id));
-      saveRiderOverride(deletingRider.id, { ...deletingRider, active: false });
-    } catch (e) {
-      setDeleteErrorMsg('Network error deleting rider');
+      setDeletingRider(null);
+      fetchRiders();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to delete rider');
     } finally {
       setIsDeleting(false);
     }
   };
 
-  const filteredRiders = useMemo(() => {
-    const q = searchQuery.toLowerCase();
-    return riders.filter(
-      (r) =>
-        r.name.toLowerCase().includes(q) ||
-        r.phone.toLowerCase().includes(q) ||
-        (r.vehicleNo && r.vehicleNo.toLowerCase().includes(q))
-    );
-  }, [riders, searchQuery]);
-
-  const activeRidersCount = riders.filter((r) => r.active).length;
-
   const columns = useMemo(
     () =>
       getRiderColumns({
-        onEdit: openEditModal,
-        onDelete: openDeleteModal,
+        onEdit: handleOpenEditModal,
+        onDelete: (r) => setDeletingRider(r),
+        onToggleActive: handleToggleActive,
+        canManage: currentUser?.role === 'ADMIN' || currentUser?.role === 'MANAGER',
       }),
-    []
+    [currentUser?.role]
   );
 
   return (
@@ -124,389 +174,159 @@ export default function RidersPage() {
       <Sidebar userRole={currentUser?.role} userName={currentUser?.name} userEmail={currentUser?.email} />
 
       <div className="flex-1 flex flex-col h-full overflow-hidden">
-        <Navbar title="Delivery Riders Fleet Management" />
+        <Navbar title="Delivery Fleet & Riders Management" />
 
         <main className="flex-1 overflow-y-auto p-6 space-y-6">
-          {/* Header Action Banner */}
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-lg">
+          {/* Top Bar */}
+          <div className="bg-slate-900 border border-slate-800 p-4 rounded-3xl flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 shadow-xl">
             <div className="flex items-center space-x-3">
-              <div className="w-12 h-12 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold">
-                <Truck className="w-6 h-6" />
+              <div className="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center border border-amber-500/30 shrink-0">
+                <Truck className="w-5 h-5 text-amber-400" />
               </div>
               <div>
-                <h2 className="text-base font-bold text-slate-100">Delivery Fleet & Riders</h2>
+                <h2 className="text-base font-extrabold text-slate-100">Delivery Fleet</h2>
                 <p className="text-xs text-slate-400">
-                  {riders.length} Registered Riders ({activeRidersCount} Active On-Duty)
+                  {riders.filter((r) => r.active).length} Active • {riders.length} Total Registered Riders
                 </p>
               </div>
             </div>
 
-            <Button
-              variant="default"
-              onClick={() => setIsAddModalOpen(true)}
-              className="space-x-2"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Add New Rider</span>
-            </Button>
-          </div>
+            <div className="flex items-center space-x-2">
+              <div className="relative w-full sm:w-64">
+                <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-2.5" />
+                <Input
+                  type="text"
+                  placeholder="Search name, phone, vehicle..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 bg-slate-950 border-slate-800 text-xs rounded-xl"
+                />
+              </div>
 
-          {/* Search and Filters */}
-          <div className="flex items-center justify-between gap-4">
-            <div className="relative flex-1 max-w-md">
-              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
-              <Input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search rider by name, phone, or bike #..."
-                className="pl-10"
-              />
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={fetchRiders}
+                disabled={isLoading}
+                className="rounded-xl border-slate-800 bg-slate-950 hover:bg-slate-800"
+                title="Refresh Fleet"
+              >
+                <RefreshCw className={`w-4 h-4 text-amber-400 ${isLoading ? 'animate-spin' : ''}`} />
+              </Button>
+
+              <Button
+                onClick={handleOpenAddModal}
+                className="rounded-xl font-extrabold text-xs shadow-md space-x-1.5"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Add Rider</span>
+              </Button>
             </div>
-
-            <Button
-              variant="outline"
-              onClick={() => refreshRiders()}
-              className="space-x-2"
-              title="Refresh Fleet"
-            >
-              <RefreshCw className="w-4 h-4" />
-              <span className="hidden sm:inline">Refresh</span>
-            </Button>
           </div>
 
-          {/* Riders List DataTable */}
+          {/* Riders DataTable */}
           <DataTable
             columns={columns}
             data={filteredRiders}
             isLoading={isLoading}
             loadingMessage="Loading delivery fleet..."
-            emptyMessage="No delivery riders found matching search."
+            emptyMessage="No delivery riders registered yet."
           />
         </main>
       </div>
 
-      {/* Add Rider Modal */}
-      {isAddModalOpen && (
-        <AddRiderModal
-          onClose={() => setIsAddModalOpen(false)}
-          onSuccess={(newRider) => {
-            setIsAddModalOpen(false);
-            saveRiderOverride(newRider.id, newRider);
-            setRiders((currentRiders) =>
-              [...currentRiders, newRider].sort((first, second) => first.name.localeCompare(second.name))
-            );
-          }}
-        />
-      )}
+      {/* Add/Edit Rider Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-md p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h3 className="font-extrabold text-base text-slate-100">
+                {editingRider ? 'Edit Delivery Rider' : 'Register New Rider'}
+              </h3>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-100 rounded-xl hover:bg-slate-800 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
 
-      {/* Edit Rider Modal */}
-      {isEditModalOpen && editingRider && (
-        <EditRiderModal
-          rider={editingRider}
-          onClose={() => setIsEditModalOpen(false)}
-          onSuccess={(updatedRider) => {
-            setIsEditModalOpen(false);
-            saveRiderOverride(updatedRider.id, updatedRider);
-            setRiders((currentRiders) =>
-              currentRiders.map((item) => (item.id === updatedRider.id ? updatedRider : item))
-            );
-          }}
-        />
+            <form onSubmit={handleSaveRider} className="space-y-3.5">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">Rider Full Name *</label>
+                <Input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="e.g. Muhammad Ali"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">Phone Number *</label>
+                <Input
+                  type="text"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="e.g. 0300-1234567"
+                  className="font-mono"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">Vehicle Registration #</label>
+                <Input
+                  type="text"
+                  value={vehicleNo}
+                  onChange={(e) => setVehicleNo(e.target.value)}
+                  placeholder="e.g. FSD-9821 / Honda 125"
+                  className="font-mono"
+                />
+              </div>
+
+              {errorMsg && (
+                <div className="p-3 bg-red-500/10 border border-red-500/30 text-red-400 text-xs rounded-xl font-medium">
+                  {errorMsg}
+                </div>
+              )}
+
+              <div className="flex items-center justify-end space-x-2 pt-3 border-t border-slate-800">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsModalOpen(false)}
+                  disabled={isSaving}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isSaving}
+                >
+                  {isSaving ? 'Saving...' : editingRider ? 'Save Changes' : 'Register Rider'}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
 
       {/* Delete Rider Confirmation Modal */}
       <DeleteConfirmModal
-        isOpen={isDeleteModalOpen && !!deletingRider}
-        onClose={() => setIsDeleteModalOpen(false)}
+        isOpen={!!deletingRider}
+        onClose={() => setDeletingRider(null)}
         onConfirm={handleDeleteRider}
         isLoading={isDeleting}
-        errorMsg={deleteErrorMsg}
         title="Delete Delivery Rider?"
         description={
-          deletingRider ? (
-            <>
-              Are you sure you want to delete rider <strong className="text-slate-200">{deletingRider.name}</strong> ({deletingRider.phone})?
-            </>
-          ) : undefined
+          deletingRider
+            ? `Are you sure you want to remove ${deletingRider.name} from the active delivery fleet?`
+            : undefined
         }
         confirmText="Delete Rider"
       />
-    </div>
-  );
-}
-
-function AddRiderModal({
-  onClose,
-  onSuccess,
-}: {
-  onClose: () => void;
-  onSuccess: (rider: RiderItem) => void;
-}) {
-  const [addErrorMsg, setAddErrorMsg] = useState('');
-
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm<AddRiderFormValues>({
-    resolver: zodResolver(addRiderSchema),
-    defaultValues: {
-      name: '',
-      phone: '',
-      vehicleNo: '',
-    },
-  });
-
-  const onCreate = async (values: AddRiderFormValues) => {
-    setAddErrorMsg('');
-    try {
-      const res = await fetch('/api/riders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(values),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setAddErrorMsg(data.error || 'Failed to create rider');
-        return;
-      }
-      onSuccess(data.rider);
-    } catch (e) {
-      setAddErrorMsg('Network error creating rider');
-    }
-  };
-
-  const onInvalid = () => {
-    setAddErrorMsg('Please fill in all required fields (Name and valid Phone number)');
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn">
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 space-y-4 shadow-2xl">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <Truck className="w-5 h-5 text-amber-400" />
-            <h3 className="text-base font-bold text-slate-100">Add New Delivery Rider</h3>
-          </div>
-          <button onClick={onClose} className="p-1 text-slate-400 hover:text-slate-200">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        {addErrorMsg && (
-          <div className="p-3 bg-red-500/10 border border-red-500/30 text-red-400 text-xs rounded-xl font-medium flex items-center space-x-2">
-            <AlertCircle className="w-4 h-4 shrink-0" />
-            <span>{addErrorMsg}</span>
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit(onCreate, onInvalid)} className="space-y-3.5" noValidate>
-          <div>
-            <label className="block text-xs text-slate-300 font-semibold mb-1">Rider Name *</label>
-            <Input
-              type="text"
-              {...register('name')}
-              placeholder="e.g. Ali Raza"
-              error={!!errors.name}
-            />
-            {errors.name && (
-              <p className="text-[11px] text-red-400 mt-1 font-medium">{errors.name.message}</p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-xs text-slate-300 font-semibold mb-1">Phone / Contact Number *</label>
-            <Input
-              type="text"
-              {...register('phone')}
-              placeholder="e.g. 03001234567"
-              className="font-mono"
-              error={!!errors.phone}
-            />
-            {errors.phone && (
-              <p className="text-[11px] text-red-400 mt-1 font-medium">{errors.phone.message}</p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-xs text-slate-300 font-semibold mb-1">Vehicle / Bike Number (Optional)</label>
-            <Input
-              type="text"
-              {...register('vehicleNo')}
-              placeholder="e.g. FSD-1234"
-              className="font-mono"
-            />
-          </div>
-
-          <div className="flex justify-end space-x-2 pt-4 border-t border-slate-800">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClose}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              variant="default"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? 'Saving...' : 'Save Rider'}
-            </Button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-function EditRiderModal({
-  rider,
-  onClose,
-  onSuccess,
-}: {
-  rider: RiderItem;
-  onClose: () => void;
-  onSuccess: (rider: RiderItem) => void;
-}) {
-  const [editErrorMsg, setEditErrorMsg] = useState('');
-
-  const {
-    register,
-    handleSubmit,
-    watch,
-    setValue,
-    formState: { errors, isSubmitting },
-  } = useForm<EditRiderFormValues>({
-    resolver: zodResolver(editRiderSchema),
-    defaultValues: {
-      name: rider.name,
-      phone: rider.phone,
-      vehicleNo: rider.vehicleNo || '',
-      active: rider.active ?? true,
-    },
-  });
-
-  const active = watch('active');
-
-  const onUpdate = async (values: EditRiderFormValues) => {
-    setEditErrorMsg('');
-    try {
-      const res = await fetch('/api/riders', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: rider.id,
-          ...values,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setEditErrorMsg(data.error || 'Failed to update rider');
-        return;
-      }
-      onSuccess(data.rider);
-    } catch (e) {
-      setEditErrorMsg('Network error updating rider');
-    }
-  };
-
-  const onInvalid = () => {
-    setEditErrorMsg('Please fill in all required fields correctly');
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn">
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 space-y-4 shadow-2xl">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <Edit2  className="w-5 h-5 text-amber-400" />
-            <h3 className="text-base font-bold text-slate-100">Edit Delivery Rider Profile</h3>
-          </div>
-          <button onClick={onClose} className="p-1 text-slate-400 hover:text-slate-200">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        {editErrorMsg && (
-          <div className="p-3 bg-red-500/10 border border-red-500/30 text-red-400 text-xs rounded-xl font-medium flex items-center space-x-2">
-            <AlertCircle className="w-4 h-4 shrink-0" />
-            <span>{editErrorMsg}</span>
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit(onUpdate, onInvalid)} className="space-y-3.5" noValidate>
-          <div>
-            <label className="block text-xs text-slate-300 font-semibold mb-1">Rider Name *</label>
-            <Input
-              type="text"
-              {...register('name')}
-              error={!!errors.name}
-            />
-            {errors.name && (
-              <p className="text-[11px] text-red-400 mt-1 font-medium">{errors.name.message}</p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-xs text-slate-300 font-semibold mb-1">Phone / Contact Number *</label>
-            <Input
-              type="text"
-              {...register('phone')}
-              className="font-mono"
-              error={!!errors.phone}
-            />
-            {errors.phone && (
-              <p className="text-[11px] text-red-400 mt-1 font-medium">{errors.phone.message}</p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-xs text-slate-300 font-semibold mb-1">Vehicle / Bike Number</label>
-            <Input
-              type="text"
-              {...register('vehicleNo')}
-              className="font-mono"
-            />
-          </div>
-
-          <div className="flex items-center justify-between p-3 bg-slate-950 border border-slate-800 rounded-xl">
-            <div>
-              <div className="text-xs font-bold text-slate-200">Active Status</div>
-              <div className="text-[10px] text-slate-400">Allow assigning this rider to delivery orders</div>
-            </div>
-            <button
-              type="button"
-              onClick={() => setValue('active', !active)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition border ${
-                active
-                  ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
-                  : 'bg-red-500/20 text-red-400 border-red-500/40'
-              }`}
-            >
-              {active ? 'Active' : 'Inactive'}
-            </button>
-          </div>
-
-          <div className="flex justify-end space-x-2 pt-4 border-t border-slate-800">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClose}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              variant="default"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? 'Saving...' : 'Save Changes'}
-            </Button>
-          </div>
-        </form>
-      </div>
     </div>
   );
 }

@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { X, Printer, Download, CheckCircle2, Plus } from 'lucide-react';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { X, Printer, CheckCircle2 } from 'lucide-react';
+import { formatDate } from '@/lib/utils';
 import { useApp } from '@/context/AppContext';
 
 interface ThermalReceiptModalProps {
@@ -28,7 +27,7 @@ export default function ThermalReceiptModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn">
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+      <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-md max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
         {/* Modal Header */}
         <div className="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/90 no-print">
           <div className="flex items-center space-x-2">
@@ -52,7 +51,11 @@ export default function ThermalReceiptModal({
             {/* Store Header */}
             <div className="text-center pb-3 border-b border-dashed border-slate-400 space-y-0.5">
               <div className="flex justify-center mb-1.5">
-                <img src={storeSettings.storeLogo || '/logo.png'} alt="Urban Spice Logo" className="w-14 h-14 object-contain rounded-full" />
+                <img
+                  src={storeSettings.storeLogo || '/logo.png'}
+                  alt="Urban Spice Logo"
+                  className="w-14 h-14 object-contain rounded-full"
+                />
               </div>
               <h1 className="font-extrabold text-base uppercase tracking-tight">
                 {storeSettings.storeName}
@@ -68,26 +71,27 @@ export default function ThermalReceiptModal({
             <div className="py-2.5 border-b border-dashed border-slate-400 space-y-1 text-[11px]">
               <div className="flex justify-between font-bold">
                 <span>INV #: {order.invoiceNo}</span>
-                <span>{order.orderType}</span>
+                <span>
+                  {order.orderType === 'DINE_IN'
+                    ? 'DINE IN'
+                    : order.orderType === 'DELIVERY'
+                    ? 'DELIVERY'
+                    : 'TAKEAWAY'}
+                </span>
               </div>
               <div className="flex justify-between text-[10px] text-slate-700">
                 <span>Date: {formatDate(order.createdAt)}</span>
               </div>
               <div className="flex justify-between text-[10px] text-slate-700">
                 <span>Cashier: {order.user?.name || 'Staff'}</span>
-                {order.tableNo && <span>Table: {order.tableNo}</span>}
+                {order.tableNo && <span>Table: <strong>{order.tableNo}</strong></span>}
+                {order.riderName && <span>Rider: <strong>{order.riderName}</strong></span>}
               </div>
               {order.customer && (
                 <div className="pt-1 border-t border-slate-200 text-[10px] space-y-0.5">
                   <div>Customer: <strong>{order.customer.name}</strong></div>
                   <div>Phone: {order.customer.phone}</div>
-                  {order.customer.address && <div>Addr: {order.customer.address}</div>}
-                </div>
-              )}
-              {order.orderType === 'DELIVERY' && order.riderName && (
-                <div className="pt-1 border-t border-slate-200 text-[10px] space-y-0.5">
-                  <div>Rider Name: <strong>{order.riderName}</strong></div>
-                  <div>Rider Contact: <strong>{order.riderPhone || '-'}</strong></div>
+                  {order.customer.address && <div>Address: {order.customer.address}</div>}
                 </div>
               )}
             </div>
@@ -150,64 +154,52 @@ export default function ThermalReceiptModal({
                   <span>+{order.deliveryFee}</span>
                 </div>
               )}
-              <div className="flex justify-between font-extrabold text-sm pt-1 border-t border-slate-300">
-                <span>GRAND TOTAL</span>
-                <span>{formatCurrency(order.grandTotal, storeSettings.currency)}</span>
+              <div className="flex justify-between font-extrabold text-sm border-t border-slate-300 pt-1.5 mt-1">
+                <span>Grand Total</span>
+                <span>{storeSettings.currency} {order.grandTotal}</span>
               </div>
-            </div>
-
-            {/* Payment & Change Info */}
-            <div className="py-2 border-b border-dashed border-slate-400 text-[10px] space-y-0.5">
-              <div className="flex justify-between">
-                <span>Payment Method:</span>
-                <span className="font-bold">{order.paymentMethod}</span>
+              <div className="flex justify-between text-[10px] text-slate-600 pt-1">
+                <span>Payment Method</span>
+                <span className="uppercase font-bold">{order.paymentMethod}</span>
               </div>
-              <div className="flex justify-between">
-                <span>Amount Paid:</span>
+              <div className="flex justify-between text-[10px] text-slate-600">
+                <span>Cash Tendered</span>
                 <span>{order.amountPaid}</span>
               </div>
-              <div className="flex justify-between font-bold">
-                <span>Change Returned:</span>
+              <div className="flex justify-between text-[10px] font-bold">
+                <span>Change Given</span>
                 <span>{order.change}</span>
               </div>
             </div>
 
             {/* Receipt Footer */}
-            {storeSettings.invoiceFooter && (
-              <div className="text-center pt-3 space-y-1 text-[10px] text-slate-700">
-                <p className="font-bold uppercase">{storeSettings.invoiceFooter}</p>
-              </div>
-            )}
+            <div className="text-center pt-3 text-[10px] space-y-1 text-slate-600">
+              <p className="font-semibold">{storeSettings.invoiceFooter}</p>
+              {storeSettings.socialMedia && <p>Follow us: {storeSettings.socialMedia}</p>}
+              <p className="text-[8px] text-slate-400">--- END OF RECEIPT ---</p>
+            </div>
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="p-4 border-t border-slate-800 bg-slate-950/80 flex items-center justify-between no-print">
+        {/* Modal Action Buttons */}
+        <div className="p-4 border-t border-slate-800 bg-slate-900 flex items-center justify-between gap-3 no-print">
           <button
-            onClick={onNewOrder || onClose}
-            className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-xl flex items-center space-x-1.5 transition-colors"
+            onClick={() => {
+              if (onNewOrder) onNewOrder();
+              onClose();
+            }}
+            className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-xl transition-colors"
           >
-            <Plus className="w-4 h-4 text-amber-400" />
-            <span>{onNewOrder ? 'New Order (F4)' : 'Close Preview'}</span>
+            New Order (F4)
           </button>
 
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={handlePrint}
-              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-xl flex items-center space-x-1.5 transition-colors border border-slate-700"
-            >
-              <Download className="w-4 h-4 text-emerald-400" />
-              <span>Save / PDF</span>
-            </button>
-
-            <button
-              onClick={handlePrint}
-              className="px-5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow flex items-center space-x-1.5 transition-colors"
-            >
-              <Printer className="w-4 h-4" />
-              <span>Print Bill</span>
-            </button>
-          </div>
+          <button
+            onClick={handlePrint}
+            className="flex-1 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-extrabold text-xs rounded-xl shadow-lg shadow-amber-500/20 flex items-center justify-center space-x-2 transition-all"
+          >
+            <Printer className="w-4 h-4" />
+            <span>Print Receipt</span>
+          </button>
         </div>
       </div>
     </div>
