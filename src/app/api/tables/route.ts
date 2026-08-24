@@ -2,8 +2,23 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
 
+const DEFAULT_TABLES = Array.from({ length: 12 }, (_, index) => ({
+  name: `Table ${index + 1}`,
+  number: index + 1,
+  capacity: index < 8 ? 4 : 6,
+  status: 'AVAILABLE',
+  active: true,
+}));
+
 export async function GET() {
   try {
+    // A newly connected database has no rows until the seed script is run.
+    // Initialize the standard dining floor once so POS always has tables.
+    const existingTableCount = await prisma.restaurantTable.count();
+    if (existingTableCount === 0) {
+      await prisma.restaurantTable.createMany({ data: DEFAULT_TABLES });
+    }
+
     const tables = await prisma.restaurantTable.findMany({
       include: {
         orders: {
