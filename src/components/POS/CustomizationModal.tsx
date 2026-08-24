@@ -27,14 +27,13 @@ export default function CustomizationModal({
   initialCategoryName,
   initialFlavorName,
 }: CustomizationModalProps) {
-  const { flavors, sizes, crusts, toppings } = pizzaConfig;
+  const { flavors, sizes, toppings } = pizzaConfig;
 
   // Active Category Filter within Pizza Customizer
   const [activeCategory, setActiveCategory] = useState<string>('Urban Special Pizza');
 
   const [selectedFlavor, setSelectedFlavor] = useState<any>(null);
   const [selectedSize, setSelectedSize] = useState<any>(null);
-  const [selectedCrust, setSelectedCrust] = useState<any>(null);
   const [selectedToppings, setSelectedToppings] = useState<CartItemTopping[]>([]);
   const [quantity, setQuantity] = useState<number>(1);
   const [specialInstructions, setSpecialInstructions] = useState<string>('');
@@ -42,9 +41,9 @@ export default function CustomizationModal({
   // Category definitions for Pizza system
   const pizzaCategories = [
     'Urban Special Pizza',
+    'Urban Stuffer Pizza',
     'Urban Pizza',
     'Urban Square Pizza',
-    'Urban Stuffer Pizza',
   ];
 
   // Helper to get topping price based on selected size
@@ -82,11 +81,7 @@ export default function CustomizationModal({
       setSelectedSize(medium);
     }
 
-    // Default Crust
-    if (crusts?.length > 0) {
-      setSelectedCrust(crusts[0]);
-    }
-  }, [isOpen, initialCategoryName, sizes, crusts]);
+  }, [isOpen, initialCategoryName, sizes]);
 
   // Update selected flavor when category or flavors change
   useEffect(() => {
@@ -119,7 +114,7 @@ export default function CustomizationModal({
     }
   }, [isOpen, activeCategory, flavors, initialFlavorName]);
 
-  if (!isOpen || !selectedFlavor || !selectedSize || !selectedCrust) return null;
+  if (!isOpen || !selectedFlavor || !selectedSize) return null;
 
   // Filter flavors displayed based on activeCategory
   const availableFlavors = flavors.filter((f) => {
@@ -144,9 +139,6 @@ export default function CustomizationModal({
   );
   const basePrice = flavorPriceObj ? flavorPriceObj.price : (selectedSize.code === 'S' ? 500 : selectedSize.code === 'M' ? 1000 : 1450);
 
-  // Calculate Crust Extra Price
-  const crustPrice = selectedCrust.additionalPrice || 0;
-
   // Calculate Toppings Extra Cost with dynamic size pricing
   const toppingsPrice = selectedToppings.reduce(
     (sum, t) => sum + getToppingPriceForSize(t.name, selectedSize?.code),
@@ -154,7 +146,7 @@ export default function CustomizationModal({
   );
 
   // Calculate Unit Total
-  const unitPrice = basePrice + crustPrice + toppingsPrice;
+  const unitPrice = basePrice + toppingsPrice;
   const totalPrice = unitPrice * quantity;
 
   const toggleTopping = (topping: any) => {
@@ -189,9 +181,6 @@ export default function CustomizationModal({
       flavorName: selectedFlavor.name,
       sizeId: selectedSize.id,
       sizeName: selectedSize.name,
-      crustId: selectedCrust.id,
-      crustName: selectedCrust.name,
-      crustPrice,
       toppings: finalToppings,
       specialInstructions,
       unitPrice,
@@ -343,39 +332,11 @@ export default function CustomizationModal({
             </div>
           </div>
 
-          {/* STEP 4: CRUST SELECTION */}
-          <div>
-            <label className="block text-xs font-black text-amber-400 uppercase tracking-wider mb-2">
-              4. Select Crust Type
-            </label>
-            <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-2.5">
-              {crusts.map((crust) => {
-                const isSelected = selectedCrust.id === crust.id;
-                return (
-                  <button
-                    key={crust.id}
-                    onClick={() => setSelectedCrust(crust)}
-                    className={`p-2.5 rounded-xl border text-left transition-all ${
-                      isSelected
-                        ? 'bg-amber-500/15 border-amber-500 text-amber-300 shadow-md shadow-amber-500/10'
-                        : 'bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800'
-                    }`}
-                  >
-                    <div className="font-bold text-xs">{crust.name}</div>
-                    <div className="text-[11px] text-slate-400 mt-0.5">
-                      {crust.additionalPrice > 0 ? `+${formatCurrency(crust.additionalPrice)}` : 'Included'}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* STEP 5: EXTRA TOPPINGS */}
+          {/* STEP 4: EXTRA TOPPINGS */}
           <div>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2 gap-1">
               <label className="block text-xs font-black text-amber-400 uppercase tracking-wider">
-                5. Extra Toppings ({selectedSize.name})
+                4. Extra Toppings ({selectedSize.name})
               </label>
               <span className="text-[10px] sm:text-[11px] text-slate-400 font-mono">
                 Rate: +{formatCurrency(getToppingPriceForSize('Extra Topping', selectedSize?.code))}
@@ -422,7 +383,7 @@ export default function CustomizationModal({
               type="text"
               value={specialInstructions}
               onChange={(e) => setSpecialInstructions(e.target.value)}
-              placeholder='e.g. "Less spicy", "Extra crispy crust", "No onions"'
+              placeholder='e.g. "Less spicy", "Extra cheese", "No onions"'
               className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-amber-500 font-sans"
             />
           </div>

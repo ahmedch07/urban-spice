@@ -41,7 +41,7 @@ export default function TableSelectorModal({
   onReopenOrder,
   onRefreshTables,
 }: TableSelectorModalProps) {
-  const [filter, setFilter] = useState<"ALL" | "AVAILABLE" | "OCCUPIED">("ALL");
+  const [filter, setFilter] = useState<"ALL" | "AVAILABLE" | "OCCUPIED" | "RESERVED">("ALL");
   const [search, setSearch] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -51,6 +51,10 @@ export default function TableSelectorModal({
   );
   const occupiedCount = useMemo(
     () => tables.filter((t) => t.status === "OCCUPIED").length,
+    [tables],
+  );
+  const reservedCount = useMemo(
+    () => tables.filter((t) => t.status === "RESERVED").length,
     [tables],
   );
 
@@ -148,6 +152,21 @@ export default function TableSelectorModal({
             </button>
 
             <button
+              onClick={() => setFilter("RESERVED")}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition-all flex items-center space-x-1.5 ${
+                filter === "RESERVED"
+                  ? "bg-violet-500 text-white shadow-md shadow-violet-500/20"
+                  : "text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              <span className="w-2 h-2 rounded-full bg-violet-400"></span>
+              <span>Reserved</span>
+              <span className="px-1.5 py-0.2 rounded-md bg-slate-950/30 text-[10px] font-mono">
+                {reservedCount}
+              </span>
+            </button>
+
+            <button
               onClick={() => setFilter("AVAILABLE")}
               className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition-all flex items-center space-x-1.5 ${
                 filter === "AVAILABLE"
@@ -208,12 +227,15 @@ export default function TableSelectorModal({
               {filteredTables.map((table) => {
                 const isSelected = selectedTableId === table.id;
                 const isOccupied = table.status === "OCCUPIED";
+                const isReserved = table.status === "RESERVED";
+                const isUnavailable = !table.active || isReserved;
                 const activeOrder = table.activeOrder;
 
                 return (
                   <div
                     key={table.id}
                     onClick={() => {
+                      if (isUnavailable) return;
                       if (isOccupied && activeOrder && onReopenOrder) {
                         onReopenOrder(table, activeOrder);
                       } else {
@@ -221,11 +243,13 @@ export default function TableSelectorModal({
                       }
                       onClose();
                     }}
-                    className={`cursor-pointer rounded-2xl p-4 border transition-all duration-200 relative flex flex-col justify-between group select-none ${
+                    className={`${isUnavailable ? "cursor-not-allowed opacity-75" : "cursor-pointer"} rounded-2xl p-4 border transition-all duration-200 relative flex flex-col justify-between group select-none ${
                       isSelected
                         ? "bg-amber-500/10 border-amber-500 shadow-xl shadow-amber-500/10 ring-1 ring-amber-500"
                         : isOccupied
                           ? "bg-slate-950/90 border-amber-500/40 hover:border-amber-400 hover:bg-slate-950 shadow-md"
+                          : isReserved
+                            ? "bg-violet-950/20 border-violet-500/40"
                           : "bg-slate-950/70 border-slate-800/80 hover:border-emerald-500/70 hover:bg-slate-900/90 shadow-sm"
                     }`}
                   >
@@ -249,6 +273,8 @@ export default function TableSelectorModal({
                                 className={`w-1.5 h-1.5 rounded-full ${
                                   isOccupied
                                     ? "bg-amber-400/60"
+                                    : isReserved
+                                      ? "bg-violet-400/60"
                                     : "bg-emerald-400/60"
                                 }`}
                               />
@@ -262,17 +288,19 @@ export default function TableSelectorModal({
 
                       {/* Status Chip Badge */}
                       <Badge
-                        variant={isOccupied ? "warning" : "success"}
+                        variant={isOccupied ? "warning" : isReserved ? "secondary" : "success"}
                         className="shrink-0 flex items-center space-x-1"
                       >
                         <span
                           className={`w-1.5 h-1.5 rounded-full ${
                             isOccupied
                               ? "bg-amber-400"
+                              : isReserved
+                                ? "bg-violet-400"
                               : "bg-emerald-400 animate-pulse"
                           }`}
                         />
-                        <span>{isOccupied ? "Occupied" : "Free"}</span>
+                        <span>{isOccupied ? "Occupied" : isReserved ? "Reserved" : table.active ? "Available" : "Inactive"}</span>
                       </Badge>
                     </div>
 
@@ -311,10 +339,10 @@ export default function TableSelectorModal({
                         </div>
                       </div>
                     ) : (
-                      <div className="pt-2.5 border-t border-slate-800/60 flex items-center justify-between text-xs font-bold text-emerald-400 group-hover:text-emerald-300 transition-colors">
-                        <span>Select Table</span>
+                      <div className={`pt-2.5 border-t border-slate-800/60 flex items-center justify-between text-xs font-bold ${isReserved ? "text-violet-400" : !table.active ? "text-slate-500" : "text-emerald-400 group-hover:text-emerald-300"} transition-colors`}>
+                        <span>{isReserved ? "Reserved — unavailable" : !table.active ? "Inactive — unavailable" : "Select Table"}</span>
                         <div className="w-6 h-6 rounded-lg bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center">
-                          <Plus className="w-3.5 h-3.5" />
+                          {isReserved ? <Clock className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
                         </div>
                       </div>
                     )}
@@ -332,6 +360,12 @@ export default function TableSelectorModal({
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block shadow-sm shadow-emerald-500/50"></span>
               <span className="font-semibold text-slate-300">
                 Available ({availableCount})
+              </span>
+            </span>
+            <span className="flex items-center space-x-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-violet-500 inline-block"></span>
+              <span className="font-semibold text-slate-300">
+                Reserved ({reservedCount})
               </span>
             </span>
             <span className="flex items-center space-x-1.5">

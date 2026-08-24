@@ -137,9 +137,9 @@ async function main() {
   });
 
   // 8. Categories
-  const catUrbanPizza = await prisma.category.create({ data: { name: 'Urban Pizza', slug: 'urban-pizza', sortOrder: 1 } });
-  const catUrbanSpecialPizza = await prisma.category.create({ data: { name: 'Urban Special Pizza', slug: 'urban-special-pizza', sortOrder: 2 } });
-  const catUrbanStufferPizza = await prisma.category.create({ data: { name: 'Urban Stuffer Pizza', slug: 'urban-stuffer-pizza', sortOrder: 3 } });
+  const catUrbanPizza = await prisma.category.create({ data: { name: 'Urban Pizza', slug: 'urban-pizza', sortOrder: 3 } });
+  const catUrbanSpecialPizza = await prisma.category.create({ data: { name: 'Urban Special Pizza', slug: 'urban-special-pizza', sortOrder: 1 } });
+  const catUrbanStufferPizza = await prisma.category.create({ data: { name: 'Urban Stuffer Pizza', slug: 'urban-stuffer-pizza', sortOrder: 2 } });
   const catUrbanSquarePizza = await prisma.category.create({ data: { name: 'Urban Square Pizza', slug: 'urban-square-pizza', sortOrder: 4 } });
   const catPlatter = await prisma.category.create({ data: { name: 'Urban Special Platter', slug: 'urban-special-platter', sortOrder: 5 } });
   const catSandwiches = await prisma.category.create({ data: { name: 'Sandwiches', slug: 'sandwiches', sortOrder: 6 } });

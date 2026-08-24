@@ -5,7 +5,6 @@ import { getCurrentUser } from '@/lib/auth';
 export async function GET() {
   try {
     const tables = await prisma.restaurantTable.findMany({
-      where: { active: true },
       include: {
         orders: {
           where: {
@@ -27,13 +26,15 @@ export async function GET() {
       orderBy: { number: 'asc' },
     });
 
-    const formattedTables = tables.map((t) => {
+    const formattedTables = tables.map((t: any) => {
       const activeOrder = t.orders && t.orders.length > 0 ? t.orders[0] : null;
       return {
         id: t.id,
         name: t.name,
         number: t.number,
         capacity: t.capacity,
+        // An open bill always takes priority. Otherwise retain the configured
+        // status (especially RESERVED) instead of treating it as available.
         status: activeOrder ? 'OCCUPIED' : (t.status || 'AVAILABLE'),
         active: t.active,
         activeOrder,

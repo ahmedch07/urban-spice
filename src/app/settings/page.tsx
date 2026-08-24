@@ -195,6 +195,25 @@ export default function SettingsPage() {
     }
   };
 
+  const handleTableStatusChange = async (tableId: string, status: 'AVAILABLE' | 'RESERVED') => {
+    try {
+      const res = await fetch(`/api/tables/${tableId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error || 'Failed to update table status');
+        return;
+      }
+      toast.success(`Table marked ${status === 'RESERVED' ? 'Reserved' : 'Available'}`);
+      await refreshTables();
+    } catch {
+      toast.error('Failed to update table status');
+    }
+  };
+
   return (
     <div className="flex h-screen bg-slate-950 text-slate-100 overflow-hidden font-sans">
       <Sidebar userRole={currentUser?.role} userName={currentUser?.name} userEmail={currentUser?.email} />
@@ -447,11 +466,24 @@ export default function SettingsPage() {
                   key={table.id}
                   className="bg-slate-950 border border-slate-800 p-3.5 rounded-2xl flex items-center justify-between group hover:border-slate-700 transition-colors"
                 >
-                  <div>
+                  <div className="min-w-0">
                     <div className="font-extrabold text-sm text-slate-100 font-mono">{table.name}</div>
                     <div className="text-[11px] text-slate-400">
                       {table.capacity} Seats • {table.status}
                     </div>
+                    {table.status !== 'OCCUPIED' && (
+                      <button
+                        type="button"
+                        onClick={() => handleTableStatusChange(table.id, table.status === 'RESERVED' ? 'AVAILABLE' : 'RESERVED')}
+                        className={`mt-2 text-[10px] font-bold rounded-md px-2 py-1 border ${
+                          table.status === 'RESERVED'
+                            ? 'border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/10'
+                            : 'border-violet-500/40 text-violet-400 hover:bg-violet-500/10'
+                        }`}
+                      >
+                        {table.status === 'RESERVED' ? 'Mark Available' : 'Reserve'}
+                      </button>
+                    )}
                   </div>
 
                   <button

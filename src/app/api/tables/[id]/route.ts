@@ -72,7 +72,13 @@ export async function PUT(
     if (name !== undefined) updateData.name = name.trim();
     if (number !== undefined) updateData.number = Number(number);
     if (capacity !== undefined) updateData.capacity = Number(capacity);
-    if (status !== undefined) updateData.status = status;
+    if (status !== undefined) {
+      const validStatuses = ['AVAILABLE', 'OCCUPIED', 'RESERVED'];
+      if (!validStatuses.includes(status)) {
+        return NextResponse.json({ error: 'Invalid table status' }, { status: 400 });
+      }
+      updateData.status = status;
+    }
     if (active !== undefined) updateData.active = Boolean(active);
 
     const updatedTable = await prisma.restaurantTable.update({
