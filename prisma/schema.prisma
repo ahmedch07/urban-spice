@@ -184,6 +184,7 @@ model Order {
   salesDayId    String?          @db.ObjectId
   salesDay      SalesDay?        @relation(fields: [salesDayId], references: [id], onDelete: SetNull)
   orderType     String           @default("DINE_IN") // DINE_IN, TAKEAWAY, DELIVERY
+  source        String           @default("POS") // POS, ONLINE
   status        String           @default("PENDING") // PENDING, PREPARING, READY, OUT_FOR_DELIVERY, COMPLETED, CANCELLED, REFUNDED
   paymentStatus String           @default("UNPAID") // UNPAID, PAID, PARTIAL
   subtotal      Float

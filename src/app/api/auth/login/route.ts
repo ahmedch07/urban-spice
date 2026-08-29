@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { email, password } = body;
+    const { email, password, expectedRole } = body;
 
     if (!email || !password) {
       return NextResponse.json(
@@ -32,6 +32,13 @@ export async function POST(request: Request) {
         { error: 'This account has been deactivated. Please contact Admin.' },
         { status: 401 }
       );
+    }
+
+    if (expectedRole === 'ADMIN' && user.role !== 'ADMIN' && user.role !== 'MANAGER') {
+      return NextResponse.json({ error: 'This sign-in is restricted to Admin accounts.' }, { status: 403 });
+    }
+    if (expectedRole === 'CASHIER' && user.role !== 'CASHIER' && user.role !== 'ADMIN' && user.role !== 'MANAGER') {
+      return NextResponse.json({ error: 'This sign-in is restricted to Cashier accounts.' }, { status: 403 });
     }
 
     const isValid = await verifyPassword(password, user.password);

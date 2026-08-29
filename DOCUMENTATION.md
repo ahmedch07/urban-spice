@@ -1,5 +1,5 @@
 # Urban Spice — Point of Sale (POS) & Restaurant Management System
-## Complete Technical, Functional & Operational Documentation (100% Offline-First Architecture)
+## Complete Technical, Functional & Operational Documentation (Cloud-Deployed Architecture)
 
 ---
 
@@ -11,7 +11,7 @@
 The platform is designed around the real-world operational workflows of **Urban Spice Pizza & Restaurant** (located at *180 F, Near Klash Park, Millat Town, Faisalabad*), providing a frictionless point of sale terminal, dine-in table status tracking, kitchen queue management, multi-tier pricing matrices for pizzas of varying sizes, customer relationship management (CRM), raw material stock tracking, financial analytics, and store customization.
 
 ### Primary Capabilities & Core Purpose
-- **100% Offline Operation:** Operates without any internet connection using a locally hosted MongoDB database server (`mongodb://127.0.0.1:27017/urban_spice`).
+- **Cloud-Hosted Database:** Connects to MongoDB Atlas for reliable cloud database access, deployed via Vercel.
 - **Dine-In Table Management:** Real-time visual table selector with status indicators (`AVAILABLE`, `OCCUPIED`, `RESERVED`), seat capacity, and open tab bill previews.
 - **Open Table Orders (Hold Tab to KDS):** Waiters/cashiers can send dine-in food to the kitchen immediately upon ordering before collecting payment.
 - **Instant POS & Billing:** Fast touch/keyboard-driven counter checkout with support for Dine-In and Takeaway orders.
@@ -34,14 +34,14 @@ The platform is designed around the real-world operational workflows of **Urban 
 | :--- | :--- | :--- | :--- |
 | **Framework** | Next.js (App Router) | 16.x | Fullstack React framework with SSR and Route Handlers |
 | **UI Library** | React | 19.x | Component lifecycle and reactive state |
-| **Database** | MongoDB | 6.x+ (Local) | Fast, local document database running at `127.0.0.1:27017` |
+| **Database** | MongoDB Atlas | 6.x+ (Cloud) | Cloud-hosted document database via MongoDB Atlas |
 | **ORM** | Prisma ORM | 6.x | Native schema modeling, migrations, and database queries |
 | **Styling** | Tailwind CSS | 3.4.x | Dark-mode tailored styling with responsive design |
 | **Language** | TypeScript | 5.7.x | Static typing across server actions, APIs, and client UI |
 | **Icons** | Lucide React | 0.475+ | Streamlined iconography |
 | **Forms & Validation** | React Hook Form + Zod | 7.x / 3.x | Schema-driven client and server-side validation |
 | **Authentication** | JWT (`jose`) + `bcryptjs` | 6.x / 3.x | Cookie-based stateless local authentication & password hashing |
-| **Media Management** | Local Filesystem Storage | Node.js `fs` | Direct image storage in `public/uploads/` (Zero cloud dependencies) |
+| **Media Management** | Cloudinary | 2.x | Cloud-based image upload, storage, and CDN delivery |
 | **Toast Notifications** | Sonner | 2.x | High-performance toast alerts |
 
 ---
@@ -87,7 +87,7 @@ urban-spice/
     │       ├── employees/        # Staff account creation, updating, deletion
     │       ├── reports/          # Financial summaries, sales trends, new sales day
     │       ├── settings/         # Store operational settings get/set
-    │       ├── upload/           # Local file uploader (`public/uploads`)
+    │       ├── upload/           # Cloudinary image uploader
     │       └── audit-logs/       # System activity audit logs
     ├── columns/                  # TanStack/React Table column definitions for all modules
     ├── components/
@@ -131,35 +131,25 @@ stateDiagram-v2
 
 ---
 
-## 5. Installation, Setup & Local Running Guide
+## 5. Vercel Deployment Guide
 
 ### Prerequisites
 - **Node.js**: v18.18.0 or v20+ / v22+
 - **Package Manager**: `npm`
-- **Database**: Local MongoDB Community Server running at `127.0.0.1:27017`
+- **Database**: MongoDB Atlas cluster (cloud-hosted)
 
-### Step 1: Start Local MongoDB with Replica Set
-Prisma uses transactions for nested operations and relations. Initialize your local MongoDB replica set:
-```bash
-# 1. Enable replication in /usr/local/etc/mongod.conf:
-# replication:
-#   replSetName: rs0
-
-# 2. Restart MongoDB service:
-brew services restart mongodb-community
-
-# 3. Initiate the replica set:
-mongosh --eval "rs.initiate()"
-```
-
-### Step 2: Configure Environment Variables
-In `.env`:
+### Step 1: Configure Environment Variables
+Set these environment variables in your Vercel dashboard:
 ```env
-DATABASE_URL="mongodb://127.0.0.1:27017/urban_spice?replicaSet=rs0&directConnection=true"
-JWT_SECRET="super-secret-pizza-pos-jwt-token-2026-key"
+DATABASE_URL="mongodb+srv://<username>:<password>@<cluster>.mongodb.net/urban-spice?retryWrites=true&w=majority"
+JWT_SECRET="your-jwt-secret-here"
+CLOUDINARY_CLOUD_NAME="your-cloud-name"
+CLOUDINARY_API_KEY="your-api-key"
+CLOUDINARY_API_SECRET="your-api-secret"
 ```
 
-### Step 3: Seed Official Menu & Default Accounts
+### Step 2: Seed Database
+After first deployment, run the seed script locally with your production `DATABASE_URL`:
 ```bash
 npm run db:seed
 ```
@@ -173,12 +163,6 @@ npm run db:seed
   - **Email:** `cashier@urbanspice.com`
   - **Password:** `cashier123`
   - **Role:** `CASHIER`
-
-### Step 4: Run Locally
-```bash
-npm run dev
-```
-Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ---
 

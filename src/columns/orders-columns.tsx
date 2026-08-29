@@ -22,7 +22,10 @@ export function getOrderColumns({
     {
       header: 'Invoice #',
       cell: (o) => (
-        <span className="font-mono font-bold text-amber-400">{o.invoiceNo}</span>
+        <div className="space-y-1">
+          <span className="font-mono font-bold text-amber-400">{o.invoiceNo}</span>
+          {o.source === 'ONLINE' && <div className="w-fit rounded border border-sky-400/30 bg-sky-400/10 px-1.5 py-0.5 text-[9px] font-extrabold tracking-wider text-sky-300">ONLINE</div>}
+        </div>
       ),
     },
     {
@@ -111,6 +114,7 @@ export function getOrderColumns({
           <option value="PENDING">PENDING</option>
           <option value="PREPARING">PREPARING</option>
           <option value="READY">READY</option>
+          <option value="OUT_FOR_DELIVERY">OUT FOR DELIVERY</option>
           <option value="COMPLETED">COMPLETED</option>
           <option value="CANCELLED">CANCELLED</option>
           <option value="REFUNDED">REFUNDED</option>

@@ -29,6 +29,7 @@ export default function OrdersPage() {
   const [dateRange, setDateRange] = useState<string>('today');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const [sourceFilter, setSourceFilter] = useState<string>('ALL');
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   // Selected Order for Receipt Modal
@@ -49,7 +50,7 @@ export default function OrdersPage() {
   const fetchOrders = async (showLoading = false) => {
     if (showLoading) setIsLoading(true);
     try {
-      const url = `/api/orders?range=${dateRange}&status=${statusFilter}&search=${encodeURIComponent(searchQuery)}`;
+      const url = `/api/orders?range=${dateRange}&status=${statusFilter}&source=${sourceFilter}&search=${encodeURIComponent(searchQuery)}`;
       const res = await fetch(url);
       const data = await res.json();
       if (data.orders) setOrders(data.orders);
@@ -62,9 +63,9 @@ export default function OrdersPage() {
 
   useEffect(() => {
     const hasMemoryData = orders.length > 0 || (globalOrders && globalOrders.length > 0);
-    const isFiltered = dateRange !== 'today' || statusFilter !== 'ALL' || searchQuery !== '';
+    const isFiltered = dateRange !== 'today' || statusFilter !== 'ALL' || sourceFilter !== 'ALL' || searchQuery !== '';
     fetchOrders(!hasMemoryData || isFiltered);
-  }, [dateRange, statusFilter, searchQuery]);
+  }, [dateRange, statusFilter, sourceFilter, searchQuery]);
 
   const [statusConfirm, setStatusConfirm] = useState<{ orderId: string; newStatus: string } | null>(null);
   const [statusErrorMsg, setStatusErrorMsg] = useState('');
@@ -226,6 +227,16 @@ export default function OrdersPage() {
                     <SelectItem value="COMPLETED">Completed</SelectItem>
                     <SelectItem value="CANCELLED">Cancelled</SelectItem>
                     <SelectItem value="REFUNDED">Refunded</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="w-36">
+                <Select value={sourceFilter} onValueChange={setSourceFilter}>
+                  <SelectTrigger><SelectValue placeholder="Order source" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">All sources</SelectItem>
+                    <SelectItem value="ONLINE">Online orders</SelectItem>
+                    <SelectItem value="POS">POS orders</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

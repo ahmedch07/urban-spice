@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 import { useState, useEffect } from 'react';
 import Sidebar from '@/components/Sidebar';
 import Navbar from '@/components/Navbar';
+import ThermalReceiptModal from '@/components/POS/ThermalReceiptModal';
 import { toast } from '@/components/ui/sonner';
 import {
   Clock,
@@ -22,6 +23,8 @@ export default function KitchenPage() {
   const { currentUser, orders: globalOrders } = useApp();
   const [orders, setOrders] = useState<any[]>(() => globalOrders || []);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
+  const [receiptOrder, setReceiptOrder] = useState<any>(null);
   const [mobileTab, setMobileTab] = useState<'all' | 'pending' | 'preparing' | 'ready'>('all');
 
   useEffect(() => {
@@ -31,12 +34,15 @@ export default function KitchenPage() {
   }, [globalOrders, orders.length]);
 
   const fetchKitchenOrders = async () => {
+    setIsLoading(true);
     try {
       const res = await fetch('/api/orders?range=today&limit=50');
       const data = await res.json();
       if (data.orders) setOrders(data.orders);
     } catch {
       // silent background sync
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -47,20 +53,62 @@ export default function KitchenPage() {
   }, []);
 
   const handleUpdateStatus = async (orderId: string, status: string) => {
+    if (updatingOrderId) return;
+
+    const previousOrder = orders.find((order) => order.id === orderId);
+    if (!previousOrder) return;
+
+    const completedOrder = status === 'COMPLETED'
+      ? {
+          ...previousOrder,
+          status: 'COMPLETED',
+          paymentStatus: 'PAID',
+          amountPaid: previousOrder.amountPaid || previousOrder.grandTotal,
+          change: Math.max(0, (previousOrder.amountPaid || previousOrder.grandTotal) - previousOrder.grandTotal),
+        }
+      : { ...previousOrder, status };
+
+    // Move the card immediately so staff can continue with the next order while the save confirms.
+    setOrders((currentOrders) =>
+      currentOrders.map((order) => (order.id === orderId ? completedOrder : order))
+    );
+    setUpdatingOrderId(orderId);
+
+    if (status === 'COMPLETED') {
+      setReceiptOrder(completedOrder);
+    }
+
     try {
       const res = await fetch(`/api/orders/${orderId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status }),
       });
+      const data = await res.json();
+
       if (res.ok) {
+        if (data.order) {
+          setOrders((currentOrders) =>
+            currentOrders.map((order) => (order.id === orderId ? data.order : order))
+          );
+          if (status === 'COMPLETED') setReceiptOrder(data.order);
+        }
         toast.success(`Order status updated to ${status}`);
-        fetchKitchenOrders();
       } else {
+        setOrders((currentOrders) =>
+          currentOrders.map((order) => (order.id === orderId ? previousOrder : order))
+        );
+        if (status === 'COMPLETED') setReceiptOrder(null);
         toast.error('Failed to update kitchen order status');
       }
     } catch {
+      setOrders((currentOrders) =>
+        currentOrders.map((order) => (order.id === orderId ? previousOrder : order))
+      );
+      if (status === 'COMPLETED') setReceiptOrder(null);
       toast.error('Network error updating order status');
+    } finally {
+      setUpdatingOrderId(null);
     }
   };
 
@@ -207,6 +255,7 @@ export default function KitchenPage() {
 
                       <button
                         onClick={() => handleUpdateStatus(order.id, 'PREPARING')}
+                        disabled={updatingOrderId === order.id}
                         className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs rounded-xl shadow-md flex items-center justify-center space-x-1.5 transition-all"
                       >
                         <span>Start Preparing</span>
@@ -272,6 +321,7 @@ export default function KitchenPage() {
 
                       <button
                         onClick={() => handleUpdateStatus(order.id, 'READY')}
+                        disabled={updatingOrderId === order.id}
                         className="w-full py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs rounded-xl shadow-md flex items-center justify-center space-x-1.5 transition-all"
                       >
                         <span>Mark Ready for Pickup</span>
@@ -325,6 +375,7 @@ export default function KitchenPage() {
 
                       <button
                         onClick={() => handleUpdateStatus(order.id, 'COMPLETED')}
+                        disabled={updatingOrderId === order.id}
                         className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl shadow-md flex items-center justify-center space-x-1.5 transition-all"
                       >
                         <span>Complete & Dispatch</span>
@@ -338,6 +389,12 @@ export default function KitchenPage() {
           </div>
         </main>
       </div>
+
+      <ThermalReceiptModal
+        isOpen={receiptOrder !== null}
+        onClose={() => setReceiptOrder(null)}
+        order={receiptOrder}
+      />
     </div>
   );
 }

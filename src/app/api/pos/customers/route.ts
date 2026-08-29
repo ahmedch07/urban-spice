@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getCurrentUser } from '@/lib/auth';
 
 export async function GET(request: Request) {
   try {
+    if (!await getCurrentUser()) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const { searchParams } = new URL(request.url);
     const query = searchParams.get('q');
 
@@ -54,6 +56,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    if (!await getCurrentUser()) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const body = await request.json();
     const { name, phone, whatsapp, email, address, city, notes } = body;
 
@@ -96,6 +99,7 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
   try {
+    if (!await getCurrentUser()) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const body = await request.json();
     const { id, name, phone, whatsapp, email, address, city, notes } = body;
 
@@ -128,6 +132,7 @@ export async function PUT(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
+    if (!await getCurrentUser()) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 

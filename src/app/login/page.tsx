@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -26,6 +26,10 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   const router = useRouter();
+  const [expectedRole, setExpectedRole] = useState<string | null>(null);
+  useEffect(() => {
+    setExpectedRole(new URLSearchParams(window.location.search).get('role'));
+  }, []);
   const [serverError, setServerError] = useState('');
 
   const {
@@ -47,7 +51,7 @@ export default function LoginPage() {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(values),
+        body: JSON.stringify({ ...values, expectedRole }),
       });
 
       const data = await res.json();
@@ -62,7 +66,7 @@ export default function LoginPage() {
         } catch {}
       }
 
-      window.location.href = '/pos';
+      window.location.href = expectedRole === 'ADMIN' ? '/dashboard' : '/pos';
     } catch (err) {
       setServerError('Connection failed. Please check server.');
     }
@@ -81,7 +85,7 @@ export default function LoginPage() {
           </div>
           <div>
             <h1 className="text-2xl font-extrabold text-slate-100 tracking-tight">Urban Spice Pizza</h1>
-            <p className="text-xs text-amber-400 font-semibold mt-1">POS & Management System</p>
+            <p className="text-xs text-amber-400 font-semibold mt-1">{expectedRole === 'ADMIN' ? 'Admin Sign In' : expectedRole === 'CASHIER' ? 'Cashier Sign In' : 'POS & Management System'}</p>
           </div>
         </div>
 

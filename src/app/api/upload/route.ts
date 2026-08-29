@@ -1,7 +1,12 @@
 import { NextResponse } from 'next/server';
-import { writeFile, mkdir } from 'fs/promises';
-import path from 'path';
+import { v2 as cloudinary } from 'cloudinary';
 import { getCurrentUser } from '@/lib/auth';
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 export async function POST(request: Request) {
   try {
@@ -17,7 +22,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'No file provided.' }, { status: 400 });
     }
 
-    // Supported file types: JPG/JPEG, PNG, WEBP, SVG, GIF
     const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/svg+xml', 'image/gif'];
     const fileType = file.type.toLowerCase();
     const hasAllowedExtension = /\.(jpg|jpeg|png|webp|svg|gif)$/i.test(file.name);
@@ -29,7 +33,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // Size limit: 5MB
     const MAX_SIZE = 5 * 1024 * 1024;
     if (file.size > MAX_SIZE) {
       return NextResponse.json(
@@ -40,28 +43,33 @@ export async function POST(request: Request) {
 
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
+    const base64 = buffer.toString('base64');
+    const dataUrl = `data:${file.type};base64,${base64}`;
 
-    // Save directly to local filesystem in public/uploads (100% offline)
-    const extName = path.extname(file.name) || `.${fileType.split('/')[1] || 'jpg'}`;
-    const cleanExt = extName.toLowerCase();
-    const uniqueName = `img-${Date.now()}-${Math.floor(Math.random() * 10000)}${cleanExt}`;
-
-    const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
-    await mkdir(uploadsDir, { recursive: true });
-    const filePath = path.join(uploadsDir, uniqueName);
-    await writeFile(filePath, buffer);
-
-    const fileUrl = `/uploads/${uniqueName}`;
+    const result = await new Promise<{ secure_url: string }>((resolve, reject) => {
+      cloudinary.uploader.upload(
+        dataUrl,
+        {
+          folder: 'urban-spice',
+          public_id: `img-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+          resource_type: 'image',
+        },
+        (error, result) => {
+          if (error) reject(error);
+          else resolve(result as { secure_url: string });
+        }
+      );
+    });
 
     return NextResponse.json({
       success: true,
-      url: fileUrl,
-      message: 'Image saved locally successfully.',
+      url: result.secure_url,
+      message: 'Image uploaded to Cloudinary successfully.',
     });
   } catch (error) {
-    console.error('Local file upload error:', error);
+    console.error('Cloudinary upload error:', error);
     return NextResponse.json(
-      { error: 'Failed to save image locally.' },
+      { error: 'Failed to upload image to Cloudinary.' },
       { status: 500 }
     );
   }

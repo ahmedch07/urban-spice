@@ -5,11 +5,14 @@ import { generateInvoiceNumber, getLocalDateKey, isValidObjectId } from '@/lib/u
 
 export async function GET(request: Request) {
   try {
+    const session = await getCurrentUser();
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const { searchParams } = new URL(request.url);
     const range = searchParams.get('range'); // today, all
     const status = searchParams.get('status');
     const paymentStatus = searchParams.get('paymentStatus');
     const orderType = searchParams.get('orderType');
+    const source = searchParams.get('source');
     const tableId = searchParams.get('tableId');
     const riderId = searchParams.get('riderId');
     const search = searchParams.get('search');
@@ -35,6 +38,7 @@ export async function GET(request: Request) {
     if (orderType && orderType !== 'ALL') {
       whereClause.orderType = orderType;
     }
+    if (source && source !== 'ALL') whereClause.source = source;
 
     if (tableId && isValidObjectId(tableId)) {
       whereClause.tableId = tableId;
@@ -252,6 +256,7 @@ export async function POST(request: Request) {
       userId: validUserId,
       salesDayId: salesDay.id,
       orderType: orderType || (validTableId ? 'DINE_IN' : 'TAKEAWAY'),
+      source: 'POS',
       status: orderStatus,
       paymentStatus: finalPaymentStatus,
       subtotal: calculatedSubtotal,

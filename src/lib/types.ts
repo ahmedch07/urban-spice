@@ -126,3 +126,4 @@ export type OrderType = 'DINE_IN' | 'TAKEAWAY' | 'DELIVERY';
 export type PaymentMethod = 'CASH' | 'CARD' | 'BANK' | 'ONLINE';
 export type OrderStatus = 'PENDING' | 'PREPARING' | 'READY' | 'OUT_FOR_DELIVERY' | 'COMPLETED' | 'CANCELLED' | 'REFUNDED';
 export type PaymentStatus = 'UNPAID' | 'PAID' | 'PARTIAL';
+export type OrderSource = 'POS' | 'ONLINE';

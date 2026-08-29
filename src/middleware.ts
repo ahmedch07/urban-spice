@@ -26,6 +26,11 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const token = request.cookies.get('token')?.value;
 
+  // Public customer-ordering compatibility URL; keep /pos itself staff-only.
+  if (pathname === '/pos/online' || pathname.startsWith('/pos/online/')) {
+    return NextResponse.redirect(new URL('/', request.url));
+  }
+
   // Redirect /dashboard to /pos
   if (pathname === '/dashboard' || pathname.startsWith('/dashboard/')) {
     return NextResponse.redirect(new URL('/pos', request.url));
@@ -34,6 +39,15 @@ export async function middleware(request: NextRequest) {
   const isProtectedRoute = protectedRoutes.some((route) =>
     pathname.startsWith(route)
   );
+
+  if (pathname === '/admin' && token) {
+    const payload = await verifyJWT(token);
+    if (payload?.role === 'ADMIN' || payload?.role === 'MANAGER') return NextResponse.redirect(new URL('/dashboard', request.url));
+  }
+  if (pathname === '/cashier' && token) {
+    const payload = await verifyJWT(token);
+    if (payload) return NextResponse.redirect(new URL('/pos', request.url));
+  }
 
   if (isProtectedRoute) {
     if (!token) {
