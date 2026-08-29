@@ -43,14 +43,14 @@ export function PizzaCustomizationDialog(props: PizzaCustomizationDialogProps) {
   } = props;
   return (
     <div
-      className="fixed inset-0 z-40 grid place-items-end bg-slate-950/80 p-0 sm:place-items-center sm:p-4"
+      className="fixed inset-0 z-40 grid place-items-end bg-[#32170e]/50 p-0 backdrop-blur-sm sm:place-items-center sm:p-4"
       role="presentation"
     >
       <section
         role="dialog"
         aria-modal="true"
         aria-labelledby="pizza-dialog-title"
-        className="max-h-[90vh] w-full max-w-lg overflow-auto rounded-t-3xl bg-slate-900 p-6 sm:rounded-3xl"
+        className="max-h-[90vh] w-full max-w-lg overflow-auto rounded-t-3xl bg-[#fffaf3] p-6 text-[#32170e] sm:rounded-3xl"
       >
         <div className="flex items-center justify-between">
           <h2 id="pizza-dialog-title" className="text-xl font-black">
@@ -70,7 +70,7 @@ export function PizzaCustomizationDialog(props: PizzaCustomizationDialogProps) {
           <label className="block text-sm font-bold">
             Flavor
             <Select value={flavorId} onValueChange={onFlavorChange}>
-              <SelectTrigger className="mt-1">
+            <SelectTrigger className="mt-1 border-orange-200 bg-white text-[#32170e]">
                 <SelectValue placeholder="Choose a flavor" />
               </SelectTrigger>
               <SelectContent>
@@ -85,7 +85,7 @@ export function PizzaCustomizationDialog(props: PizzaCustomizationDialogProps) {
           <label className="block text-sm font-bold">
             Size
             <Select value={sizeId} onValueChange={onSizeChange}>
-              <SelectTrigger className="mt-1">
+            <SelectTrigger className="mt-1 border-orange-200 bg-white text-[#32170e]">
                 <SelectValue placeholder="Choose a size" />
               </SelectTrigger>
               <SelectContent>
@@ -105,7 +105,7 @@ export function PizzaCustomizationDialog(props: PizzaCustomizationDialogProps) {
                 onCrustChange(value === "regular" ? "" : value)
               }
             >
-              <SelectTrigger className="mt-1">
+              <SelectTrigger className="mt-1 border-orange-200 bg-white text-[#32170e]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -129,7 +129,7 @@ export function PizzaCustomizationDialog(props: PizzaCustomizationDialogProps) {
                 variant={
                   toppingIds.includes(topping.id) ? "default" : "secondary"
                 }
-                className="h-auto min-h-10 justify-start whitespace-normal px-3 py-2 text-left"
+                className={toppingIds.includes(topping.id) ? "h-auto min-h-10 justify-start whitespace-normal bg-orange-500 px-3 py-2 text-left text-[#32170e] hover:bg-orange-400" : "h-auto min-h-10 justify-start whitespace-normal border border-orange-100 bg-white px-3 py-2 text-left text-[#6b3422] hover:bg-orange-50"}
                 onClick={() => onToggleTopping(topping.id)}
               >
                 {topping.name} (+{formatMoney(topping.additionalPrice)})
@@ -137,7 +137,7 @@ export function PizzaCustomizationDialog(props: PizzaCustomizationDialogProps) {
             ))}
           </div>
         </fieldset>
-        <Button type="button" size="lg" className="mt-5 w-full" onClick={onAdd}>
+        <Button type="button" size="lg" className="mt-5 w-full bg-[#32170e] text-white hover:bg-[#572314]" onClick={onAdd}>
           Add pizza
         </Button>
       </section>

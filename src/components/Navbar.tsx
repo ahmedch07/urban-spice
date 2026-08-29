@@ -1,59 +1,19 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Clock, Menu } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Clock3, Menu, Sparkles } from 'lucide-react';
 
-interface NavbarProps {
-  title: string;
-}
+interface NavbarProps { title: string }
 
 export default function Navbar({ title }: NavbarProps) {
-  const [time, setTime] = useState<string>('');
+  const [time, setTime] = useState('');
 
   useEffect(() => {
-    const update = () => {
-      const now = new Date();
-      setTime(
-        now.toLocaleTimeString('en-PK', {
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit',
-          hour12: true,
-        })
-      );
-    };
-    update();
-    const interval = setInterval(update, 1000);
+    const updateTime = () => setTime(new Date().toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }));
+    updateTime();
+    const interval = setInterval(updateTime, 1000);
     return () => clearInterval(interval);
   }, []);
 
-  const toggleSidebar = () => {
-    window.dispatchEvent(new Event('toggle-sidebar'));
-  };
-
-  return (
-    <header className="h-16 bg-slate-900/90 backdrop-blur border-b border-slate-800 px-3 sm:px-6 flex items-center justify-between sticky top-0 z-30 shrink-0 select-none">
-      {/* Left: Mobile Menu Toggle & Page Title */}
-      <div className="flex items-center space-x-2 sm:space-x-3 min-w-0 pr-2">
-        <button
-          onClick={toggleSidebar}
-          className="lg:hidden p-2 rounded-xl text-slate-400 hover:text-slate-100 hover:bg-slate-800 border border-slate-800 transition shrink-0"
-          title="Toggle Navigation Menu"
-          aria-label="Toggle Navigation Menu"
-        >
-          <Menu className="w-5 h-5 text-amber-400" />
-        </button>
-
-        <h1 className="text-sm sm:text-base md:text-lg lg:text-xl font-extrabold text-slate-100 tracking-tight truncate max-w-[140px] xs:max-w-[200px] sm:max-w-xs md:max-w-md lg:max-w-none">
-          {title}
-        </h1>
-      </div>
-
-      {/* Right: Real-time Clock */}
-      <div className="flex items-center space-x-1.5 font-mono font-bold text-xs sm:text-sm text-amber-400 bg-slate-950 px-2.5 sm:px-3 py-1.5 rounded-xl border border-slate-800 shadow-inner shrink-0">
-        <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400 shrink-0" />
-        <span className="tabular-nums">{time || '00:00:00 AM'}</span>
-      </div>
-    </header>
-  );
+  return <header className="sticky top-0 z-30 flex h-[72px] shrink-0 items-center justify-between border-b border-slate-800/80 bg-[#101827]/95 px-3 backdrop-blur-xl sm:px-6"><div className="flex min-w-0 items-center gap-3"><button onClick={() => window.dispatchEvent(new Event('toggle-sidebar'))} className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-slate-700 bg-slate-800/80 text-amber-400 transition hover:border-amber-400/50 hover:bg-slate-700 lg:hidden" title="Toggle Navigation Menu" aria-label="Toggle Navigation Menu"><Menu className="h-5 w-5" /></button><div className="hidden h-10 w-1 rounded-full bg-gradient-to-b from-amber-300 to-orange-500 sm:block" /><div className="min-w-0"><p className="hidden text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500 sm:block">Urban Spice command center</p><h1 className="truncate text-sm font-black tracking-tight text-white sm:text-base md:text-lg">{title}</h1></div></div><div className="ml-3 flex shrink-0 items-center gap-2 rounded-xl border border-slate-700 bg-slate-900/80 px-2.5 py-2 font-mono text-xs font-bold text-amber-300 shadow-inner sm:px-3 sm:text-sm"><Sparkles className="hidden h-3.5 w-3.5 text-amber-400 sm:block" /><Clock3 className="h-3.5 w-3.5 text-amber-400" /><span className="tabular-nums">{time || '00:00:00 AM'}</span></div></header>;
 }

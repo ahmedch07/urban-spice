@@ -1,128 +1,15 @@
+import { MapPin, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { Customer, OrderType, PaymentMethod } from "./types";
 
-const formatMoney = (value: number) =>
-  `Rs. ${Math.round(value).toLocaleString()}`;
-type CheckoutFormProps = {
-  customer: Customer;
-  orderType: OrderType;
-  paymentMethod: PaymentMethod;
-  subtotal: number;
-  deliveryFee: number;
-  message: string;
-  placing: boolean;
-  onCustomerChange: (customer: Customer) => void;
-  onOrderTypeChange: (type: OrderType) => void;
-  onPaymentMethodChange: (method: PaymentMethod) => void;
-  onPlaceOrder: () => void;
-};
+const formatMoney = (value: number) => `Rs. ${Math.round(value).toLocaleString()}`;
+type CheckoutFormProps = { customer: Customer; orderType: OrderType; paymentMethod: PaymentMethod; subtotal: number; deliveryFee: number; message: string; placing: boolean; onCustomerChange: (customer: Customer) => void; onOrderTypeChange: (type: OrderType) => void; onPaymentMethodChange: (method: PaymentMethod) => void; onPlaceOrder: () => void };
 
 export function CheckoutForm(props: CheckoutFormProps) {
-  const {
-    customer,
-    orderType,
-    paymentMethod,
-    subtotal,
-    deliveryFee,
-    message,
-    placing,
-    onCustomerChange,
-    onOrderTypeChange,
-    onPaymentMethodChange,
-    onPlaceOrder,
-  } = props;
-  return (
-    <div className="space-y-4">
-      <Input
-        placeholder="Your name"
-        value={customer.name}
-        onChange={(event) =>
-          onCustomerChange({ ...customer, name: event.target.value })
-        }
-      />
-      <Input
-        placeholder="Contact number"
-        value={customer.phone}
-        onChange={(event) =>
-          onCustomerChange({ ...customer, phone: event.target.value })
-        }
-      />
-      <div className="grid grid-cols-2 gap-2">
-        <Button
-          type="button"
-          variant={orderType === "DELIVERY" ? "default" : "secondary"}
-          onClick={() => onOrderTypeChange("DELIVERY")}
-        >
-          Delivery
-        </Button>
-        <Button
-          type="button"
-          variant={orderType === "TAKEAWAY" ? "default" : "secondary"}
-          onClick={() => onOrderTypeChange("TAKEAWAY")}
-        >
-          Takeaway
-        </Button>
-      </div>
-      {orderType === "DELIVERY" && (
-        <Textarea
-          placeholder="Delivery address"
-          value={customer.address}
-          onChange={(event) =>
-            onCustomerChange({ ...customer, address: event.target.value })
-          }
-        />
-      )}
-      <Select
-        value={paymentMethod}
-        onValueChange={(value) => onPaymentMethodChange(value as PaymentMethod)}
-      >
-        <SelectTrigger>
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="CASH">Cash on Delivery / Collection</SelectItem>
-          <SelectItem value="ONLINE">Online Payment (pending)</SelectItem>
-          <SelectItem value="CARD">Card Payment (pending)</SelectItem>
-        </SelectContent>
-      </Select>
-      <div className="border-t border-slate-800 pt-3 text-sm">
-        <div className="flex justify-between">
-          <span>Subtotal</span>
-          <strong>{formatMoney(subtotal)}</strong>
-        </div>
-        {orderType === "DELIVERY" && (
-          <div className="mt-1 flex justify-between">
-            <span>Delivery</span>
-            <strong>{formatMoney(deliveryFee)}</strong>
-          </div>
-        )}
-        <div className="mt-2 flex justify-between text-lg font-black">
-          Total <span>{formatMoney(subtotal + deliveryFee)}</span>
-        </div>
-      </div>
-      {message && (
-        <p className="text-sm text-rose-400" role="alert">
-          {message}
-        </p>
-      )}
-      <Button
-        type="button"
-        size="lg"
-        className="w-full"
-        disabled={placing}
-        onClick={onPlaceOrder}
-      >
-        {placing ? "Placing order…" : "Place order"}
-      </Button>
-    </div>
-  );
+  const { customer, orderType, paymentMethod, subtotal, deliveryFee, message, placing, onCustomerChange, onOrderTypeChange, onPaymentMethodChange, onPlaceOrder } = props;
+  const fieldClassName = "border-orange-200 bg-[#fffaf3] text-[#32170e] placeholder:text-stone-400 focus-visible:border-orange-500 focus-visible:ring-orange-500/30";
+  return <div className="space-y-5"><div><p className="text-[10px] font-black uppercase tracking-[0.18em] text-orange-600">Your details</p><div className="mt-3 space-y-2"><Input className={fieldClassName} placeholder="Your name" value={customer.name} onChange={(event) => onCustomerChange({ ...customer, name: event.target.value })} /><Input className={fieldClassName} placeholder="Contact number" value={customer.phone} onChange={(event) => onCustomerChange({ ...customer, phone: event.target.value })} /></div></div><div><p className="text-[10px] font-black uppercase tracking-[0.18em] text-orange-600">How should we serve you?</p><div className="mt-3 grid grid-cols-2 gap-2"><Button type="button" variant="secondary" className={orderType === "DELIVERY" ? "h-12 border border-orange-500 bg-orange-500 text-[#32170e] hover:bg-orange-400" : "h-12 border border-orange-100 bg-[#fffaf3] text-[#6b3422] hover:bg-orange-50"} onClick={() => onOrderTypeChange("DELIVERY")}><MapPin className="mr-1.5 h-4 w-4" />Delivery</Button><Button type="button" variant="secondary" className={orderType === "TAKEAWAY" ? "h-12 border border-orange-500 bg-orange-500 text-[#32170e] hover:bg-orange-400" : "h-12 border border-orange-100 bg-[#fffaf3] text-[#6b3422] hover:bg-orange-50"} onClick={() => onOrderTypeChange("TAKEAWAY")}><ShoppingBag className="mr-1.5 h-4 w-4" />Takeaway</Button></div></div>{orderType === "DELIVERY" && <Textarea className={fieldClassName} placeholder="Delivery address" value={customer.address} onChange={(event) => onCustomerChange({ ...customer, address: event.target.value })} />}<Select value={paymentMethod} onValueChange={(value) => onPaymentMethodChange(value as PaymentMethod)}><SelectTrigger className={fieldClassName}><SelectValue placeholder="Payment method" /></SelectTrigger><SelectContent><SelectItem value="CASH">Cash on Delivery / Collection</SelectItem><SelectItem value="ONLINE">Online Payment (pending)</SelectItem><SelectItem value="CARD">Card Payment (pending)</SelectItem></SelectContent></Select><div className="rounded-2xl bg-[#fff4e5] p-4 text-sm text-[#572314]"><div className="flex justify-between"><span>Subtotal</span><strong>{formatMoney(subtotal)}</strong></div>{orderType === "DELIVERY" && <div className="mt-2 flex justify-between"><span>Delivery</span><strong>{formatMoney(deliveryFee)}</strong></div>}<div className="mt-3 flex justify-between border-t border-orange-200 pt-3 text-lg font-black text-[#32170e]">Total <span>{formatMoney(subtotal + deliveryFee)}</span></div></div>{message && <p className="text-sm font-medium text-red-600" role="alert">{message}</p>}<Button type="button" size="lg" className="h-12 w-full rounded-xl bg-[#32170e] text-white hover:bg-[#572314]" disabled={placing} onClick={onPlaceOrder}>{placing ? "Placing order…" : "Place order"}</Button></div>;
 }
