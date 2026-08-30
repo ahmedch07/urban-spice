@@ -11,7 +11,7 @@ export type CartItem = {
 };
 
 export type MenuData = {
-  categories: Array<{ id: string; name: string }>;
+  categories: Array<{ id: string; name: string; slug?: string; sortOrder?: number }>;
   products: Product[];
   flavors: Flavor[];
   sizes: Array<{ id: string; name: string }>;

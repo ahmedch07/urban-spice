@@ -37,7 +37,17 @@ export async function POST(request: Request) {
     const toppingById = new Map(toppings.map((t) => [t.id, t]));
 
     let subtotal = 0;
-    const normalizedItems: any[] = [];
+    const normalizedItems: Array<{
+      product: any;
+      flavor: any;
+      size: any;
+      crust: any;
+      quantity: number;
+      unitPrice: number;
+      total: number;
+      toppings: Array<{ id: string; name: string; additionalPrice: number }>;
+      note: string;
+    }> = [];
     const productQuantity = new Map<string, number>();
     for (const raw of items) {
       const quantity = quantityOf(raw.quantity);
@@ -52,7 +62,7 @@ export async function POST(request: Request) {
       if (product.isPizza) {
         flavor = flavorById.get(raw.flavorId); size = sizeById.get(raw.sizeId);
         if (!flavor || !size) return NextResponse.json({ error: `Please choose a flavor and size for ${product.name}.` }, { status: 400 });
-        const listedPrice = flavor.flavorPrices.find((p) => p.sizeId === size.id);
+        const listedPrice = (flavor.flavorPrices as Array<{ sizeId: string; price: number }>).find((p: { sizeId: string; price: number }) => p.sizeId === size.id);
         if (!listedPrice) return NextResponse.json({ error: 'This pizza combination is unavailable.' }, { status: 400 });
         unitPrice = listedPrice.price;
         if (raw.crustId) {
@@ -61,10 +71,17 @@ export async function POST(request: Request) {
           unitPrice += crust.additionalPrice;
         }
       }
-      const requestedToppings = Array.isArray(raw.toppingIds) ? [...new Set(raw.toppingIds)].slice(0, 10) : [];
-      const itemToppings = requestedToppings.map((id) => toppingById.get(id)).filter(Boolean);
+      const requestedToppings: string[] = Array.isArray(raw.toppingIds)
+        ? ([...new Set(
+            raw.toppingIds
+              .filter((id: unknown): id is string => typeof id === 'string')
+          )] as string[]).slice(0, 10)
+        : [];
+      const itemToppings = requestedToppings
+        .map((id: string) => toppingById.get(id) as { id: string; name: string; additionalPrice: number } | undefined)
+        .filter((topping): topping is { id: string; name: string; additionalPrice: number } => Boolean(topping));
       if (itemToppings.length !== requestedToppings.length) return NextResponse.json({ error: 'A selected topping is unavailable.' }, { status: 400 });
-      const toppingsPrice = itemToppings.reduce((sum, topping) => sum + topping.additionalPrice, 0);
+      const toppingsPrice = itemToppings.reduce((sum, topping) => sum + Number(topping.additionalPrice || 0), 0);
       const total = (unitPrice + toppingsPrice) * quantity;
       subtotal += total;
       normalizedItems.push({ product, flavor, size, crust, quantity, unitPrice, total, toppings: itemToppings, note: clean(raw.specialInstructions).slice(0, 300) });
@@ -79,7 +96,7 @@ export async function POST(request: Request) {
     const customer = await prisma.customer.upsert({ where: { phone }, create: { name, phone, address: address || null }, update: { name, ...(address ? { address } : {}) } });
     const order = await (prisma as any).order.create({
       data: { invoiceNo, customerId: customer.id, userId: staffUser.id, salesDayId: salesDay.id, orderType, source: 'ONLINE', status: 'PENDING', paymentStatus: 'UNPAID', subtotal, deliveryFee, grandTotal, paymentMethod, notes: clean(body.notes).slice(0, 300) || null,
-        items: { create: normalizedItems.map((item) => ({ productId: item.product.id, productName: item.product.name, flavorId: item.flavor?.id || null, flavorName: item.flavor?.name || null, sizeId: item.size?.id || null, sizeName: item.size?.name || null, crustId: item.crust?.id || null, crustName: item.crust?.name || null, quantity: item.quantity, unitPrice: item.unitPrice, total: item.total, specialInstructions: item.note || null, toppings: { create: item.toppings.map((topping) => ({ toppingId: topping.id, toppingName: topping.name, price: topping.additionalPrice })) } })) } },
+        items: { create: normalizedItems.map((item) => ({ productId: item.product.id, productName: item.product.name, flavorId: item.flavor?.id || null, flavorName: item.flavor?.name || null, sizeId: item.size?.id || null, sizeName: item.size?.name || null, crustId: item.crust?.id || null, crustName: item.crust?.name || null, quantity: item.quantity, unitPrice: item.unitPrice, total: item.total, specialInstructions: item.note || null, toppings: { create: item.toppings.map((topping: { id: string; name: string; additionalPrice: number }) => ({ toppingId: topping.id, toppingName: topping.name, price: topping.additionalPrice })) } })) } },
       include: { customer: true, items: { include: { toppings: true } } },
     });
     await Promise.all([...productQuantity].map(([id, quantity]) => prisma.product.update({ where: { id }, data: { stock: { decrement: quantity } } })));
@@ -94,7 +111,13 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const invoiceNo = clean(searchParams.get('invoiceNo'));
   const phone = clean(searchParams.get('phone'));
-  if (!invoiceNo || !phone) return NextResponse.json({ error: 'Order number and phone are required.' }, { status: 400 });
+  const scope = clean(searchParams.get('scope'));
+  if (!phone) return NextResponse.json({ error: 'Phone number is required.' }, { status: 400 });
+  if (!invoiceNo) {
+    const completedStatuses = ['COMPLETED', 'CANCELLED', 'REFUNDED'];
+    const orders = await (prisma as any).order.findMany({ where: { source: 'ONLINE', customer: { is: { phone } }, status: scope === 'history' ? { in: completedStatuses } : { notIn: completedStatuses } }, select: { invoiceNo: true, status: true, orderType: true, grandTotal: true, createdAt: true, items: { select: { productName: true, quantity: true } } }, orderBy: { createdAt: 'desc' } });
+    return NextResponse.json({ orders });
+  }
   const order: any = await (prisma as any).order.findFirst({ where: { invoiceNo, source: 'ONLINE', customer: { is: { phone } } }, select: { invoiceNo: true, status: true, paymentStatus: true, orderType: true, grandTotal: true, createdAt: true } });
   if (!order) return NextResponse.json({ error: 'Order not found.' }, { status: 404 });
   return NextResponse.json({ order });

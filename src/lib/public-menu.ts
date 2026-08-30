@@ -8,7 +8,7 @@ export const getPublicMenu = unstable_cache(
       await Promise.all([
         prisma.category.findMany({
           where: { active: true },
-          select: { id: true, name: true },
+          select: { id: true, name: true, slug: true, sortOrder: true },
           orderBy: { sortOrder: "asc" },
         }),
         prisma.product.findMany({

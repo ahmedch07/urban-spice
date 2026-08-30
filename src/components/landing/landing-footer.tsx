@@ -1,0 +1,8 @@
+import { Clock3, MapPin, Phone } from "lucide-react";
+
+type LandingFooterProps = { storeName?: string };
+
+export function LandingFooter({ storeName }: LandingFooterProps) {
+  const name = storeName || "Urban Spice";
+  return <footer className="mt-16 bg-[#720019] text-white"><div className="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:grid-cols-2 sm:px-6 lg:grid-cols-4"><div><p className="text-xl font-black uppercase tracking-[0.12em]">{name}</p><p className="mt-3 max-w-xs text-sm leading-6 text-rose-100/80">Freshly prepared food for every craving—made to order and served with care.</p></div><div><p className="text-xs font-black uppercase tracking-[0.16em] text-[#d7b56d]">Order with ease</p><ul className="mt-4 space-y-3 text-sm text-rose-100/90"><li className="flex gap-2"><Clock3 className="h-4 w-4 shrink-0 text-[#d7b56d]" /> Fast delivery & collection</li><li className="flex gap-2"><MapPin className="h-4 w-4 shrink-0 text-[#d7b56d]" /> Order from your nearest branch</li></ul></div><div><p className="text-xs font-black uppercase tracking-[0.16em] text-[#d7b56d]">Need help?</p><p className="mt-4 flex items-center gap-2 text-sm text-rose-100/90"><Phone className="h-4 w-4 text-[#d7b56d]" /> Contact our team</p></div><div><p className="text-xs font-black uppercase tracking-[0.16em] text-[#d7b56d]">Stay connected</p><p className="mt-4 text-sm leading-6 text-rose-100/80">Your favourites are only a few clicks away.</p></div></div><div className="border-t border-white/15 px-4 py-4 text-center text-xs text-rose-100/65">© {new Date().getFullYear()} {name}. All rights reserved.</div></footer>;
+}
