@@ -307,7 +307,7 @@ export default function CartSidebar({
       </div>
 
       {/* 2. Cart Items List */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+      <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-3">
         {cart.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-center text-slate-500 space-y-2 py-10">
             <ShoppingBag className="w-12 h-12 stroke-[1.2] text-slate-600" />
@@ -396,9 +396,9 @@ export default function CartSidebar({
       </div>
 
       {/* 3. Footer Summary & Actions */}
-      <div className="p-4 border-t border-slate-800 bg-slate-900/95 space-y-3">
+      <div className="shrink-0 p-3 border-t border-slate-800 bg-slate-900/95 space-y-2">
         {/* Subtotal & Discounts */}
-        <div className="space-y-1.5 text-xs">
+        <div className="max-h-[14vh] overflow-y-auto pr-1 space-y-1.5 text-xs">
           <div className="flex justify-between text-slate-400">
             <span>Subtotal</span>
             <span className="font-mono font-semibold text-slate-200">{formatCurrency(subtotal)}</span>
@@ -530,21 +530,22 @@ export default function CartSidebar({
             </div>
           )}
 
-          <div className="pt-2 border-t border-slate-800 flex justify-between items-baseline">
-            <span className="text-sm font-bold text-slate-100">Grand Total</span>
-            <span className="text-xl font-extrabold text-amber-400 font-mono">
-              {formatCurrency(grandTotal)}
-            </span>
-          </div>
+        </div>
+
+        <div className="pt-1.5 border-t border-slate-800 flex justify-between items-baseline">
+          <span className="text-sm font-bold text-slate-100">Grand Total</span>
+          <span className="text-xl font-extrabold text-amber-400 font-mono">
+            {formatCurrency(grandTotal)}
+          </span>
         </div>
 
         {/* Action Buttons */}
-        <div className="grid grid-cols-1 gap-2 pt-1">
+        <div className="grid grid-cols-1 gap-1.5">
           {orderType === 'DINE_IN' && onSendToKitchen && (
             <button
               disabled={cart.length === 0 || isSavingOpenOrder}
               onClick={onSendToKitchen}
-              className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-amber-500/50 disabled:opacity-50 disabled:cursor-not-allowed text-amber-400 font-bold text-xs rounded-xl flex items-center justify-center space-x-2 transition-all shadow-sm"
+              className="w-full py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-amber-500/50 disabled:opacity-50 disabled:cursor-not-allowed text-amber-400 font-bold text-xs rounded-xl flex items-center justify-center space-x-2 transition-all shadow-sm"
             >
               <Flame className="w-4 h-4 text-amber-400" />
               <span>{activeOrderId ? 'Update Kitchen Order' : 'Send to Kitchen (Hold Tab)'}</span>
@@ -554,7 +555,7 @@ export default function CartSidebar({
           <button
             disabled={cart.length === 0}
             onClick={onCheckout}
-            className="w-full py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 disabled:opacity-50 disabled:cursor-not-allowed text-slate-950 font-extrabold text-sm rounded-xl shadow-lg shadow-amber-500/20 flex items-center justify-center space-x-2 transition-all"
+            className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 disabled:opacity-50 disabled:cursor-not-allowed text-slate-950 font-extrabold text-sm rounded-xl shadow-lg shadow-amber-500/20 flex items-center justify-center space-x-2 transition-all"
           >
             <CreditCard className="w-4 h-4" />
             <span>Pay & Settle (F8) • {formatCurrency(grandTotal)}</span>
