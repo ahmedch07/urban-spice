@@ -113,62 +113,70 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Cart cannot be empty' }, { status: 400 });
     }
 
-    // Get Invoice prefix
-    let prefix = 'INV-2026';
-    try {
-      const prefixSetting = await prisma.storeSetting.findUnique({ where: { key: 'invoicePrefix' } });
-      if (prefixSetting && prefixSetting.value) {
-        prefix = prefixSetting.value;
-      }
-    } catch {}
+    const requestedTableNo = tableNo ? String(tableNo).trim() : null;
+    const tableLookup = isValidObjectId(tableId)
+      ? prisma.restaurantTable.findUnique({ where: { id: tableId } })
+      : requestedTableNo
+      ? prisma.restaurantTable.findFirst({
+          where: {
+            OR: [
+              { name: { equals: requestedTableNo, mode: 'insensitive' } },
+              { number: Number(requestedTableNo.replace(/\D/g, '')) || -1 },
+            ],
+          },
+        })
+      : Promise.resolve(null);
 
-    const orderCount = await prisma.order.count();
-    const invoiceNo = generateInvoiceNumber(prefix, orderCount + 1);
+    // All independent reads run together so checkout is not held up by round trips.
+    const [
+      prefixResult,
+      orderCount,
+      existingCustomer,
+      existingRider,
+      existingTable,
+      sessionUser,
+      fallbackUser,
+      customPizzaProduct,
+      productIds,
+      flavorIds,
+      sizeIds,
+      crustIds,
+      toppingIds,
+      salesDay,
+    ] = await Promise.all([
+      prisma.storeSetting.findUnique({ where: { key: 'invoicePrefix' } }).catch(() => null),
+      prisma.order.count(),
+      isValidObjectId(customerId)
+        ? prisma.customer.findUnique({ where: { id: customerId } })
+        : Promise.resolve(null),
+      isValidObjectId(riderId)
+        ? (prisma as any).rider.findUnique({ where: { id: riderId } })
+        : Promise.resolve(null),
+      tableLookup,
+      isValidObjectId(session.userId)
+        ? prisma.user.findUnique({ where: { id: session.userId } })
+        : Promise.resolve(null),
+      prisma.user.findFirst(),
+      prisma.product.findFirst({ where: { isPizza: true } }),
+      prisma.product.findMany({ select: { id: true } }),
+      prisma.pizzaFlavor.findMany({ select: { id: true } }),
+      prisma.pizzaSize.findMany({ select: { id: true } }),
+      prisma.crust.findMany({ select: { id: true } }),
+      prisma.topping.findMany({ select: { id: true } }),
+      prisma.salesDay.upsert({
+        where: { dateKey: getLocalDateKey() },
+        create: { dateKey: getLocalDateKey() },
+        update: {},
+      }),
+    ]);
 
-    // Validate customer ID
-    let validCustomerId: string | null = null;
-    if (isValidObjectId(customerId)) {
-      const existingCustomer = await prisma.customer.findUnique({ where: { id: customerId } });
-      if (existingCustomer) validCustomerId = customerId;
-    }
-
-    // Validate rider ID
-    let validRiderId: string | null = null;
-    let finalRiderName: string | null = null;
-    let finalRiderPhone: string | null = null;
-    if (isValidObjectId(riderId)) {
-      const existingRider = await (prisma as any).rider?.findUnique({ where: { id: riderId } });
-      if (existingRider) {
-        validRiderId = existingRider.id;
-        finalRiderName = existingRider.name;
-        finalRiderPhone = existingRider.phone;
-      }
-    }
-
-    // Validate table ID & name
-    let validTableId: string | null = null;
-    let finalTableNo: string | null = tableNo ? String(tableNo).trim() : null;
-
-    if (isValidObjectId(tableId)) {
-      const existingTable = await prisma.restaurantTable.findUnique({ where: { id: tableId } });
-      if (existingTable) {
-        validTableId = existingTable.id;
-        finalTableNo = existingTable.name;
-      }
-    } else if (finalTableNo) {
-      const existingTable = await prisma.restaurantTable.findFirst({
-        where: {
-          OR: [
-            { name: { equals: finalTableNo, mode: 'insensitive' } },
-            { number: Number(finalTableNo.replace(/\D/g, '')) || -1 },
-          ],
-        },
-      });
-      if (existingTable) {
-        validTableId = existingTable.id;
-        finalTableNo = existingTable.name;
-      }
-    }
+    const invoiceNo = generateInvoiceNumber(prefixResult?.value || 'INV-2026', orderCount + 1);
+    const validCustomerId: string | null = existingCustomer ? customerId : null;
+    const validRiderId: string | null = existingRider?.id || null;
+    const finalRiderName: string | null = existingRider?.name || null;
+    const finalRiderPhone: string | null = existingRider?.phone || null;
+    const validTableId: string | null = existingTable?.id || null;
+    const finalTableNo: string | null = existingTable?.name || requestedTableNo;
 
     // Check if table already has an active unpaid tab (prevent duplicate active tabs)
     if (validTableId && (isPendingPayment || explicitPaymentStatus === 'UNPAID')) {
@@ -191,27 +199,12 @@ export async function POST(request: Request) {
     }
 
     // Validate User ID
-    let validUserId: string = session.userId;
-    if (isValidObjectId(session.userId)) {
-      const existingUser = await prisma.user.findUnique({ where: { id: session.userId } });
-      if (!existingUser) {
-        const fallbackUser = await prisma.user.findFirst();
-        if (fallbackUser) validUserId = fallbackUser.id;
-      }
-    } else {
-      const fallbackUser = await prisma.user.findFirst();
-      if (fallbackUser) validUserId = fallbackUser.id;
-    }
-
-    // Base pizza product lookup
-    const customPizzaProduct = await prisma.product.findFirst({ where: { isPizza: true } });
-
-    // Valid IDs lookup
-    const validProductIds = new Set((await prisma.product.findMany({ select: { id: true } })).map((p: { id: string }) => p.id));
-    const validFlavorIds = new Set((await prisma.pizzaFlavor.findMany({ select: { id: true } })).map((f: { id: string }) => f.id));
-    const validSizeIds = new Set((await prisma.pizzaSize.findMany({ select: { id: true } })).map((s: { id: string }) => s.id));
-    const validCrustIds = new Set((await prisma.crust.findMany({ select: { id: true } })).map((c: { id: string }) => c.id));
-    const validToppingIds = new Set((await prisma.topping.findMany({ select: { id: true } })).map((t: { id: string }) => t.id));
+    const validUserId: string = sessionUser?.id || fallbackUser?.id || session.userId;
+    const validProductIds = new Set(productIds.map((p: { id: string }) => p.id));
+    const validFlavorIds = new Set(flavorIds.map((f: { id: string }) => f.id));
+    const validSizeIds = new Set(sizeIds.map((s: { id: string }) => s.id));
+    const validCrustIds = new Set(crustIds.map((c: { id: string }) => c.id));
+    const validToppingIds = new Set(toppingIds.map((t: { id: string }) => t.id));
 
     // Calculate Totals server-side
     let calculatedSubtotal = 0;
@@ -238,12 +231,6 @@ export async function POST(request: Request) {
     const orderStatus = isUnpaid ? 'PENDING' : 'COMPLETED';
     const finalAmountPaid = isUnpaid ? (amountPaid || 0) : (amountPaid ?? grandTotal);
     const change = isUnpaid ? 0 : Math.max(0, finalAmountPaid - grandTotal);
-
-    const salesDay = await prisma.salesDay.upsert({
-      where: { dateKey: getLocalDateKey() },
-      create: { dateKey: getLocalDateKey() },
-      update: {},
-    });
 
     const orderData = {
       invoiceNo,
@@ -375,29 +362,23 @@ export async function POST(request: Request) {
       }
     }
 
-    // Auto decrement stock for products
-    for (const item of items) {
-      if (item.productId && isValidObjectId(item.productId) && validProductIds.has(item.productId)) {
-        try {
-          await prisma.product.update({
-            where: { id: item.productId },
-            data: { stock: { decrement: Number(item.quantity || 1) } },
-          });
-        } catch {}
-      }
-    }
-
-    // Create Audit Log
-    try {
-      await prisma.auditLog.create({
+    // Keep post-order bookkeeping parallel so it does not delay the receipt.
+    await Promise.allSettled([
+      ...items
+        .filter((item: any) => item.productId && isValidObjectId(item.productId) && validProductIds.has(item.productId))
+        .map((item: any) => prisma.product.update({
+          where: { id: item.productId },
+          data: { stock: { decrement: Number(item.quantity || 1) } },
+        })),
+      prisma.auditLog.create({
         data: {
           userId: validUserId,
           userName: session.name || 'Staff User',
           action: 'CREATE_ORDER',
           details: `Created order ${invoiceNo} (${orderData.orderType}) for Rs. ${grandTotal} (${finalPaymentStatus})`,
         },
-      });
-    } catch {}
+      }),
+    ]);
 
     return NextResponse.json({ success: true, order: newOrder }, { status: 201 });
   } catch (error: any) {

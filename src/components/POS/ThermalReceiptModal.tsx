@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
 import { X, Printer, CheckCircle2 } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 import { useApp } from '@/context/AppContext';
@@ -9,6 +10,7 @@ interface ThermalReceiptModalProps {
   onClose: () => void;
   order: any;
   onNewOrder?: () => void;
+  autoPrint?: boolean;
 }
 
 export default function ThermalReceiptModal({
@@ -16,8 +18,25 @@ export default function ThermalReceiptModal({
   onClose,
   order,
   onNewOrder,
+  autoPrint = false,
 }: ThermalReceiptModalProps) {
   const { storeSettings } = useApp();
+  const hasAutoPrinted = useRef(false);
+
+  useEffect(() => {
+    if (!isOpen || !order || !autoPrint || hasAutoPrinted.current) return;
+
+    hasAutoPrinted.current = true;
+    const frame = window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => window.print());
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [autoPrint, isOpen, order]);
+
+  useEffect(() => {
+    if (!isOpen) hasAutoPrinted.current = false;
+  }, [isOpen]);
 
   if (!isOpen || !order) return null;
 
