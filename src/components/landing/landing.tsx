@@ -28,7 +28,19 @@ type PizzaConfiguration = {
   crustId: string;
   toppingIds: string[];
 };
-type SuccessOrder = { invoiceNo?: string };
+type SuccessOrder = {
+  invoiceNo?: string;
+  createdAt: string;
+  customer: Customer;
+  orderType: OrderType;
+  paymentMethod: PaymentMethod;
+  items: CartItem[];
+  subtotal: number;
+  deliveryFee: number;
+  grandTotal: number;
+  storeName?: string;
+  storeLogo?: string;
+};
 type PendingCartItem = { product: Product; configuration: PizzaConfiguration };
 
 const defaultCustomer: Customer = { name: "", phone: "", address: "" };
@@ -534,7 +546,19 @@ export function Landing({ initialMenu }: LandingProps) {
         throw new Error(
           data.error || `Order could not be placed (error ${response.status}).`,
         );
-      setSuccessOrder(data.order);
+      setSuccessOrder({
+        invoiceNo: data.order?.invoiceNo,
+        createdAt: new Date().toISOString(),
+        customer: { ...customer },
+        orderType,
+        paymentMethod,
+        items: cart.map((item) => ({ ...item, toppingIds: [...item.toppingIds] })),
+        subtotal,
+        deliveryFee,
+        grandTotal: Number(data.order?.grandTotal ?? subtotal + deliveryFee),
+        storeName: menu?.settings.storeName,
+        storeLogo: menu?.settings.storeLogo,
+      });
       window.localStorage.setItem("urban-spice-customer", JSON.stringify(customer));
       setCart([]);
       setIsCheckoutOpen(false);
@@ -973,7 +997,7 @@ export function Landing({ initialMenu }: LandingProps) {
       )}
       {successOrder && (
         <OrderSuccessDialog
-          invoiceNo={successOrder.invoiceNo}
+          order={successOrder}
           onClose={() => setSuccessOrder(undefined)}
         />
       )}

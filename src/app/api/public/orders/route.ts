@@ -20,16 +20,28 @@ export async function POST(request: Request) {
     if (orderType === 'DELIVERY' && address.length < 5) return NextResponse.json({ error: 'A delivery address is required for delivery orders.' }, { status: 400 });
     if (!items.length || items.length > 30) return NextResponse.json({ error: 'Your cart is empty or contains too many items.' }, { status: 400 });
 
-    const staffUser = await prisma.user.findFirst({ where: { active: true }, orderBy: { createdAt: 'asc' } });
-    if (!staffUser) return NextResponse.json({ error: 'Online ordering is not configured with a staff account yet.' }, { status: 503 });
+    const idsFrom = (key: string): string[] => [...new Set<string>(
+      items.map((item: any) => item[key]).filter((id: unknown): id is string => typeof id === 'string' && isValidObjectId(id)),
+    )];
+    const productIds = idsFrom('productId');
+    const flavorIds = idsFrom('flavorId');
+    const sizeIds = idsFrom('sizeId');
+    const crustIds = idsFrom('crustId');
+    const toppingIds: string[] = [...new Set<string>((items as any[]).flatMap((item): string[] => Array.isArray(item.toppingIds)
+      ? item.toppingIds.filter((id: unknown): id is string => typeof id === 'string' && isValidObjectId(id))
+      : []))];
 
-    const [products, flavors, sizes, crusts, toppings] = await Promise.all([
-      prisma.product.findMany({ where: { active: true, stock: { gt: 0 } } }),
-      prisma.pizzaFlavor.findMany({ where: { active: true }, include: { flavorPrices: true } }),
-      prisma.pizzaSize.findMany(),
-      prisma.crust.findMany({ where: { active: true } }),
-      prisma.topping.findMany({ where: { active: true, stock: { gt: 0 } } }),
+    const [staffUser, products, flavors, sizes, crusts, toppings, feeSetting, prefixSetting] = await Promise.all([
+      prisma.user.findFirst({ where: { active: true }, orderBy: { createdAt: 'asc' }, select: { id: true } }),
+      prisma.product.findMany({ where: { id: { in: productIds }, active: true, stock: { gt: 0 } }, select: { id: true, name: true, basePrice: true, isPizza: true, stock: true } }),
+      prisma.pizzaFlavor.findMany({ where: { id: { in: flavorIds }, active: true }, select: { id: true, name: true, flavorPrices: { select: { sizeId: true, price: true } } } }),
+      prisma.pizzaSize.findMany({ where: { id: { in: sizeIds } }, select: { id: true, name: true } }),
+      prisma.crust.findMany({ where: { id: { in: crustIds }, active: true }, select: { id: true, name: true, additionalPrice: true } }),
+      prisma.topping.findMany({ where: { id: { in: toppingIds }, active: true, stock: { gt: 0 } }, select: { id: true, name: true, additionalPrice: true } }),
+      prisma.storeSetting.findUnique({ where: { key: 'defaultDeliveryFee' } }),
+      prisma.storeSetting.findUnique({ where: { key: 'invoicePrefix' } }),
     ]);
+    if (!staffUser) return NextResponse.json({ error: 'Online ordering is not configured with a staff account yet.' }, { status: 503 });
     const productById = new Map(products.map((p) => [p.id, p]));
     const flavorById = new Map(flavors.map((f) => [f.id, f]));
     const sizeById = new Map(sizes.map((s) => [s.id, s]));
@@ -86,18 +98,18 @@ export async function POST(request: Request) {
       subtotal += total;
       normalizedItems.push({ product, flavor, size, crust, quantity, unitPrice, total, toppings: itemToppings, note: clean(raw.specialInstructions).slice(0, 300) });
     }
-    const feeSetting = await prisma.storeSetting.findUnique({ where: { key: 'defaultDeliveryFee' } });
     const deliveryFee = orderType === 'DELIVERY' ? Math.max(0, Number(feeSetting?.value || 0) || 0) : 0;
     const grandTotal = Math.round(subtotal + deliveryFee);
-    const prefixSetting = await prisma.storeSetting.findUnique({ where: { key: 'invoicePrefix' } });
-    const invoiceNo = generateInvoiceNumber(prefixSetting?.value || 'INV-2026', (await prisma.order.count()) + 1);
-    const salesDay = await prisma.salesDay.upsert({ where: { dateKey: getLocalDateKey() }, create: { dateKey: getLocalDateKey() }, update: {} });
-
-    const customer = await prisma.customer.upsert({ where: { phone }, create: { name, phone, address: address || null }, update: { name, ...(address ? { address } : {}) } });
+    const [orderCount, salesDay, customer] = await Promise.all([
+      prisma.order.count(),
+      prisma.salesDay.upsert({ where: { dateKey: getLocalDateKey() }, create: { dateKey: getLocalDateKey() }, update: {} }),
+      prisma.customer.upsert({ where: { phone }, create: { name, phone, address: address || null }, update: { name, ...(address ? { address } : {}) } }),
+    ]);
+    const invoiceNo = generateInvoiceNumber(prefixSetting?.value || 'INV-2026', orderCount + 1);
     const order = await (prisma as any).order.create({
       data: { invoiceNo, customerId: customer.id, userId: staffUser.id, salesDayId: salesDay.id, orderType, source: 'ONLINE', status: 'PENDING', paymentStatus: 'UNPAID', subtotal, deliveryFee, grandTotal, paymentMethod, notes: clean(body.notes).slice(0, 300) || null,
         items: { create: normalizedItems.map((item) => ({ productId: item.product.id, productName: item.product.name, flavorId: item.flavor?.id || null, flavorName: item.flavor?.name || null, sizeId: item.size?.id || null, sizeName: item.size?.name || null, crustId: item.crust?.id || null, crustName: item.crust?.name || null, quantity: item.quantity, unitPrice: item.unitPrice, total: item.total, specialInstructions: item.note || null, toppings: { create: item.toppings.map((topping: { id: string; name: string; additionalPrice: number }) => ({ toppingId: topping.id, toppingName: topping.name, price: topping.additionalPrice })) } })) } },
-      include: { customer: true, items: { include: { toppings: true } } },
+      select: { id: true, invoiceNo: true, status: true, grandTotal: true },
     });
     await Promise.all([...productQuantity].map(([id, quantity]) => prisma.product.update({ where: { id }, data: { stock: { decrement: quantity } } })));
     return NextResponse.json({ success: true, order: { id: order.id, invoiceNo: order.invoiceNo, status: order.status, grandTotal: order.grandTotal } }, { status: 201 });
