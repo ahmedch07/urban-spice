@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { after, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
 import { isValidObjectId } from '@/lib/utils';
@@ -216,47 +216,48 @@ export async function PUT(
       },
     });
 
-    // Update Table status accordingly
-    if (targetTableId) {
-      try {
-        if (updated.paymentStatus === 'PAID' || updated.status === 'COMPLETED' || updated.status === 'CANCELLED' || updated.status === 'REFUNDED') {
-          const otherActive = await prisma.order.findFirst({
-            where: {
-              tableId: targetTableId,
-              id: { not: updated.id },
-              paymentStatus: 'UNPAID',
-              status: { notIn: ['CANCELLED', 'REFUNDED'] },
-            },
-          });
-          await prisma.restaurantTable.update({
-            where: { id: targetTableId },
-            data: { status: otherActive ? 'OCCUPIED' : 'AVAILABLE' },
-          });
-        } else {
-          await prisma.restaurantTable.update({
-            where: { id: targetTableId },
-            data: { status: 'OCCUPIED' },
-          });
+    after(async () => {
+      // Table state and audit history must be kept, but should not delay bill display.
+      if (targetTableId) {
+        try {
+          if (updated.paymentStatus === 'PAID' || updated.status === 'COMPLETED' || updated.status === 'CANCELLED' || updated.status === 'REFUNDED') {
+            const otherActive = await prisma.order.findFirst({
+              where: {
+                tableId: targetTableId,
+                id: { not: updated.id },
+                paymentStatus: 'UNPAID',
+                status: { notIn: ['CANCELLED', 'REFUNDED'] },
+              },
+            });
+            await prisma.restaurantTable.update({
+              where: { id: targetTableId },
+              data: { status: otherActive ? 'OCCUPIED' : 'AVAILABLE' },
+            });
+          } else {
+            await prisma.restaurantTable.update({
+              where: { id: targetTableId },
+              data: { status: 'OCCUPIED' },
+            });
+          }
+        } catch (tblErr) {
+          console.warn('Table update error:', tblErr);
         }
-      } catch (tblErr) {
-        console.warn('Table update error:', tblErr);
       }
-    }
 
-    // Audit log
-    try {
-      const userExists = isValidObjectId(session.userId)
-        ? await prisma.user.findUnique({ where: { id: session.userId } })
-        : null;
-      await prisma.auditLog.create({
-        data: {
-          userId: userExists ? userExists.id : null,
-          userName: session.name || 'Staff User',
-          action: 'UPDATE_ORDER',
-          details: `Updated order ${existing.invoiceNo} (Status: ${updated.status}, Payment: ${updated.paymentStatus})`,
-        },
-      });
-    } catch {}
+      try {
+        const userExists = isValidObjectId(session.userId)
+          ? await prisma.user.findUnique({ where: { id: session.userId } })
+          : null;
+        await prisma.auditLog.create({
+          data: {
+            userId: userExists ? userExists.id : null,
+            userName: session.name || 'Staff User',
+            action: 'UPDATE_ORDER',
+            details: `Updated order ${existing.invoiceNo} (Status: ${updated.status}, Payment: ${updated.paymentStatus})`,
+          },
+        });
+      } catch {}
+    });
 
     return NextResponse.json({ success: true, order: updated });
   } catch (error: any) {

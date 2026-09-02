@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { after, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
 import { generateInvoiceNumber, getLocalDateKey, isValidObjectId } from '@/lib/utils';
@@ -310,75 +310,46 @@ export async function POST(request: Request) {
       },
     };
 
-    let newOrder;
-    try {
-      newOrder = await prisma.$transaction(async (tx: any) => {
-        const ord = await tx.order.create({
-          data: orderData,
+    // Save the bill first. Auxiliary updates run after the response, so they
+    // never hold up the cashier's receipt screen.
+    const newOrder = await (prisma.order as any).create({
+      data: orderData,
+      include: {
+        table: true,
+        rider: true,
+        customer: true,
+        items: {
           include: {
-            table: true,
-            rider: true,
-            customer: true,
-            items: {
-              include: {
-                toppings: true,
-              },
-            },
-          },
-        });
-
-        // If Dine-In table was assigned, update table status
-        if (validTableId) {
-          await tx.restaurantTable.update({
-            where: { id: validTableId },
-            data: { status: isUnpaid ? 'OCCUPIED' : 'AVAILABLE' },
-          });
-        }
-
-        return ord;
-      });
-    } catch {
-      newOrder = await (prisma.order as any).create({
-        data: orderData,
-        include: {
-          table: true,
-          rider: true,
-          customer: true,
-          items: {
-            include: {
-              toppings: true,
-            },
+            toppings: true,
           },
         },
-      });
+      },
+    });
 
-      if (validTableId) {
-        try {
-          await prisma.restaurantTable.update({
-            where: { id: validTableId },
-            data: { status: isUnpaid ? 'OCCUPIED' : 'AVAILABLE' },
-          });
-        } catch {}
-      }
-    }
-
-    // Keep post-order bookkeeping parallel so it does not delay the receipt.
-    await Promise.allSettled([
-      ...items
-        .filter((item: any) => item.productId && isValidObjectId(item.productId) && validProductIds.has(item.productId))
-        .map((item: any) => prisma.product.update({
-          where: { id: item.productId },
-          data: { stock: { decrement: Number(item.quantity || 1) } },
-        })),
-      prisma.auditLog.create({
-        data: {
-          userId: validUserId,
-          userName: session.name || 'Staff User',
-          action: 'CREATE_ORDER',
-          details: `Created order ${invoiceNo} (${orderData.orderType}) for Rs. ${grandTotal} (${finalPaymentStatus})`,
-        },
-      }),
-    ]);
+    after(async () => {
+      await Promise.allSettled([
+        ...(validTableId
+          ? [prisma.restaurantTable.update({
+              where: { id: validTableId },
+              data: { status: isUnpaid ? 'OCCUPIED' : 'AVAILABLE' },
+            })]
+          : []),
+        ...items
+          .filter((item: any) => item.productId && isValidObjectId(item.productId) && validProductIds.has(item.productId))
+          .map((item: any) => prisma.product.update({
+            where: { id: item.productId },
+            data: { stock: { decrement: Number(item.quantity || 1) } },
+          })),
+        prisma.auditLog.create({
+          data: {
+            userId: validUserId,
+            userName: session.name || 'Staff User',
+            action: 'CREATE_ORDER',
+            details: `Created order ${invoiceNo} (${orderData.orderType}) for Rs. ${grandTotal} (${finalPaymentStatus})`,
+          },
+        }),
+      ]);
+    });
 
     return NextResponse.json({ success: true, order: newOrder }, { status: 201 });
   } catch (error: any) {
