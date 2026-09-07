@@ -656,7 +656,6 @@ export default function POSPage() {
         onClose={() => setIsReceiptModalOpen(false)}
         order={completedOrder}
         onNewOrder={handleResetOrder}
-        autoPrint
       />
     </div>
   );

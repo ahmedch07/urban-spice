@@ -141,8 +141,20 @@ export async function PUT(
         return NextResponse.json({ error: 'An order must contain at least one item' }, { status: 400 });
       }
 
+      const requestedProductIds = [...new Set(
+        items
+          .map((item: any) => item.productId)
+          .filter((productId: unknown): productId is string =>
+            typeof productId === 'string' && isValidObjectId(productId)
+          )
+      )];
       const validProductIds = new Set(
-        (await prisma.product.findMany({ select: { id: true } })).map((product) => product.id)
+        requestedProductIds.length
+          ? (await prisma.product.findMany({
+              where: { id: { in: requestedProductIds } },
+              select: { id: true },
+            })).map((product) => product.id)
+          : []
       );
 
       const normalizedItems = items.map((item: any) => {

@@ -36,12 +36,13 @@ body {
 /* Thermal Printer Styling */
 @media print {
   @page {
-    size: 80mm auto;
+    size: auto;
     margin: 0;
   }
 
   html, body {
-    width: 80mm !important;
+    width: auto !important;
+    min-height: 0 !important;
     margin: 0 !important;
     padding: 0 !important;
     background: #fff !important;
@@ -51,9 +52,39 @@ body {
     visibility: hidden !important;
   }
 
+  #thermal-receipt-modal {
+    position: static !important;
+    display: block !important;
+    width: var(--receipt-width, 80mm) !important;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  #thermal-receipt-modal .receipt-modal-dialog,
+  #thermal-receipt-modal .receipt-preview-shell {
+    display: block !important;
+    width: auto !important;
+    max-width: none !important;
+    height: auto !important;
+    max-height: none !important;
+    min-height: 0 !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: #fff !important;
+  }
+
   #printable-receipt, #printable-receipt * {
     visibility: visible !important;
     color: #000000 !important;
+    opacity: 1 !important;
     border-color: rgba(0, 0, 0, 0.8) !important;
     text-shadow: none !important;
   }
@@ -63,11 +94,12 @@ body {
     display: block !important;
     left: auto !important;
     top: auto !important;
-    width: 80mm !important;
-    max-width: 80mm !important;
+    width: var(--receipt-width, 80mm) !important;
+    max-width: var(--receipt-width, 80mm) !important;
+    min-height: 0 !important;
     box-sizing: border-box !important;
     margin: 0 !important;
-    padding: 4mm !important;
+    padding: 2.5mm 3mm 4mm !important;
     border: none !important;
     border-radius: 0 !important;
     box-shadow: none !important;

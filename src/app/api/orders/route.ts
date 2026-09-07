@@ -114,6 +114,24 @@ export async function POST(request: Request) {
     }
 
     const requestedTableNo = tableNo ? String(tableNo).trim() : null;
+    const requestedProductIds = [...new Set(items
+      .map((item: any) => item.productId)
+      .filter((id: unknown): id is string => typeof id === 'string' && isValidObjectId(id)))];
+    const requestedFlavorIds = [...new Set(items
+      .map((item: any) => item.flavorId)
+      .filter((id: unknown): id is string => typeof id === 'string' && isValidObjectId(id)))];
+    const requestedSizeIds = [...new Set(items
+      .map((item: any) => item.sizeId)
+      .filter((id: unknown): id is string => typeof id === 'string' && isValidObjectId(id)))];
+    const requestedCrustIds = [...new Set(items
+      .map((item: any) => item.crustId)
+      .filter((id: unknown): id is string => typeof id === 'string' && isValidObjectId(id)))];
+    const requestedToppingIds = [...new Set(items
+      .flatMap((item: any) => Array.isArray(item.toppings) ? item.toppings.map((topping: any) => topping.toppingId) : [])
+      .filter((id: unknown): id is string => typeof id === 'string' && isValidObjectId(id)))];
+    const needsPizzaFallbackProduct = items.some(
+      (item: any) => item.isPizza && (!item.productId || !isValidObjectId(item.productId))
+    );
     const tableLookup = isValidObjectId(tableId)
       ? prisma.restaurantTable.findUnique({ where: { id: tableId } })
       : requestedTableNo
@@ -157,12 +175,24 @@ export async function POST(request: Request) {
         ? prisma.user.findUnique({ where: { id: session.userId } })
         : Promise.resolve(null),
       prisma.user.findFirst(),
-      prisma.product.findFirst({ where: { isPizza: true } }),
-      prisma.product.findMany({ select: { id: true } }),
-      prisma.pizzaFlavor.findMany({ select: { id: true } }),
-      prisma.pizzaSize.findMany({ select: { id: true } }),
-      prisma.crust.findMany({ select: { id: true } }),
-      prisma.topping.findMany({ select: { id: true } }),
+      needsPizzaFallbackProduct
+        ? prisma.product.findFirst({ where: { isPizza: true } })
+        : Promise.resolve(null),
+      requestedProductIds.length
+        ? prisma.product.findMany({ where: { id: { in: requestedProductIds } }, select: { id: true } })
+        : Promise.resolve([]),
+      requestedFlavorIds.length
+        ? prisma.pizzaFlavor.findMany({ where: { id: { in: requestedFlavorIds } }, select: { id: true } })
+        : Promise.resolve([]),
+      requestedSizeIds.length
+        ? prisma.pizzaSize.findMany({ where: { id: { in: requestedSizeIds } }, select: { id: true } })
+        : Promise.resolve([]),
+      requestedCrustIds.length
+        ? prisma.crust.findMany({ where: { id: { in: requestedCrustIds } }, select: { id: true } })
+        : Promise.resolve([]),
+      requestedToppingIds.length
+        ? prisma.topping.findMany({ where: { id: { in: requestedToppingIds } }, select: { id: true } })
+        : Promise.resolve([]),
       prisma.salesDay.upsert({
         where: { dateKey: getLocalDateKey() },
         create: { dateKey: getLocalDateKey() },
