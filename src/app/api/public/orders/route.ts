@@ -9,10 +9,10 @@ function getPosExtraTopping(product: { name: string; category?: { slug: string }
   const category = product.category?.slug?.toLowerCase() || '';
   const name = product.name.toLowerCase();
 
-  if (category === 'pasta') return { name: 'Extra Topping', additionalPrice: name.includes('(half)') ? 70 : 150 };
-  if (category === 'sandwiches') return { name: 'Extra Topping', additionalPrice: 150 };
-  if (category === 'burgers') return { name: 'With Cheese', additionalPrice: 100 };
-  if (name === 'loaded fries') return { name: 'Extra Topping', additionalPrice: 150 };
+  if (category === 'pasta') return { id: 'extra-topping', name: 'Extra Topping', additionalPrice: name.includes('(half)') ? 70 : 150 };
+  if (category === 'sandwiches') return { id: 'extra-topping', name: 'Extra Topping', additionalPrice: 150 };
+  if (category === 'burgers') return { id: 'extra-topping', name: 'With Cheese', additionalPrice: 100 };
+  if (name === 'loaded fries') return { id: 'extra-topping', name: 'Extra Topping', additionalPrice: 150 };
 
   return null;
 }

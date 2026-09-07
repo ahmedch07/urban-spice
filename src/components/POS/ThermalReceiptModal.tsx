@@ -19,8 +19,13 @@ export default function ThermalReceiptModal({
   onNewOrder,
 }: ThermalReceiptModalProps) {
   const { storeSettings } = useApp();
-  const receiptWidth = storeSettings.receiptSize === '58mm' ? '58mm' : '80mm';
-  const receiptStyle = { '--receipt-width': receiptWidth } as CSSProperties;
+  const is58mm = storeSettings.receiptSize === '58mm';
+  const receiptWidth = is58mm ? '58mm' : '80mm';
+  const printableWidth = is58mm ? '48mm' : '72mm';
+  const receiptStyle = {
+    '--receipt-width': receiptWidth,
+    '--receipt-width-printable': printableWidth,
+  } as CSSProperties;
 
   if (!isOpen || !order) return null;
 
@@ -49,33 +54,33 @@ export default function ThermalReceiptModal({
         <div className="receipt-preview-shell flex-1 overflow-y-auto p-6 bg-slate-950 flex justify-center">
           <div
             id="printable-receipt"
-            style={receiptStyle}
-            className="w-full bg-white text-black p-4 text-[13px] font-mono font-semibold rounded shadow-xl border border-slate-200"
+            style={{ width: printableWidth, maxWidth: printableWidth }}
+            className="bg-white text-black p-3 text-[12px] font-mono font-bold rounded shadow-xl border border-slate-200 leading-snug"
           >
             {/* Store Header */}
-            <div className="text-center pb-3 border-b border-dashed border-slate-400 space-y-0.5">
-              <div className="flex justify-center mb-1.5">
+            <div className="text-center pb-2.5 border-b border-dashed border-slate-500 space-y-0.5">
+              <div className="flex justify-center mb-1">
                 <img
                   src={storeSettings.storeLogo || '/logo.png'}
                   alt="Urban Spice Logo"
                   className="w-14 h-14 object-contain rounded-full"
                 />
               </div>
-              <h1 className="font-extrabold text-base uppercase tracking-tight">
+              <h1 className="font-extrabold text-base uppercase tracking-tight break-words">
                 {storeSettings.storeName}
               </h1>
-              <p className="text-[11px]">{storeSettings.storeAddress}</p>
-              <p className="text-[11px]">
+              <p className="text-[11px] font-bold break-words">{storeSettings.storeAddress}</p>
+              <p className="text-[11px] font-bold">
                 Ph: {storeSettings.storePhone} {storeSettings.whatsappNumber && `| WA: ${storeSettings.whatsappNumber}`}
               </p>
-              {storeSettings.storeEmail && <p className="text-[10px]">{storeSettings.storeEmail}</p>}
+              {storeSettings.storeEmail && <p className="text-[10px] font-bold break-words">{storeSettings.storeEmail}</p>}
             </div>
 
             {/* Invoice Info */}
-            <div className="py-2.5 border-b border-dashed border-slate-400 space-y-1 text-[12px]">
-              <div className="flex justify-between font-bold">
+            <div className="py-2 border-b border-dashed border-slate-500 space-y-1 text-[12px]">
+              <div className="flex justify-between font-extrabold items-center">
                 <span>INV #: {order.invoiceNo}</span>
-                <span>
+                <span className="uppercase">
                   {order.orderType === 'DINE_IN'
                     ? 'DINE IN'
                     : order.orderType === 'DELIVERY'
@@ -83,50 +88,50 @@ export default function ThermalReceiptModal({
                     : 'TAKEAWAY'}
                 </span>
               </div>
-              <div className="flex justify-between text-[11px] text-slate-700">
+              <div className="flex justify-between text-[11px] font-bold text-slate-900">
                 <span>Date: {formatDate(order.createdAt)}</span>
               </div>
-              <div className="flex justify-between text-[11px] text-slate-700">
+              <div className="flex justify-between text-[11px] font-bold text-slate-900">
                 <span>Cashier: {order.user?.name || 'Staff'}</span>
                 {order.tableNo && <span>Table: <strong>{order.tableNo}</strong></span>}
                 {order.riderName && <span>Rider: <strong>{order.riderName}</strong></span>}
               </div>
               {order.customer && (
-                <div className="pt-1 border-t border-slate-200 text-[11px] space-y-0.5">
+                <div className="pt-1 border-t border-slate-300 text-[11px] font-bold space-y-0.5">
                   <div>Customer: <strong>{order.customer.name}</strong></div>
                   <div>Phone: {order.customer.phone}</div>
-                  {order.customer.address && <div>Address: {order.customer.address}</div>}
+                  {order.customer.address && <div className="break-words">Address: {order.customer.address}</div>}
                 </div>
               )}
             </div>
 
             {/* Items Table */}
-            <div className="py-3 border-b border-dashed border-slate-400 space-y-2">
-              <div className="grid grid-cols-[minmax(0,1fr)_46px_50px] gap-1 font-bold text-[11px] uppercase border-b pb-1 border-slate-300">
-                <span>Item / Customization</span>
-                <span className="text-right">Qty x Price</span>
-                <span className="text-right">Total</span>
+            <div className="py-2 border-b border-dashed border-slate-500 space-y-2">
+              <div className="flex items-center justify-between font-extrabold text-[11px] uppercase border-b pb-1 border-slate-500 gap-1">
+                <span className="flex-1 min-w-0">Item / Customization</span>
+                <span className="text-right whitespace-nowrap px-1">Qty × Price</span>
+                <span className="text-right whitespace-nowrap w-14 shrink-0">Total</span>
               </div>
 
               {order.items?.map((item: any) => (
                 <div key={item.id} className="space-y-0.5">
-                  <div className="grid grid-cols-[minmax(0,1fr)_46px_50px] gap-1 font-bold text-[12px]">
-                    <span className="break-words">{item.productName}</span>
-                    <span className="text-right whitespace-nowrap">{item.quantity} × {item.unitPrice}</span>
-                    <span className="text-right whitespace-nowrap">{item.total}</span>
+                  <div className="flex items-baseline justify-between font-bold text-[12px] gap-1">
+                    <span className="flex-1 min-w-0 break-words leading-tight">{item.productName}</span>
+                    <span className="text-right whitespace-nowrap px-1 font-mono">{item.quantity} × {item.unitPrice}</span>
+                    <span className="text-right whitespace-nowrap w-14 shrink-0 font-mono">{item.total}</span>
                   </div>
-                  <div className="text-[11px] text-slate-600 break-words">
+                  <div className="text-[11px] text-slate-900 font-semibold break-words">
                     <span>
                       {item.sizeName} {item.flavorName} {item.crustName ? `(${item.crustName})` : ''}
                     </span>
                   </div>
                   {item.toppings && item.toppings.length > 0 && (
-                    <div className="text-[10px] text-slate-500 italic pl-1">
+                    <div className="text-[10px] text-slate-700 italic pl-1 break-words">
                       + Toppings: {item.toppings.map((t: any) => t.toppingName).join(', ')}
                     </div>
                   )}
                   {item.specialInstructions && (
-                    <div className="text-[10px] text-slate-500 italic pl-1">
+                    <div className="text-[10px] text-slate-700 italic pl-1 break-words">
                       Note: "{item.specialInstructions}"
                     </div>
                   )}
@@ -135,50 +140,50 @@ export default function ThermalReceiptModal({
             </div>
 
             {/* Billing Calculation */}
-            <div className="py-2.5 border-b border-dashed border-slate-400 space-y-1 text-[12px]">
-              <div className="flex justify-between">
+            <div className="py-2 border-b border-dashed border-slate-500 space-y-1 text-[12px]">
+              <div className="flex justify-between items-center font-bold">
                 <span>Subtotal</span>
-                <span>{order.subtotal}</span>
+                <span className="font-mono">{order.subtotal}</span>
               </div>
               {order.discount > 0 && (
-                <div className="flex justify-between text-slate-700">
+                <div className="flex justify-between items-center text-slate-900 font-bold">
                   <span>Discount</span>
-                  <span>-{order.discount}</span>
+                  <span className="font-mono">-{order.discount}</span>
                 </div>
               )}
               {order.tax > 0 && (
-                <div className="flex justify-between text-slate-700">
+                <div className="flex justify-between items-center text-slate-900 font-bold">
                   <span>Tax ({storeSettings.taxRate}%)</span>
-                  <span>+{order.tax}</span>
+                  <span className="font-mono">+{order.tax}</span>
                 </div>
               )}
               {order.deliveryFee > 0 && (
-                <div className="flex justify-between text-slate-700">
+                <div className="flex justify-between items-center text-slate-900 font-bold">
                   <span>Delivery Fee</span>
-                  <span>+{order.deliveryFee}</span>
+                  <span className="font-mono">+{order.deliveryFee}</span>
                 </div>
               )}
-              <div className="flex justify-between font-extrabold text-[15px] border-t border-slate-300 pt-1.5 mt-1">
+              <div className="flex justify-between items-center font-black text-[15px] border-t border-slate-500 pt-1.5 mt-1">
                 <span>Grand Total</span>
-                <span>{storeSettings.currency} {order.grandTotal}</span>
+                <span className="font-mono">{storeSettings.currency} {order.grandTotal}</span>
               </div>
-              <div className="flex justify-between text-[11px] text-slate-600 pt-1">
+              <div className="flex justify-between items-center text-[11px] text-slate-900 font-bold pt-1">
                 <span>Payment Method</span>
-                <span className="uppercase font-bold">{order.paymentMethod}</span>
+                <span className="uppercase font-extrabold">{order.paymentMethod}</span>
               </div>
-              <div className="flex justify-between text-[11px] text-slate-600">
+              <div className="flex justify-between items-center text-[11px] text-slate-900 font-bold">
                 <span>Cash Tendered</span>
-                <span>{order.amountPaid}</span>
+                <span className="font-mono">{order.amountPaid}</span>
               </div>
-              <div className="flex justify-between text-[11px] font-bold">
+              <div className="flex justify-between items-center text-[11px] font-bold">
                 <span>Change Given</span>
-                <span>{order.change}</span>
+                <span className="font-mono">{order.change}</span>
               </div>
             </div>
 
             {/* Receipt Footer */}
-            <div className="text-center pt-3 text-[11px] space-y-1 text-slate-600">
-              <p className="font-semibold">{storeSettings.invoiceFooter}</p>
+            <div className="text-center pt-2.5 text-[11px] space-y-0.5 text-slate-900">
+              <p className="font-bold break-words">{storeSettings.invoiceFooter}</p>
             </div>
           </div>
         </div>
