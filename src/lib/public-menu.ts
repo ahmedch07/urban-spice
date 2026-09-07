@@ -1,9 +1,7 @@
-import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import type { MenuData } from "@/components/landing/types";
 
-export const getPublicMenu = unstable_cache(
-  async (): Promise<MenuData> => {
+export async function getPublicMenu(): Promise<MenuData> {
     const [categories, products, flavors, sizes, crusts, toppings, settings] =
       await Promise.all([
         prisma.category.findMany({
@@ -14,7 +12,6 @@ export const getPublicMenu = unstable_cache(
         prisma.product.findMany({
           where: {
             active: true,
-            stock: { gt: 0 },
             category: { active: true },
           },
           select: {
@@ -25,7 +22,7 @@ export const getPublicMenu = unstable_cache(
             image: true,
             isPizza: true,
             categoryId: true,
-            category: { select: { name: true } },
+            category: { select: { name: true, slug: true } },
           },
           orderBy: { name: "asc" },
         }),
@@ -48,7 +45,7 @@ export const getPublicMenu = unstable_cache(
           orderBy: { name: "asc" },
         }),
         prisma.topping.findMany({
-          where: { active: true, stock: { gt: 0 } },
+          where: { active: true },
           select: { id: true, name: true, additionalPrice: true },
           orderBy: { name: "asc" },
         }),
@@ -71,7 +68,4 @@ export const getPublicMenu = unstable_cache(
       toppings,
       settings: Object.fromEntries(settings.map((setting) => [setting.key, setting.value])),
     };
-  },
-  ["public-menu"],
-  { revalidate: 60, tags: ["public-menu"] },
-);
+}

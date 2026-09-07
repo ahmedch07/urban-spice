@@ -5,6 +5,18 @@ import { generateInvoiceNumber, getLocalDateKey, isValidObjectId } from '@/lib/u
 const clean = (value: unknown) => typeof value === 'string' ? value.trim() : '';
 const quantityOf = (value: unknown) => Math.floor(Number(value));
 
+function getPosExtraTopping(product: { name: string; category?: { slug: string } | null }) {
+  const category = product.category?.slug?.toLowerCase() || '';
+  const name = product.name.toLowerCase();
+
+  if (category === 'pasta') return { name: 'Extra Topping', additionalPrice: name.includes('(half)') ? 70 : 150 };
+  if (category === 'sandwiches') return { name: 'Extra Topping', additionalPrice: 150 };
+  if (category === 'burgers') return { name: 'With Cheese', additionalPrice: 100 };
+  if (name === 'loaded fries') return { name: 'Extra Topping', additionalPrice: 150 };
+
+  return null;
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -33,7 +45,7 @@ export async function POST(request: Request) {
 
     const [staffUser, products, flavors, sizes, crusts, toppings, feeSetting, prefixSetting] = await Promise.all([
       prisma.user.findFirst({ where: { active: true }, orderBy: { createdAt: 'asc' }, select: { id: true } }),
-      prisma.product.findMany({ where: { id: { in: productIds }, active: true, stock: { gt: 0 } }, select: { id: true, name: true, basePrice: true, isPizza: true, stock: true } }),
+      prisma.product.findMany({ where: { id: { in: productIds }, active: true, stock: { gt: 0 } }, select: { id: true, name: true, basePrice: true, isPizza: true, stock: true, category: { select: { slug: true } } } }),
       prisma.pizzaFlavor.findMany({ where: { id: { in: flavorIds }, active: true }, select: { id: true, name: true, flavorPrices: { select: { sizeId: true, price: true } } } }),
       prisma.pizzaSize.findMany({ where: { id: { in: sizeIds } }, select: { id: true, name: true } }),
       prisma.crust.findMany({ where: { id: { in: crustIds }, active: true }, select: { id: true, name: true, additionalPrice: true } }),
@@ -93,10 +105,12 @@ export async function POST(request: Request) {
         .map((id: string) => toppingById.get(id) as { id: string; name: string; additionalPrice: number } | undefined)
         .filter((topping): topping is { id: string; name: string; additionalPrice: number } => Boolean(topping));
       if (itemToppings.length !== requestedToppings.length) return NextResponse.json({ error: 'A selected topping is unavailable.' }, { status: 400 });
-      const toppingsPrice = itemToppings.reduce((sum, topping) => sum + Number(topping.additionalPrice || 0), 0);
+      const extraTopping = raw.extraTopping === true ? getPosExtraTopping(product) : null;
+      const finalToppings = extraTopping ? [...itemToppings, extraTopping] : itemToppings;
+      const toppingsPrice = finalToppings.reduce((sum, topping) => sum + Number(topping.additionalPrice || 0), 0);
       const total = (unitPrice + toppingsPrice) * quantity;
       subtotal += total;
-      normalizedItems.push({ product, flavor, size, crust, quantity, unitPrice, total, toppings: itemToppings, note: clean(raw.specialInstructions).slice(0, 300) });
+      normalizedItems.push({ product, flavor, size, crust, quantity, unitPrice, total, toppings: finalToppings, note: clean(raw.specialInstructions).slice(0, 300) });
     }
     const deliveryFee = orderType === 'DELIVERY' ? Math.max(0, Number(feeSetting?.value || 0) || 0) : 0;
     const grandTotal = Math.round(subtotal + deliveryFee);

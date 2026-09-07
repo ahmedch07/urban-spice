@@ -116,6 +116,20 @@ function getDrinkImage(product?: Product | null) {
   return product?.image || "/logo.png";
 }
 
+function getPosExtraTopping(product: Product) {
+  const category = product.category?.slug?.toLowerCase() || "";
+  const name = product.name.toLowerCase();
+
+  if (category === "pasta") {
+    return { name: "Extra Topping", price: name.includes("(half)") ? 70 : 150 };
+  }
+  if (category === "sandwiches") return { name: "Extra Topping", price: 150 };
+  if (category === "burgers") return { name: "With Cheese", price: 100 };
+  if (name === "loaded fries") return { name: "Extra Topping", price: 150 };
+
+  return undefined;
+}
+
 function getPizzaFlavorOrder(name: string) {
   const normalized = name.toLowerCase();
 
@@ -174,6 +188,7 @@ const categorySequence = [
   { id: "nuggets", name: "Nuggets" },
   { id: "dips", name: "Dips" },
   { id: "beverages", name: "Drinks" },
+  { id: "other", name: "More Menu Items" },
 ] as const;
 
 function getCategoryBucket(categoryName?: string | null): string {
@@ -315,7 +330,6 @@ export function Landing({ initialMenu }: LandingProps) {
 
     for (const product of products) {
       const bucket = getCategoryBucket(product.category?.name || "");
-      if (bucket === "other") continue;
       const current = groups.get(bucket) ?? [];
       current.push(product);
       groups.set(bucket, current);
@@ -459,7 +473,7 @@ export function Landing({ initialMenu }: LandingProps) {
     setPizza(undefined);
   }
 
-  function addProduct(product: Product, configuration: PizzaConfiguration) {
+  function addProduct(product: Product, configuration: PizzaConfiguration, includeExtraTopping = false) {
     if (!menu) return;
     const flavor = menu.flavors.find(
       (item) => item.id === configuration.flavorId,
@@ -477,10 +491,11 @@ export function Landing({ initialMenu }: LandingProps) {
           0),
       0,
     );
+    const posExtraTopping = includeExtraTopping ? getPosExtraTopping(product) : undefined;
     const price = product.isPizza
       ? (flavorPrice || product.basePrice) + crustPrice + toppingsPrice
-      : product.basePrice;
-    const key = `${product.id}-${configuration.flavorId}-${configuration.sizeId}-${configuration.crustId}-${configuration.toppingIds.join(",")}`;
+      : product.basePrice + (posExtraTopping?.price || 0);
+    const key = `${product.id}-${configuration.flavorId}-${configuration.sizeId}-${configuration.crustId}-${configuration.toppingIds.join(",")}-${posExtraTopping ? "extra" : "standard"}`;
 
     setCart((currentCart) => {
       const existingItem = currentCart.find((item) => item.key === key);
@@ -497,6 +512,7 @@ export function Landing({ initialMenu }: LandingProps) {
               price,
               quantity: 1,
               ...configuration,
+              ...(posExtraTopping ? { extraTopping: true } : {}),
             },
           ];
     });
@@ -953,8 +969,9 @@ export function Landing({ initialMenu }: LandingProps) {
       {pendingCartItem && (
         <AddToCartDialog
           product={pendingCartItem.product}
-          onConfirm={() =>
-            addProduct(pendingCartItem.product, pendingCartItem.configuration)
+          extraTopping={getPosExtraTopping(pendingCartItem.product)}
+          onConfirm={(includeExtraTopping) =>
+            addProduct(pendingCartItem.product, pendingCartItem.configuration, includeExtraTopping)
           }
           onCancel={() => setPendingCartItem(undefined)}
         />

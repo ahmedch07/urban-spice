@@ -8,6 +8,7 @@ export type CartItem = {
   sizeId?: string;
   crustId?: string;
   toppingIds: string[];
+  extraTopping?: boolean;
 };
 
 export type MenuData = {
@@ -20,7 +21,7 @@ export type MenuData = {
   settings: { storeLogo?: string; storeName?: string; defaultDeliveryFee?: number | string };
 };
 
-export type Product = { id: string; name: string; basePrice: number; description?: string | null; image?: string | null; isPizza: boolean; categoryId: string; category?: { name: string } | null };
+export type Product = { id: string; name: string; basePrice: number; description?: string | null; image?: string | null; isPizza: boolean; categoryId: string; category?: { name: string; slug?: string } | null };
 export type Flavor = { id: string; name: string; flavorPrices: Array<{ sizeId: string; price: number }> };
 export type Customer = { name: string; phone: string; address: string };
 export type OrderType = "DELIVERY" | "TAKEAWAY";

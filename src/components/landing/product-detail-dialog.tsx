@@ -81,6 +81,7 @@ export function ProductDetailDialog({
   onClose,
 }: ProductDetailDialogProps) {
   const hasPizzaOptions = product.isPizza || menu.flavors.length > 0;
+  const selectedFlavor = menu.flavors.find((flavor) => flavor.id === flavorId);
   const sizeOptions = menu.sizes.length > 0
     ? menu.sizes
     : [
@@ -136,7 +137,12 @@ export function ProductDetailDialog({
                       ? "rounded-xl bg-[#4a0a18] px-3 py-2 text-center text-xs font-black text-white"
                       : "rounded-xl border border-stone-200 bg-white px-3 py-2 text-center text-xs font-bold text-[#4a0a18] hover:bg-stone-50"}
                   >
-                    {size.name}
+                    <span>{size.name}</span>
+                    <span className="mt-0.5 block text-[10px] opacity-80">
+                      {formatMoney(
+                        selectedFlavor?.flavorPrices.find((price) => price.sizeId === size.id)?.price ?? product.basePrice,
+                      )}
+                    </span>
                   </button>
                 ))}
               </div>
