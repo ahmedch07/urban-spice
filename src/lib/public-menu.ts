@@ -52,7 +52,7 @@ export async function getPublicMenu(): Promise<MenuData> {
         prisma.storeSetting.findMany({
           where: {
             key: {
-              in: ["storeName", "storeLogo", "defaultDeliveryFee", "storePhone"],
+              in: ["storeName", "storeLogo", "defaultDeliveryFee", "storePhone", "whatsappNumber"],
             },
           },
           select: { key: true, value: true },

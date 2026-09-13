@@ -18,7 +18,7 @@ export type MenuData = {
   sizes: Array<{ id: string; name: string }>;
   crusts: Array<{ id: string; name: string; additionalPrice: number }>;
   toppings: Array<{ id: string; name: string; additionalPrice: number }>;
-  settings: { storeLogo?: string; storeName?: string; defaultDeliveryFee?: number | string };
+  settings: { storeLogo?: string; storeName?: string; storePhone?: string; whatsappNumber?: string; defaultDeliveryFee?: number | string };
 };
 
 export type Product = { id: string; name: string; basePrice: number; description?: string | null; image?: string | null; isPizza: boolean; categoryId: string; category?: { name: string; slug?: string } | null };

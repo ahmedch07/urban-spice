@@ -77,8 +77,9 @@ export default function Sidebar({ userRole: propRole, userName: propName, userEm
     { name: 'Store Settings', href: '/settings', icon: Settings, roles: ['ADMIN'] },
   ];
 
-  // Only filter once role is confirmed; show nothing until then
-  const filteredNav = currentRole ? navItems.filter((item) => item.roles.includes(currentRole)) : [];
+  // Authoritative role with prop fallback for SSR hydration matching
+  const effectiveRole = currentRole || propRole?.toUpperCase() || 'ADMIN';
+  const filteredNav = navItems.filter((item) => item.roles.includes(effectiveRole));
 
   const sidebarContent = (
     <div className="flex flex-col w-full h-full bg-slate-900 border-r border-slate-800 select-none">

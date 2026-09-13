@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AddToCartDialog } from "./add-to-cart-dialog";
 import { CartDrawer } from "./cart-drawer";
 import { CustomerMenuDrawer } from "./customer-menu-drawer";
-import { CustomerOrdersDialog } from "./customer-orders-dialog";
+
 import { LandingFooter } from "./landing-footer";
 import { LandingHeader } from "./landing-header";
 import { MenuHero } from "./menu-hero";
@@ -180,15 +180,15 @@ function getPizzaGroupTitle(group: "special" | "stuffer" | "regular" | "square" 
 const categorySequence = [
   { id: "pizza", name: "Pizza" },
   { id: "pasta", name: "Pasta" },
-  { id: "burgers", name: "Burger" },
   { id: "sandwiches", name: "Sandwich" },
-  { id: "fries", name: "Fries" },
-  { id: "spin-rolls", name: "Spin Roll" },
+  { id: "burgers", name: "Burger" },
+  { id: "other", name: "Urban Platter" },
   { id: "wings", name: "Wings" },
   { id: "nuggets", name: "Nuggets" },
+  { id: "spin-rolls", name: "Spin Roll" },
+  { id: "fries", name: "Fries" },
   { id: "dips", name: "Dips" },
   { id: "beverages", name: "Drinks" },
-  { id: "other", name: "More Menu Items" },
 ] as const;
 
 function getCategoryBucket(categoryName?: string | null): string {
@@ -196,6 +196,7 @@ function getCategoryBucket(categoryName?: string | null): string {
 
   if (normalizedName.includes("pizza")) return "pizza";
   if (normalizedName.includes("pasta")) return "pasta";
+  if (normalizedName.includes("platter")) return "other";
   if (normalizedName.includes("burger")) return "burgers";
   if (normalizedName.includes("sandwich")) return "sandwiches";
   if (normalizedName.includes("fries")) return "fries";
@@ -235,7 +236,7 @@ export function Landing({ initialMenu }: LandingProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [isCustomerMenuOpen, setIsCustomerMenuOpen] = useState(false);
-  const [ordersScope, setOrdersScope] = useState<"active" | "history">();
+
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [pizza, setPizza] = useState<Product>();
@@ -576,6 +577,10 @@ export function Landing({ initialMenu }: LandingProps) {
         storeLogo: menu?.settings.storeLogo,
       });
       window.localStorage.setItem("urban-spice-customer", JSON.stringify(customer));
+      try {
+        window.localStorage.setItem("urban_spice_new_online_order", String(Date.now()));
+        window.dispatchEvent(new Event("urban_spice_new_online_order"));
+      } catch {}
       setCart([]);
       setIsCheckoutOpen(false);
       setIsCartOpen(false);
@@ -608,7 +613,7 @@ export function Landing({ initialMenu }: LandingProps) {
         onOpenMenu={() => setIsCustomerMenuOpen(true)}
         onOpenCart={() => setIsCartOpen(true)}
       />
-      <section className="mx-auto max-w-7xl px-4 py-7 sm:px-6 sm:py-10">
+      <section id="explore-menu" className="mx-auto max-w-7xl px-4 py-7 sm:px-6 sm:py-10">
         <MenuHero />
         <div className="mb-5 flex items-end justify-between gap-4">
           <div>
@@ -671,7 +676,9 @@ export function Landing({ initialMenu }: LandingProps) {
                                     ? "Crispy chicken nuggets"
                                     : category.id === "dips"
                                       ? "Sauces and dips"
-                                      : "Cold drinks and beverages"}
+                                                                             : category.id === "other"
+                                         ? "Urban Special Platter & Deals"
+                                         : "Cold drinks and beverages"}
                   </p>
                   <div className="mt-4 flex items-center justify-between border-t border-stone-100 pt-3">
                     <strong className="text-base text-[#4a0a18]">
@@ -937,9 +944,24 @@ export function Landing({ initialMenu }: LandingProps) {
           </div>
         )}
       </section>
-      <LandingFooter storeName={menu.settings.storeName} />
-      {isCustomerMenuOpen && <CustomerMenuDrawer onClose={() => setIsCustomerMenuOpen(false)} onHome={() => window.scrollTo({ top: 0, behavior: "smooth" })} onCart={() => setIsCartOpen(true)} onMyOrders={() => setOrdersScope("active")} onOrderHistory={() => setOrdersScope("history")} />}
-      {ordersScope && <CustomerOrdersDialog scope={ordersScope} customerName={customer.name} phone={customer.phone} onClose={() => setOrdersScope(undefined)} />}
+      <LandingFooter storeName={menu.settings.storeName} storePhone={menu.settings.storePhone} whatsappNumber={menu.settings.whatsappNumber} />
+      {isCustomerMenuOpen && (
+        <CustomerMenuDrawer
+          onClose={() => setIsCustomerMenuOpen(false)}
+          onHome={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          onCart={() => setIsCartOpen(true)}
+          categories={mainCategoryCards}
+          selectedCategory={selectedCategory}
+          onSelectCategory={(catId) => {
+            setSelectedCategory(catId);
+            setIsCustomerMenuOpen(false);
+            setTimeout(() => {
+              document.getElementById("explore-menu")?.scrollIntoView({ behavior: "smooth" });
+            }, 50);
+          }}
+        />
+      )}
+
       {pizza && (
         <ProductDetailDialog
           product={pizza}

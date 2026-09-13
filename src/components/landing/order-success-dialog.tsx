@@ -36,7 +36,7 @@ export function OrderSuccessDialog({
             <CheckCircle2 className="h-8 w-8 shrink-0 text-emerald-500" />
             <div>
               <h2 id="receipt-dialog-title" className="font-black text-[#32170e]">Order received!</h2>
-              <p className="text-sm text-stone-500">Your receipt is ready.</p>
+              <p className="text-sm text-stone-500">Your order has been placed successfully.</p>
             </div>
           </div>
           <Button type="button" variant="ghost" size="icon" className="rounded-full" onClick={onClose} aria-label="Close receipt"><X className="h-5 w-5" /></Button>
@@ -64,13 +64,14 @@ export function OrderSuccessDialog({
               <div className="flex justify-between border-t border-stone-300 pt-2 text-sm font-black"><span>Total</span><span>{formatMoney(order.grandTotal)}</span></div>
               <div className="flex justify-between pt-1 text-[10px]"><span>Payment</span><span>{order.paymentMethod}</span></div>
             </div>
-            <p className="pt-3 text-center text-[10px] text-stone-600">Please keep this receipt for your records.</p>
+            <p className="pt-3 text-center text-[10px] text-stone-600">Please keep your invoice number for order tracking.</p>
           </article>
         </div>
 
         <footer className="no-print flex gap-3 border-t border-orange-100 bg-white p-4">
-          <Button type="button" variant="outline" className="flex-1" onClick={onClose}>Back to menu</Button>
-          <Button type="button" className="flex-1 bg-[#32170e] text-white hover:bg-[#572314]" onClick={() => window.print()}><Printer className="mr-2 h-4 w-4" />Print Bill</Button>
+          <Button type="button" className="w-full bg-[#32170e] text-white hover:bg-[#572314] font-bold text-sm py-3 rounded-xl" onClick={onClose}>
+            Back to Menu
+          </Button>
         </footer>
       </section>
     </div>

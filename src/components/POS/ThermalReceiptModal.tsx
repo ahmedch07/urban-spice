@@ -2,7 +2,7 @@
 
 import type { CSSProperties } from 'react';
 import { X, Printer, CheckCircle2 } from 'lucide-react';
-import { formatDate } from '@/lib/utils';
+import { formatDate, displayProductName } from '@/lib/utils';
 import { useApp } from '@/context/AppContext';
 
 interface ThermalReceiptModalProps {
@@ -79,7 +79,7 @@ export default function ThermalReceiptModal({
             {/* Invoice Info */}
             <div className="py-2 border-b border-dashed border-slate-500 space-y-1 text-[12px]">
               <div className="flex justify-between font-extrabold items-center">
-                <span>INV #: {order.invoiceNo}</span>
+                <span>INV #: {order.invoiceNo || 'DRAFT'}</span>
                 <span className="uppercase">
                   {order.orderType === 'DINE_IN'
                     ? 'DINE IN'
@@ -89,21 +89,31 @@ export default function ThermalReceiptModal({
                 </span>
               </div>
               <div className="flex justify-between text-[11px] font-bold text-slate-900">
-                <span>Date: {formatDate(order.createdAt)}</span>
+                <span>Date: {order.createdAt ? formatDate(order.createdAt) : new Date().toLocaleString()}</span>
               </div>
               <div className="flex justify-between text-[11px] font-bold text-slate-900">
-                <span>Cashier: {order.user?.name || 'Staff'}</span>
+                <span>Cashier: {order.user?.name || order.userName || 'Staff'}</span>
                 {order.tableNo && <span>Table: <strong>{order.tableNo}</strong></span>}
                 {order.riderName && <span>Rider: <strong>{order.riderName}</strong></span>}
               </div>
-              {order.customer && (
+              {(order.customer || order.customerName) && (
                 <div className="pt-1 border-t border-slate-300 text-[11px] font-bold space-y-0.5">
-                  <div>Customer: <strong>{order.customer.name}</strong></div>
-                  <div>Phone: {order.customer.phone}</div>
-                  {order.customer.address && <div className="break-words">Address: {order.customer.address}</div>}
+                  <div>Customer: <strong>{order.customer?.name || order.customerName}</strong></div>
+                  {(order.customer?.phone || order.customerPhone) && (
+                    <div>Phone: {order.customer?.phone || order.customerPhone}</div>
+                  )}
+                  {(order.customer?.address || order.customerAddress) && (
+                    <div className="break-words">Address: {order.customer?.address || order.customerAddress}</div>
+                  )}
                 </div>
               )}
             </div>
+
+            {order.notes && (
+              <div className="py-1.5 border-b border-dashed border-slate-500 text-[11px] font-bold text-slate-900 break-words">
+                Order Note: "{order.notes}"
+              </div>
+            )}
 
             {/* Items Table */}
             <div className="py-2 border-b border-dashed border-slate-500 space-y-2">
@@ -113,51 +123,90 @@ export default function ThermalReceiptModal({
                 <span className="text-right whitespace-nowrap w-14 shrink-0">Total</span>
               </div>
 
-              {order.items?.map((item: any) => (
-                <div key={item.id} className="space-y-0.5">
-                  <div className="flex items-baseline justify-between font-bold text-[12px] gap-1">
-                    <span className="flex-1 min-w-0 break-words leading-tight">{item.productName}</span>
-                    <span className="text-right whitespace-nowrap px-1 font-mono">{item.quantity} × {item.unitPrice}</span>
-                    <span className="text-right whitespace-nowrap w-14 shrink-0 font-mono">{item.total}</span>
-                  </div>
-                  <div className="text-[11px] text-slate-900 font-semibold break-words">
-                    <span>
-                      {item.sizeName} {item.flavorName} {item.crustName ? `(${item.crustName})` : ''}
-                    </span>
-                  </div>
-                  {item.toppings && item.toppings.length > 0 && (
-                    <div className="text-[10px] text-slate-700 italic pl-1 break-words">
-                      + Toppings: {item.toppings.map((t: any) => t.toppingName).join(', ')}
+              {order.items?.map((item: any, idx: number) => {
+                const itemQuantity = Number(item.quantity || 1);
+                const itemPrice = Number(item.unitPrice || 0);
+                const itemTotal = Number(item.total ?? item.totalPrice ?? (itemQuantity * itemPrice));
+
+                let rawName = displayProductName(item.productName || 'Item');
+                let size = item.sizeName || '';
+                let crust = item.crustName || '';
+
+                // Clean up duplicated category-flavor strings (e.g. "Urban Special Pizza - Urban Special" -> "Urban Special Pizza")
+                if (rawName.includes(' - ')) {
+                  const parts = rawName.split(' - ').map((s: string) => s.trim());
+                  if (parts.length === 2) {
+                    if (parts[0].toLowerCase().includes(parts[1].toLowerCase()) || parts[1].toLowerCase().includes(parts[0].toLowerCase())) {
+                      rawName = parts[0];
+                    } else {
+                      rawName = parts[1];
+                    }
+                  }
+                }
+                rawName = rawName.replace(/\s*\([^)]*\)$/, '').trim();
+
+                // Construct clean single line item title e.g. "Large Urban Special Pizza" or "Special Zinger Burger"
+                let displayTitle = rawName;
+                if (size) {
+                  const simpleSize = size.replace(/\s*\([^)]*\)/g, '').trim();
+                  if (simpleSize && !rawName.toLowerCase().includes(simpleSize.toLowerCase())) {
+                    displayTitle = `${simpleSize} ${rawName}`;
+                  }
+                }
+
+                const toppingsList = Array.isArray(item.toppings)
+                  ? item.toppings.map((t: any) => t.toppingName || t.name).filter(Boolean)
+                  : [];
+
+                return (
+                  <div key={item.id || item.cartId || idx} className="space-y-0.5">
+                    <div className="flex items-baseline justify-between font-bold text-[12px] gap-1">
+                      <span className="flex-1 min-w-0 break-words leading-tight">{displayTitle}</span>
+                      <span className="text-right whitespace-nowrap px-1 font-mono">{itemQuantity} × {itemPrice}</span>
+                      <span className="text-right whitespace-nowrap w-14 shrink-0 font-mono">{itemTotal}</span>
                     </div>
-                  )}
-                  {item.specialInstructions && (
-                    <div className="text-[10px] text-slate-700 italic pl-1 break-words">
-                      Note: "{item.specialInstructions}"
-                    </div>
-                  )}
-                </div>
-              ))}
+
+                    {crust && (
+                      <div className="text-[11px] text-slate-900 font-semibold break-words">
+                        <span>({crust})</span>
+                      </div>
+                    )}
+
+                    {toppingsList.length > 0 && (
+                      <div className="text-[10px] text-slate-700 italic pl-1 break-words">
+                        + Toppings: {toppingsList.join(', ')}
+                      </div>
+                    )}
+
+                    {item.specialInstructions && (
+                      <div className="text-[10px] text-slate-700 italic pl-1 break-words">
+                        Note: "{item.specialInstructions}"
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
 
             {/* Billing Calculation */}
             <div className="py-2 border-b border-dashed border-slate-500 space-y-1 text-[12px]">
               <div className="flex justify-between items-center font-bold">
                 <span>Subtotal</span>
-                <span className="font-mono">{order.subtotal}</span>
+                <span className="font-mono">{order.subtotal ?? 0}</span>
               </div>
-              {order.discount > 0 && (
+              {Number(order.discount) > 0 && (
                 <div className="flex justify-between items-center text-slate-900 font-bold">
                   <span>Discount</span>
                   <span className="font-mono">-{order.discount}</span>
                 </div>
               )}
-              {order.tax > 0 && (
+              {Number(order.tax) > 0 && (
                 <div className="flex justify-between items-center text-slate-900 font-bold">
                   <span>Tax ({storeSettings.taxRate}%)</span>
                   <span className="font-mono">+{order.tax}</span>
                 </div>
               )}
-              {order.deliveryFee > 0 && (
+              {Number(order.deliveryFee) > 0 && (
                 <div className="flex justify-between items-center text-slate-900 font-bold">
                   <span>Delivery Fee</span>
                   <span className="font-mono">+{order.deliveryFee}</span>
@@ -165,19 +214,19 @@ export default function ThermalReceiptModal({
               )}
               <div className="flex justify-between items-center font-black text-[15px] border-t border-slate-500 pt-1.5 mt-1">
                 <span>Grand Total</span>
-                <span className="font-mono">{storeSettings.currency} {order.grandTotal}</span>
+                <span className="font-mono">{storeSettings.currency || 'Rs.'} {order.grandTotal ?? 0}</span>
               </div>
               <div className="flex justify-between items-center text-[11px] text-slate-900 font-bold pt-1">
                 <span>Payment Method</span>
-                <span className="uppercase font-extrabold">{order.paymentMethod}</span>
+                <span className="uppercase font-extrabold">{order.paymentMethod || 'CASH'}</span>
               </div>
               <div className="flex justify-between items-center text-[11px] text-slate-900 font-bold">
                 <span>Cash Tendered</span>
-                <span className="font-mono">{order.amountPaid}</span>
+                <span className="font-mono">{order.amountPaid ?? order.grandTotal ?? 0}</span>
               </div>
               <div className="flex justify-between items-center text-[11px] font-bold">
                 <span>Change Given</span>
-                <span className="font-mono">{order.change}</span>
+                <span className="font-mono">{order.change ?? 0}</span>
               </div>
             </div>
 

@@ -172,10 +172,13 @@ export default function CustomizationModal({
       price: getToppingPriceForSize(t.name, selectedSize?.code),
     }));
 
+    const flavorName = selectedFlavor.name || '';
+    const cleanProductName = flavorName || activeCategory;
+
     const cartItem: CartItem = {
       cartId: `${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
       productId: selectedFlavor.id || 'custom-pizza',
-      productName: `${activeCategory} - ${selectedFlavor.name}`,
+      productName: cleanProductName,
       isPizza: true,
       flavorId: selectedFlavor.id,
       flavorName: selectedFlavor.name,
