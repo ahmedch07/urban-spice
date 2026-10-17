@@ -1,13 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
-
-function getLocalDateKey(date = new Date()) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
+import { findActiveSalesDay } from '@/lib/sales-day';
 
 function getDateRange(period: string, now = new Date()) {
   const startDate = new Date(now);
@@ -33,14 +27,22 @@ export async function GET(request: Request) {
     const period = searchParams.get('period') || 'month'; // today, week, month, year
 
     const startDate = getDateRange(period);
+    const activeSalesDay = period === 'today' ? await findActiveSalesDay() : null;
+    const orderWhere: any = {
+      paymentStatus: 'PAID',
+      status: { notIn: ['CANCELLED', 'REFUNDED'] },
+    };
+
+    // “Today” means the manually-opened sales day—not midnight to midnight.
+    if (period === 'today') {
+      orderWhere.salesDayId = activeSalesDay?.id || '__no-open-sales-day__';
+    } else {
+      orderWhere.createdAt = { gte: startDate };
+    }
 
     // 1. Total Orders & Sales (Only settled & paid orders)
     const orders = await prisma.order.findMany({
-      where: {
-        createdAt: { gte: startDate },
-        paymentStatus: 'PAID',
-        status: { notIn: ['CANCELLED', 'REFUNDED'] },
-      },
+      where: orderWhere,
       include: {
         table: true,
         customer: { select: { name: true, phone: true } },
@@ -132,6 +134,9 @@ export async function GET(request: Request) {
       paymentDistribution,
       topProducts,
       lowStockProducts,
+      activeSalesDay: activeSalesDay
+        ? { id: activeSalesDay.id, dateKey: activeSalesDay.dateKey, openedAt: activeSalesDay.openedAt || activeSalesDay.createdAt }
+        : null,
       salesOrders: orders.map((order) => ({
         id: order.id,
         invoiceNo: order.invoiceNo,
@@ -157,18 +162,22 @@ export async function POST() {
   try {
     const session = await getCurrentUser();
     if (!session || !['ADMIN', 'MANAGER'].includes(session.role)) {
-      return NextResponse.json({ error: 'Only Admin or Manager can start a sales day' }, { status: 403 });
+      return NextResponse.json({ error: 'Only Admin or Manager can close a sales day' }, { status: 403 });
     }
 
-    const salesDay = await prisma.salesDay.upsert({
-      where: { dateKey: getLocalDateKey() },
-      create: { dateKey: getLocalDateKey() },
-      update: {},
+    const activeSalesDay = await findActiveSalesDay();
+    if (!activeSalesDay) {
+      return NextResponse.json({ error: 'There is no open sales day to close.' }, { status: 400 });
+    }
+
+    const salesDay = await prisma.salesDay.update({
+      where: { id: activeSalesDay.id },
+      data: { status: 'CLOSED', closedAt: new Date() },
     });
 
-    return NextResponse.json({ success: true, salesDay });
+    return NextResponse.json({ success: true, salesDay, message: 'Sales day closed. The next order will start a new sales day.' });
   } catch (error) {
-    console.error('Start sales day error:', error);
-    return NextResponse.json({ error: 'Failed to start sales day' }, { status: 500 });
+    console.error('Close sales day error:', error);
+    return NextResponse.json({ error: 'Failed to close sales day' }, { status: 500 });
   }
 }

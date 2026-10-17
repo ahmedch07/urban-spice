@@ -718,7 +718,7 @@ export function Landing({ initialMenu }: LandingProps) {
                           <div>
                             <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#a4854f]">Size</p>
                             <h3 className="mt-1 text-lg font-black text-[#4a0a18]">
-                              {getDrinkSizeLabel(product.name, selectedDrinkKey)}
+                              {getDrinkLabel(selectedDrinkKey)} - {getDrinkSizeLabel(product.name, selectedDrinkKey)}
                             </h3>
                           </div>
                           <span className="rounded-full bg-[#fff1e6] px-2.5 py-1 text-sm font-black text-[#4a0a18]">
@@ -768,7 +768,7 @@ export function Landing({ initialMenu }: LandingProps) {
                       <div>
                         <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#a4854f]">Size</p>
                         <p className="mt-1 text-xl font-black text-[#32170e]">
-                          {getDrinkSizeLabel(drinkSelectedProduct.name, selectedDrinkKey)}
+                          {getDrinkLabel(selectedDrinkKey)} - {getDrinkSizeLabel(drinkSelectedProduct.name, selectedDrinkKey)}
                         </p>
                       </div>
                     </div>

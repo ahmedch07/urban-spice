@@ -1,7 +1,8 @@
 import { after, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
-import { generateInvoiceNumber, getLocalDateKey, isValidObjectId } from '@/lib/utils';
+import { generateInvoiceNumber, isValidObjectId } from '@/lib/utils';
+import { getOrCreateActiveSalesDay } from '@/lib/sales-day';
 
 export async function GET(request: Request) {
   try {
@@ -193,11 +194,7 @@ export async function POST(request: Request) {
       requestedToppingIds.length
         ? prisma.topping.findMany({ where: { id: { in: requestedToppingIds } }, select: { id: true } })
         : Promise.resolve([]),
-      prisma.salesDay.upsert({
-        where: { dateKey: getLocalDateKey() },
-        create: { dateKey: getLocalDateKey() },
-        update: {},
-      }),
+      getOrCreateActiveSalesDay(),
     ]);
 
     const invoiceNo = generateInvoiceNumber(prefixResult?.value || 'INV-2026', orderCount + 1);

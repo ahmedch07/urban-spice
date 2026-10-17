@@ -196,7 +196,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // 4. Fetch Products
   const refreshProducts = useCallback(async () => {
     try {
-      const res = await fetch('/api/pos/products');
+      const res = await fetch('/api/pos/products', { cache: 'no-store' });
       const data = await res.json();
       if (data.products) setProducts(data.products);
     } catch {}

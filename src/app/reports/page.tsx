@@ -11,7 +11,7 @@ import { DeleteConfirmModal } from '@/components/ui/delete-confirm-modal';
 import OrderEditModal from '@/components/OrderEditModal';
 import { toast } from '@/components/ui/sonner';
 import { getSalesOrderColumns, topProductColumns } from '@/columns';
-import { Download, RotateCcw } from 'lucide-react';
+import { Download, CircleStop } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 
 import { useRouter } from 'next/navigation';
@@ -43,10 +43,10 @@ export default function ReportsPage() {
   });
   const [isLoading, setIsLoading] = useState(false);
 
-  // Start New Day Modal
-  const [isNewDayModalOpen, setIsNewDayModalOpen] = useState(false);
-  const [newDayError, setNewDayError] = useState('');
-  const [isStartingDay, setIsStartingDay] = useState(false);
+  // Close Sales Day Modal
+  const [isCloseDayModalOpen, setIsCloseDayModalOpen] = useState(false);
+  const [closeDayError, setCloseDayError] = useState('');
+  const [isClosingDay, setIsClosingDay] = useState(false);
   const [editingOrder, setEditingOrder] = useState<any>(null);
   const [deletingOrder, setDeletingOrder] = useState<any>(null);
   const [orderActionError, setOrderActionError] = useState('');
@@ -69,20 +69,21 @@ export default function ReportsPage() {
     }
   };
 
-  const handleConfirmStartNewDay = async () => {
-    setIsStartingDay(true);
-    setNewDayError('');
+  const handleConfirmCloseDay = async () => {
+    setIsClosingDay(true);
+    setCloseDayError('');
     try {
       const res = await fetch('/api/reports', { method: 'POST' });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to start sales day');
-      setIsNewDayModalOpen(false);
+      if (!res.ok) throw new Error(data.error || 'Failed to close sales day');
+      toast.success('Sales day closed. The next order will start a new day.');
+      setIsCloseDayModalOpen(false);
       setPeriod('today');
       await fetchReports();
     } catch (error: any) {
-      setNewDayError(error.message || 'Failed to start sales day');
+      setCloseDayError(error.message || 'Failed to close sales day');
     } finally {
-      setIsStartingDay(false);
+      setIsClosingDay(false);
     }
   };
 
@@ -180,14 +181,14 @@ export default function ReportsPage() {
             <Button
               variant="default"
               onClick={() => {
-                setNewDayError('');
-                setIsNewDayModalOpen(true);
+                setCloseDayError('');
+                setIsCloseDayModalOpen(true);
               }}
-              disabled={isStartingDay}
-              className="space-x-1.5 w-full sm:w-auto justify-center"
+              disabled={isClosingDay || !reportData?.activeSalesDay}
+              className="space-x-1.5 w-full sm:w-auto justify-center bg-red-600 hover:bg-red-500"
             >
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span>Start New Day (Reset Daily)</span>
+              <CircleStop className="w-3.5 h-3.5" />
+              <span>Close Day</span>
             </Button>
           </div>
 
@@ -260,16 +261,16 @@ export default function ReportsPage() {
         </main>
       </div>
 
-      {/* Start New Sales Day Confirmation Modal */}
+      {/* Close Sales Day Confirmation Modal */}
       <DeleteConfirmModal
-        isOpen={isNewDayModalOpen}
-        onClose={() => setIsNewDayModalOpen(false)}
-        onConfirm={handleConfirmStartNewDay}
-        isLoading={isStartingDay}
-        errorMsg={newDayError}
-        title="Start New Sales Day?"
-        description="Are you sure you want to initialize and start a fresh sales day? Today's transactions will be archived."
-        confirmText="Start New Day"
+        isOpen={isCloseDayModalOpen}
+        onClose={() => setIsCloseDayModalOpen(false)}
+        onConfirm={handleConfirmCloseDay}
+        isLoading={isClosingDay}
+        errorMsg={closeDayError}
+        title="Close Sales Day?"
+        description="This will close the current sales day. All orders placed after this will be counted in a new sales day, even if the clock has not reached midnight."
+        confirmText="Close Day"
         variant="warning"
       />
 

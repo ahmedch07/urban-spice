@@ -258,9 +258,10 @@ export default function ProductsPage() {
           product={editProduct}
           categories={categories}
           onClose={() => setIsModalOpen(false)}
-          onSuccess={() => {
+          onSuccess={async () => {
+            await refreshProducts();
             setIsModalOpen(false);
-            refreshProducts();
+            toast.success(editProduct ? 'Product updated successfully' : 'Product created successfully');
           }}
         />
       )}
@@ -308,7 +309,7 @@ function ProductModal({
   product: any;
   categories: any[];
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: () => void | Promise<void>;
 }) {
   const [formError, setFormError] = useState('');
 
@@ -364,14 +365,14 @@ function ProductModal({
         });
       }
 
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setFormError(data.error || 'Failed to save product');
+        setFormError(data.error || `Could not save product (error ${res.status})`);
         return;
       }
-      onSuccess();
-    } catch (e) {
-      setFormError('Network error saving product');
+      await onSuccess();
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : 'Network error saving product');
     }
   };
 

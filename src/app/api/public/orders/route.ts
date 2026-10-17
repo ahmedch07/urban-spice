@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { generateInvoiceNumber, getLocalDateKey, isValidObjectId } from '@/lib/utils';
+import { generateInvoiceNumber, isValidObjectId } from '@/lib/utils';
+import { getOrCreateActiveSalesDay } from '@/lib/sales-day';
 
 const clean = (value: unknown) => typeof value === 'string' ? value.trim() : '';
 const quantityOf = (value: unknown) => Math.floor(Number(value));
@@ -116,7 +117,7 @@ export async function POST(request: Request) {
     const grandTotal = Math.round(subtotal + deliveryFee);
     const [orderCount, salesDay, customer] = await Promise.all([
       prisma.order.count(),
-      prisma.salesDay.upsert({ where: { dateKey: getLocalDateKey() }, create: { dateKey: getLocalDateKey() }, update: {} }),
+      getOrCreateActiveSalesDay(),
       prisma.customer.upsert({ where: { phone }, create: { name, phone, address: address || null }, update: { name, ...(address ? { address } : {}) } }),
     ]);
     const invoiceNo = generateInvoiceNumber(prefixSetting?.value || 'INV-2026', orderCount + 1);

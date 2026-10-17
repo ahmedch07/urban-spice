@@ -160,11 +160,19 @@ model Topping {
 }
 
 model SalesDay {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  dateKey   String   @unique
-  createdAt DateTime @default(now())
+  id        String    @id @default(auto()) @map("_id") @db.ObjectId
+  // A manager can close and reopen a sales day on the same calendar date.
+  dateKey   String
+  status    String    @default("OPEN") // OPEN, CLOSED
+  openedAt  DateTime?
+  closedAt  DateTime?
+  createdAt DateTime  @default(now())
 
   orders Order[]
+
+  @@index([dateKey])
+  @@index([status])
+  @@index([closedAt])
 }
 
 model Order {
