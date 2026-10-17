@@ -53,6 +53,10 @@ export function ProductGrid({ products, onAdd, onCustomize }: ProductGridProps) 
               src={getProductImage(product)}
               alt={product.name}
               className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+              onError={(event) => {
+                event.currentTarget.onerror = null;
+                event.currentTarget.src = getProductImage({ ...product, image: null });
+              }}
             />
             {product.isPizza && (
               <span className="absolute left-3 top-3 rounded-full bg-white px-3 py-1 text-[10px] font-black uppercase tracking-wider text-[#78001b] shadow-md">

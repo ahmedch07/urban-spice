@@ -219,11 +219,9 @@ export function Landing({ initialMenu }: LandingProps) {
   const [successOrder, setSuccessOrder] = useState<SuccessOrder>();
 
   useEffect(() => {
-    if (initialMenu) return;
-
     async function loadMenu() {
       try {
-        const response = await fetch("/api/public/menu");
+        const response = await fetch("/api/public/menu", { cache: "no-store" });
         const data = await response.json().catch(() => ({}));
         if (!response.ok)
           throw new Error(data.error || "Could not load the menu.");
@@ -235,7 +233,7 @@ export function Landing({ initialMenu }: LandingProps) {
       }
     }
     void loadMenu();
-  }, [initialMenu]);
+  }, []);
 
   useEffect(() => {
     const savedCustomer = window.localStorage.getItem("urban-spice-customer");
