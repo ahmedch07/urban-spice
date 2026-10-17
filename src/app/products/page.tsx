@@ -317,7 +317,7 @@ function ProductModal({
     register,
     handleSubmit,
     control,
-    formState: { errors, isSubmitting },
+    formState: { errors, isSubmitting, isDirty },
   } = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
     defaultValues: {
@@ -536,9 +536,9 @@ function ProductModal({
             <Button
               type="submit"
               variant="default"
-              disabled={isSubmitting}
+              disabled={isSubmitting || !isDirty}
             >
-              {isSubmitting ? 'Saving...' : 'Save Product'}
+              {isSubmitting ? 'Saving...' : product ? 'Save Changes' : 'Save Product'}
             </Button>
           </div>
         </form>

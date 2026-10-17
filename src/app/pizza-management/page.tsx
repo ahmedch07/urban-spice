@@ -28,6 +28,7 @@ const flavorSchema = z.object({
   name: z.string().min(1, 'Flavor name is required'),
   description: z.string().optional(),
   image: z.string().optional(),
+  prices: z.record(z.string(), z.coerce.number().min(0, 'Price must be zero or greater')).default({}),
   sortOrder: z.coerce.number().default(0),
 });
 
@@ -434,7 +435,7 @@ function FlavorModal({
     register,
     handleSubmit,
     control,
-    formState: { errors, isSubmitting },
+    formState: { errors, isSubmitting, isDirty },
   } = useForm<any>({
     resolver: zodResolver(flavorSchema),
     defaultValues: {
@@ -586,9 +587,9 @@ function FlavorModal({
             <Button
               type="submit"
               variant="default"
-              disabled={isSubmitting}
+              disabled={isSubmitting || !isDirty}
             >
-              {isSubmitting ? 'Saving...' : 'Save Flavor'}
+              {isSubmitting ? 'Saving...' : flavor ? 'Save Changes' : 'Save Flavor'}
             </Button>
           </div>
         </form>
@@ -611,7 +612,7 @@ function SizeModal({
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { errors, isSubmitting, isDirty },
   } = useForm<any>({
     resolver: zodResolver(sizeSchema),
     defaultValues: {
@@ -731,9 +732,9 @@ function SizeModal({
             <Button
               type="submit"
               variant="default"
-              disabled={isSubmitting}
+              disabled={isSubmitting || !isDirty}
             >
-              {isSubmitting ? 'Saving...' : 'Save Size'}
+              {isSubmitting ? 'Saving...' : sizeItem ? 'Save Changes' : 'Save Size'}
             </Button>
           </div>
         </form>
@@ -758,7 +759,7 @@ function GenericCrustToppingModal({
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { errors, isSubmitting, isDirty },
   } = useForm<any>({
     resolver: zodResolver(genericItemSchema),
     defaultValues: {
@@ -872,9 +873,9 @@ function GenericCrustToppingModal({
             <Button
               type="submit"
               variant="default"
-              disabled={isSubmitting}
+              disabled={isSubmitting || !isDirty}
             >
-              {isSubmitting ? 'Saving...' : 'Save Item'}
+              {isSubmitting ? 'Saving...' : item ? 'Save Changes' : 'Save Item'}
             </Button>
           </div>
         </form>
