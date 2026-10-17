@@ -356,9 +356,10 @@ export default function PizzaManagementPage() {
           flavor={editFlavor}
           sizes={sizes}
           onClose={() => setIsFlavorModalOpen(false)}
-          onSuccess={() => {
+          onSuccess={async () => {
+            await fetchAllData();
             setIsFlavorModalOpen(false);
-            fetchAllData();
+            toast.success(editFlavor ? 'Pizza flavor updated successfully' : 'Pizza flavor created successfully');
           }}
         />
       )}
@@ -419,7 +420,7 @@ function FlavorModal({
   flavor: any;
   sizes: any[];
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: () => void | Promise<void>;
 }) {
   const [flavorError, setFlavorError] = useState('');
 
@@ -440,17 +441,18 @@ function FlavorModal({
       name: flavor?.name || '',
       description: flavor?.description || '',
       image: flavor?.image || '',
+      prices: defaultPrices,
     },
   });
 
   const onSave = async (values: any) => {
     setFlavorError('');
-    const pricesArray = Object.entries(values.prices).map(([sizeId, price]) => ({
-      sizeId,
-      price: Number(price) || 0,
-    }));
 
     try {
+      const pricesArray = Object.entries(values.prices ?? {}).map(([sizeId, price]) => ({
+        sizeId,
+        price: Number(price) || 0,
+      }));
       let res;
       if (flavor) {
         res = await fetch('/api/pizza-management/flavors', {
@@ -477,14 +479,14 @@ function FlavorModal({
         });
       }
 
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setFlavorError(data.error || 'Failed to save pizza flavor');
+        setFlavorError(data.error || `Could not save pizza flavor (error ${res.status})`);
         return;
       }
-      onSuccess();
-    } catch (e) {
-      setFlavorError('Network error saving flavor');
+      await onSuccess();
+    } catch (error) {
+      setFlavorError(error instanceof Error ? error.message : 'Network error saving flavor');
     }
   };
 
