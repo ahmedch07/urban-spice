@@ -101,7 +101,8 @@ export default function POSPage() {
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerItem | null>(null);
   const [selectedTable, setSelectedTable] = useState<RestaurantTableItem | null>(null);
   const [selectedRider, setSelectedRider] = useState<RiderItem | null>(null);
-  const [deliveryFee, setDeliveryFee] = useState<number>(() => Number(storeSettings.defaultDeliveryFee) || 100);
+  const getDefaultDeliveryFee = () => Math.max(0, Number(storeSettings.defaultDeliveryFee) || 0);
+  const [deliveryFee, setDeliveryFee] = useState<number>(getDefaultDeliveryFee);
   const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
   const [orderType, setOrderType] = useState<OrderType>('DINE_IN');
   const [tableNo, setTableNo] = useState<string>('');
@@ -247,6 +248,7 @@ export default function POSPage() {
     setActiveOrderId(null);
     setTableNo('');
     setDiscount(0);
+    setDeliveryFee(getDefaultDeliveryFee());
     setTaxRate(storeSettings.taxEnabled === 'true' ? Number(storeSettings.taxRate) || 0 : 0);
     setOrderType('DINE_IN');
     toast.info('Ready for new order');

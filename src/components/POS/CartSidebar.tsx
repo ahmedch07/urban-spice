@@ -89,7 +89,6 @@ export default function CartSidebar({
   const { riders } = useApp();
   const [showDiscountInput, setShowDiscountInput] = useState(false);
   const [showTaxInput, setShowTaxInput] = useState(false);
-  const [showDeliveryFeeInput, setShowDeliveryFeeInput] = useState(false);
 
   // Subtotal Calculation
   const subtotal = cart.reduce((sum, item) => sum + item.totalPrice, 0);
@@ -505,38 +504,48 @@ export default function CartSidebar({
 
           {/* Delivery Fee controls (Only for Delivery) */}
           {orderType === 'DELIVERY' && (
-            <div className="space-y-1 pt-1 border-t border-slate-800/80">
-              <div className="flex justify-between items-center">
-                <button
-                  onClick={() => setShowDeliveryFeeInput(!showDeliveryFeeInput)}
-                  className="text-amber-400 hover:underline flex items-center space-x-1"
-                >
-                  <Truck className="w-3 h-3 text-amber-400" />
+            <div className="space-y-1.5 pt-2 border-t border-slate-800/80">
+              <div className="flex items-center justify-between">
+                <span className="flex items-center space-x-1 text-amber-400">
+                  <Truck className="w-3 h-3" />
                   <span>Delivery Fee</span>
-                </button>
-                <span className="font-mono font-semibold text-slate-200">
-                  {formatCurrency(effectiveDeliveryFee)}
                 </span>
+                <span className="font-mono font-semibold text-slate-200">{formatCurrency(effectiveDeliveryFee)}</span>
               </div>
-
-              {showDeliveryFeeInput && (
-                <div className="flex items-center space-x-1.5 pt-1">
-                  <input
-                    type="number"
-                    value={deliveryFee || ''}
-                    onChange={(e) => onDeliveryFeeChange && onDeliveryFeeChange(Math.max(0, parseFloat(e.target.value) || 0))}
-                    placeholder="Fee (e.g. 100)"
-                    className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-slate-100 font-mono focus:outline-none focus:border-amber-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => onDeliveryFeeChange && onDeliveryFeeChange(0)}
-                    className="px-2 py-1 bg-slate-800 text-slate-300 font-bold rounded text-xs shrink-0"
-                  >
-                    Free
-                  </button>
-                </div>
-              )}
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => onDeliveryFeeChange?.(Math.max(0, effectiveDeliveryFee - 10))}
+                  className="grid h-7 w-7 place-items-center rounded bg-slate-800 text-base font-bold text-slate-200 hover:bg-slate-700"
+                  aria-label="Decrease delivery fee by 10"
+                >
+                  <Minus className="h-3.5 w-3.5" />
+                </button>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={deliveryFee}
+                  onChange={(e) => onDeliveryFeeChange?.(Math.max(0, Number(e.target.value) || 0))}
+                  aria-label="Delivery fee"
+                  className="min-w-0 flex-1 bg-slate-950 border border-slate-800 rounded px-2 py-1 text-center font-mono text-xs text-slate-100 focus:outline-none focus:border-amber-500"
+                />
+                <button
+                  type="button"
+                  onClick={() => onDeliveryFeeChange?.(effectiveDeliveryFee + 10)}
+                  className="grid h-7 w-7 place-items-center rounded bg-slate-800 text-base font-bold text-slate-200 hover:bg-slate-700"
+                  aria-label="Increase delivery fee by 10"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onDeliveryFeeChange?.(0)}
+                  className="px-2 py-1 bg-slate-800 text-slate-300 font-bold rounded text-xs hover:bg-slate-700 shrink-0"
+                >
+                  Free
+                </button>
+              </div>
             </div>
           )}
 

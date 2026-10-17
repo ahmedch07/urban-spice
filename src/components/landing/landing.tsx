@@ -46,50 +46,10 @@ type PendingCartItem = { product: Product; configuration: PizzaConfiguration };
 const defaultCustomer: Customer = { name: "", phone: "", address: "" };
 const formatMoney = (value: number) => `Rs. ${Math.round(value).toLocaleString()}`;
 
-const drinkSequence = ["diet", "mint", "coke", "sprite", "water"] as const;
-
-function getDrinkKey(name: string): string {
-  const normalized = name.toLowerCase();
-
-  if (/(diet|zero)/.test(normalized)) return "diet";
-  if (/(mint|minty)/.test(normalized)) return "mint";
-  if (/(coca|cola|coke|fanta)/.test(normalized)) return "coke";
-  if (/(sprite|7up|lemon|lime)/.test(normalized)) return "sprite";
-  if (/(water|aqua|mineral)/.test(normalized)) return "water";
-
-  return "other";
-}
-
-function inferDrinkKey(product: Product): string {
-  const direct = getDrinkKey(product.name);
-  if (direct !== "other") return direct;
-
-  const text = `${product.name} ${product.category?.name || ""}`.toLowerCase();
-
-  if (text.includes("water")) return "water";
-  if (/250ml|can/.test(text)) return "coke";
-  if (/500ml|bottle/.test(text)) return "sprite";
-  if (/1\s*ltr|1\s*litre|1l/.test(text)) return "mint";
-  if (/1\.5\s*ltr|1\.5\s*litre|large/.test(text)) return "diet";
-
-  return "other";
-}
+const drinkSequence = ["Coke", "Sprite", "Mint", "Diet", "Fanta", "Water"] as const;
 
 function getDrinkLabel(key: string) {
-  switch (key) {
-    case "diet":
-      return "Diet";
-    case "mint":
-      return "Mint";
-    case "coke":
-      return "Coke";
-    case "sprite":
-      return "Sprite";
-    case "water":
-      return "Water";
-    default:
-      return "Other";
-  }
+  return key;
 }
 
 function getDrinkSizeLabel(productName: string, drinkKey: string) {
@@ -381,31 +341,24 @@ export function Landing({ initialMenu }: LandingProps) {
   }, [menu]);
 
   const drinksByGroup = useMemo(() => {
-    const grouped = new Map<string, Product[]>();
+    const beverages = (menu?.products ?? [])
+      .filter((product) => {
+        const categoryText = `${product.name} ${product.category?.name || ""}`.toLowerCase();
+        return !product.isPizza && (
+          getCategoryBucket(product.category?.name || "") === "beverages" ||
+          /(drink|beverage|water|coke|sprite|mint|diet|fanta|cola)/.test(categoryText)
+        );
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
 
-    for (const product of menu?.products ?? []) {
-      if (product.isPizza) continue;
-
-      const bucket = getCategoryBucket(product.category?.name || "");
-      const categoryText = `${product.name} ${product.category?.name || ""}`.toLowerCase();
-      const isBeverage =
-        bucket === "beverages" ||
-        /(drink|beverage|water|coke|sprite|mint|diet|cola)/.test(categoryText);
-
-      if (!isBeverage) continue;
-
-      const key = inferDrinkKey(product);
-      if (key === "other") continue;
-
-      const current = grouped.get(key) ?? [];
-      current.push(product);
-      grouped.set(key, current);
-    }
+    const waterProducts = beverages.filter((product) => /water|aqua|mineral/i.test(product.name));
+    const softDrinkSizes = beverages.filter((product) => !/water|aqua|mineral/i.test(product.name));
 
     return drinkSequence.map((key) => ({
       key,
       label: getDrinkLabel(key),
-      products: (grouped.get(key) ?? []).sort((a, b) => a.name.localeCompare(b.name)),
+      // This matches the POS: every soft-drink brand has the same available sizes.
+      products: key === "Water" ? waterProducts : softDrinkSizes,
     }));
   }, [menu]);
 
@@ -434,7 +387,7 @@ export function Landing({ initialMenu }: LandingProps) {
       : product.name;
 
     setCart((currentCart) => {
-      const key = `${product.id}`;
+      const key = selectedDrinkKey ? `${selectedDrinkKey}-${product.id}` : product.id;
       const existingItem = currentCart.find((item) => item.key === key);
 
       return existingItem
