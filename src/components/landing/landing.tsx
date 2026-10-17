@@ -233,6 +233,14 @@ export function Landing({ initialMenu }: LandingProps) {
       }
     }
     void loadMenu();
+
+    const refreshInterval = window.setInterval(() => void loadMenu(), 15_000);
+    window.addEventListener("focus", loadMenu);
+
+    return () => {
+      window.clearInterval(refreshInterval);
+      window.removeEventListener("focus", loadMenu);
+    };
   }, []);
 
   useEffect(() => {
@@ -256,6 +264,18 @@ export function Landing({ initialMenu }: LandingProps) {
     const selectedBucket = selectedCategory === "all" ? "all" : selectedCategory;
 
     return [...(menu?.products ?? [])]
+      .map((product) => {
+        if (!product.isPizza) return product;
+        const flavor = menu?.flavors.find(
+          (item) => item.name.toLowerCase() === product.name.toLowerCase(),
+        );
+
+        return {
+          ...product,
+          image: product.image || flavor?.image,
+          description: product.description || flavor?.description,
+        };
+      })
       .filter((product) => {
         const productBucket = getCategoryBucket(product.category?.name || "");
         const categoryMatches =
@@ -322,7 +342,19 @@ export function Landing({ initialMenu }: LandingProps) {
 
     const seen = new Set<string>();
 
-    for (const product of menu?.products ?? []) {
+    for (const rawProduct of menu?.products ?? []) {
+      const flavor = rawProduct.isPizza
+        ? menu?.flavors.find(
+            (item) => item.name.toLowerCase() === rawProduct.name.toLowerCase(),
+          )
+        : undefined;
+      const product = rawProduct.isPizza
+        ? {
+            ...rawProduct,
+            image: rawProduct.image || flavor?.image,
+            description: rawProduct.description || flavor?.description,
+          }
+        : rawProduct;
       if (!product.isPizza) continue;
       if (seen.has(product.id)) continue;
       seen.add(product.id);

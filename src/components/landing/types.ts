@@ -22,7 +22,13 @@ export type MenuData = {
 };
 
 export type Product = { id: string; name: string; basePrice: number; description?: string | null; image?: string | null; isPizza: boolean; categoryId: string; category?: { name: string; slug?: string } | null };
-export type Flavor = { id: string; name: string; flavorPrices: Array<{ sizeId: string; price: number }> };
+export type Flavor = {
+  id: string;
+  name: string;
+  description?: string | null;
+  image?: string | null;
+  flavorPrices: Array<{ sizeId: string; price: number }>;
+};
 export type Customer = { name: string; phone: string; address: string };
 export type OrderType = "DELIVERY" | "TAKEAWAY";
 export type PaymentMethod = "CASH" | "ONLINE" | "CARD";

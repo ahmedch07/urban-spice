@@ -31,6 +31,8 @@ export async function getPublicMenu(): Promise<MenuData> {
           select: {
             id: true,
             name: true,
+            description: true,
+            image: true,
             flavorPrices: { select: { sizeId: true, price: true } },
           },
           orderBy: { sortOrder: "asc" },
